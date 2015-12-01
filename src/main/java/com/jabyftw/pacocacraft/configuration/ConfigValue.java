@@ -27,7 +27,10 @@ public enum ConfigValue {
     MYSQL_USERNAME("mysql.username", "root"),
     MYSQL_PASSWORD("mysql.password", "root"),
     MYSQL_POOL_SIZE("mysql.pool_size", 8),
-    MYSQL_CONNECTION_TIMEOUT("mysql.connection_timeout_minutes", 28800),;
+    MYSQL_CONNECTION_TIMEOUT("mysql.connection_timeout_minutes", 28800),
+
+    LOGIN_PLAYERS_ALLOWED("login.max_number_of_players_joining", 16),
+    LOGIN_PERIOD_OF_TIME("login.period_of_time_seconds", 10.0f),;
 
     private final String path;
     private final Object defaultValue;

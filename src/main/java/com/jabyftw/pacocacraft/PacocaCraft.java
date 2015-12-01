@@ -3,15 +3,23 @@ package com.jabyftw.pacocacraft;
 import com.jabyftw.pacocacraft.block_protection.BlockProtectionService;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.configuration.ConfigurationFile;
+import com.jabyftw.pacocacraft.login.UserLoginService;
+import com.jabyftw.pacocacraft.login.ban.BanService;
+import com.jabyftw.pacocacraft.player.UserProfile;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.pool.HikariPool;
+import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.permission.Permission;
+import org.bukkit.Server;
 import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -35,18 +43,44 @@ import java.util.logging.Logger;
  */
 public class PacocaCraft extends JavaPlugin {
 
+    // Player list
+    public static ConcurrentHashMap<Player, UserProfile> playerMap = new ConcurrentHashMap<>();
+
     // Services
     public static BlockProtectionService blockProtectionService;
+    public static UserLoginService userLoginService;
+    public static BanService banService;
 
     // Util
+    public static PacocaCraft pacocaCraft;
+    public static Server server;
     public static Logger logger;
-    public static Permission permission;
     public static ConfigurationFile config;
-    public static HikariDataSource dataSource;
+
+    // Vault
+    public static Chat chat;
+    public static Permission permission;
+
+    // MySQL
+    public volatile static HikariDataSource dataSource;
+
+    // Timing
+    private BukkitTask tickTimingTask;
+    public static volatile long currentTick = 1; // read on async pre-join event -- no need to AtomicLong
+    public static final Object tickLock = new Object();
 
     @Override
     public void onEnable() {
+        pacocaCraft = this;
+        server = getServer();
         logger = getLogger();
+
+        // Start ticking
+        tickTimingTask = server.getScheduler().runTaskTimer(this, () -> {
+            synchronized(tickLock) {
+                currentTick++; // not instantaneous event, need to synchronize
+            }
+        }, 0, 1);
 
         // Start configuration
         try {
@@ -62,10 +96,14 @@ public class PacocaCraft extends JavaPlugin {
             return;
         }
 
-        // Get Permission instance from Vault
-        RegisteredServiceProvider<Permission> serviceProvider = getServer().getServicesManager().getRegistration(Permission.class);
-        if((permission = serviceProvider.getProvider()) == null)
+        // Get Permission and Chat instances from Vault
+        RegisteredServiceProvider<Permission> permissionServiceProvider = getServer().getServicesManager().getRegistration(Permission.class);
+        RegisteredServiceProvider<Chat> chatServiceProvider = getServer().getServicesManager().getRegistration(Chat.class);
+
+        if((permission = permissionServiceProvider.getProvider()) == null)
             logger.warning("Failed to start Vault's permission service!");
+        if((chat = chatServiceProvider.getProvider()) == null)
+            logger.warning("Failed to start Vault's chat service!");
 
         // Setup MySQL's Data Source
         HikariConfig hikariConfig = new HikariConfig();
@@ -92,6 +130,8 @@ public class PacocaCraft extends JavaPlugin {
 
         // Register and start services
         (blockProtectionService = new BlockProtectionService()).onEnable();
+        (userLoginService = new UserLoginService()).onEnable();
+        (banService = new BanService()).onEnable();
 
         // Announce we're ready
         logger.info(getDescription().getName() + " v" + getDescription().getVersion() + " is enabled!");
@@ -104,6 +144,8 @@ public class PacocaCraft extends JavaPlugin {
 
         // Shutdown services
         if(blockProtectionService != null) blockProtectionService.onDisable();
+        if(userLoginService != null) userLoginService.onDisable();
+        if(banService != null) banService.onDisable();
 
         // Shutdown MySQL
         if(dataSource != null && !dataSource.isClosed())
@@ -117,6 +159,12 @@ public class PacocaCraft extends JavaPlugin {
                 e.printStackTrace();
                 logger.warning("Failed to save configuration file!");
             }
+
+        // Stop ticking
+        tickTimingTask.cancel();
+
+        // Un-register listeners
+        getServer().getPluginManager().disablePlugin(this);
 
         logger.info(getDescription().getName() + " is disabled!");
     }
