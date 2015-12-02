@@ -1,4 +1,7 @@
-package com.jabyftw.pacocacraft.util;
+package com.jabyftw.pacocacraft.login.commands;
+
+import com.jabyftw.easiercommands.CommandExecutor;
+import com.jabyftw.pacocacraft.PacocaCraft;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -18,10 +21,10 @@ package com.jabyftw.pacocacraft.util;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public final class Permissions {
+public class LoginCommand extends CommandExecutor {
 
-    public static final String
-            JOIN_FULL_SERVER = "pacocacraft.join.join_full",
-            JOIN_VANISHED = "vanish.silentjoin";
+    public LoginCommand() {
+        super(PacocaCraft.pacocaCraft, "login", "", "");
+    }
 
 }

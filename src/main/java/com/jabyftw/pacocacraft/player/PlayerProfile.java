@@ -25,6 +25,7 @@ public abstract class PlayerProfile {
 
     // protected so its subclasses have access
     protected UserProfile userProfile = null;
+    protected boolean modified = false;
 
     public PlayerProfile(ProfileType profileType) {
         this.profileType = profileType;
@@ -32,5 +33,14 @@ public abstract class PlayerProfile {
 
     public ProfileType getProfileType() {
         return profileType;
+    }
+
+    /**
+     * Check if profile was modified and if it should be saved
+     *
+     * @return true if profile was modified
+     */
+    public boolean shouldBeSaved() {
+        return modified;
     }
 }

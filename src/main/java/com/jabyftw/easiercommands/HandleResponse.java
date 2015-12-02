@@ -1,4 +1,4 @@
-package com.jabyftw.pacocacraft.util;
+package com.jabyftw.easiercommands;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -18,10 +18,10 @@ package com.jabyftw.pacocacraft.util;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public final class Permissions {
+public enum HandleResponse {
 
-    public static final String
-            JOIN_FULL_SERVER = "pacocacraft.join.join_full",
-            JOIN_VANISHED = "vanish.silentjoin";
+    RETURN_HELP,
+    RETURN_NO_PERMISSION,
+    RETURN_TRUE
 
 }

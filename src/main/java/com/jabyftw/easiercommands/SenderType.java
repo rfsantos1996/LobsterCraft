@@ -1,4 +1,7 @@
-package com.jabyftw.pacocacraft.login.ban;
+package com.jabyftw.easiercommands;
+
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -18,15 +21,13 @@ package com.jabyftw.pacocacraft.login.ban;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class BanRecord {
-    // TODO
+public enum SenderType {
 
-    /**
-     * Get ban message to be shown (return colored message)
-     *
-     * @return message shown on ban screen upon login
-     */
-    public String getMessage() {
-        return null;
+    PLAYER,
+    CONSOLE,
+    BOTH;
+
+    public boolean canHandleCommandSender(CommandSender commandSender) {
+        return this == BOTH || (commandSender instanceof Player && this == PLAYER) || (!(commandSender instanceof Player) && this == CONSOLE);
     }
 }

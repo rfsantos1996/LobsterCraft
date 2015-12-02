@@ -1,4 +1,4 @@
-package com.jabyftw.pacocacraft.util;
+package com.jabyftw.pacocacraft.login;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -18,10 +18,15 @@ package com.jabyftw.pacocacraft.util;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public final class Permissions {
+public class BanRecord {
+    // TODO
 
-    public static final String
-            JOIN_FULL_SERVER = "pacocacraft.join.join_full",
-            JOIN_VANISHED = "vanish.silentjoin";
-
+    /**
+     * Get ban message to be shown (return colored message)
+     *
+     * @return message shown on ban screen upon login
+     */
+    public String getMessage() {
+        return null;
+    }
 }

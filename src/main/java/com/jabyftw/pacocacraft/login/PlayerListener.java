@@ -2,12 +2,13 @@ package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
-import com.jabyftw.pacocacraft.login.ban.BanRecord;
+import com.jabyftw.pacocacraft.location.TeleportProfile;
 import com.jabyftw.pacocacraft.player.UserProfile;
 import com.jabyftw.pacocacraft.util.Permissions;
-import com.jabyftw.pacocacraft.util.Util;
+import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -81,7 +82,7 @@ public class PlayerListener implements Listener {
         lastJoinTick = PacocaCraft.currentTick;
 
         // Check player's name (today the minimum length is 4, but there may be players using 3 letters still)
-        if(!Util.checkString(playerName, 3, 16)) {
+        if(!com.jabyftw.Util.checkString(playerName, 3, 16)) {
             preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§cSeu nome contém caracteres inválidos\n§cou é muito longo/curto.");
             return;
         }
@@ -119,18 +120,25 @@ public class PlayerListener implements Listener {
      */
     @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGHEST)
     public void onPlayerLogin(PlayerJoinEvent joinEvent) {
+        Player player = joinEvent.getPlayer();
+
         // Retrieve user profile
         UserProfile userProfile;
         try {
-            userProfile = userLoginService.getProfile(joinEvent.getPlayer().getName().toLowerCase());
+            userProfile = userLoginService.getProfile(player.getName().toLowerCase());
         } catch(ExecutionException | InterruptedException e) {
-            joinEvent.getPlayer().kickPlayer("§cOcorreu um erro com seu perfil de usuário!\n§cTente novamente mais tarde.");
+            player.kickPlayer("§cOcorreu um erro com seu perfil de usuário!\n§cTente novamente mais tarde.");
             joinEvent.setJoinMessage("");
             e.printStackTrace();
             return;
         }
 
         // Apply player to user profile
-        userProfile.setPlayerInstance(joinEvent.getPlayer());
+        userProfile.setPlayerInstance(player);
+
+        // Update login message
+        joinEvent.setJoinMessage(PacocaCraft.permission.playerHas(player, Permissions.JOIN_VANISHED) ? "" : "§b+ §3" + player.getName());
     }
+
+
 }

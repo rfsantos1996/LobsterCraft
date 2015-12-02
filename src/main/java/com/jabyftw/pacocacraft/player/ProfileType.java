@@ -1,5 +1,7 @@
 package com.jabyftw.pacocacraft.player;
 
+import com.jabyftw.pacocacraft.location.TeleportProfile;
+
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
  * <p>
@@ -20,7 +22,7 @@ package com.jabyftw.pacocacraft.player;
  */
 public enum ProfileType {
 
-    ;
+    TELEPORT_PROFILE(TeleportProfile.class),;
 
     private final Class<? extends PlayerProfile> profileClass;
 

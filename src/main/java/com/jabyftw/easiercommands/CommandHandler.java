@@ -1,4 +1,9 @@
-package com.jabyftw.pacocacraft.util;
+package com.jabyftw.easiercommands;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -18,18 +23,12 @@ package com.jabyftw.pacocacraft.util;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public final class Util {
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface CommandHandler {
 
-    /**
-     * Check String for a-z, A-Z, _ and 0-9 with given boundary
-     *
-     * @param string    string to be checked
-     * @param minLength minimum length of the string
-     * @param maxLength maximum length of the string
-     *
-     * @return true for valid strings
-     */
-    public static boolean checkString(String string, int minLength, int maxLength) {
-        return string.matches("[A-Za-z_0-9]{" + minLength + "," + maxLength + "}");
-    }
+    SenderType senderType() default SenderType.BOTH;
+
+    String additionalPermission() default "";
+
 }

@@ -4,8 +4,9 @@ import com.jabyftw.pacocacraft.block_protection.BlockProtectionService;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.configuration.ConfigurationFile;
 import com.jabyftw.pacocacraft.login.UserLoginService;
-import com.jabyftw.pacocacraft.login.ban.BanService;
+import com.jabyftw.pacocacraft.login.BanService;
 import com.jabyftw.pacocacraft.player.UserProfile;
+import com.sun.istack.internal.NotNull;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.pool.HikariPool;
@@ -167,5 +168,9 @@ public class PacocaCraft extends JavaPlugin {
         getServer().getPluginManager().disablePlugin(this);
 
         logger.info(getDescription().getName() + " is disabled!");
+    }
+
+    public static UserProfile getUser(@NotNull Player player) {
+        return playerMap.get(player);
     }
 }

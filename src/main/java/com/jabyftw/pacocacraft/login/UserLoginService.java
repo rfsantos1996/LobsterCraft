@@ -1,6 +1,7 @@
 package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.login.commands.LoginCommand;
 import com.jabyftw.pacocacraft.player.UserProfile;
 import com.jabyftw.pacocacraft.util.ServerService;
 import com.sun.istack.internal.NotNull;
@@ -34,8 +35,6 @@ import java.util.concurrent.ForkJoinTask;
  */
 public class UserLoginService implements ServerService {
 
-    private PlayerListener playerListener;
-
     // User profile management
     private final ConcurrentHashMap<String, ForkJoinTask<UserProfile>> userProfileRequests = new ConcurrentHashMap<>();
     // TODO stored user profiles: set last time online on UserProfile and check its lifetime (if passed some time, save it and remove from cache)
@@ -43,7 +42,8 @@ public class UserLoginService implements ServerService {
 
     @Override
     public void onEnable() {
-        PacocaCraft.server.getPluginManager().registerEvents((playerListener = new PlayerListener(this)), PacocaCraft.pacocaCraft);
+        PacocaCraft.server.getPluginManager().registerEvents(new PlayerListener(this), PacocaCraft.pacocaCraft);
+        PacocaCraft.server.getPluginCommand("login").setExecutor(new LoginCommand());
     }
 
     @Override
@@ -80,9 +80,12 @@ public class UserLoginService implements ServerService {
                         return new UserProfile(playerName);
 
                     // Retrieve information
+                    long playerId = resultSet.getLong("playerId");
+                    String password = resultSet.getString("password");
+                    long lastTimeOnline = resultSet.getLong("lastTimeOnline");
 
                     // Apply information to profile on a "loaded profile" constructor
-                    userProfile = new UserProfile(playerName);
+                    userProfile = new UserProfile(playerName, playerId, password, lastTimeOnline);
 
                     // Close ResultSet and PreparedStatement
                     resultSet.close();
