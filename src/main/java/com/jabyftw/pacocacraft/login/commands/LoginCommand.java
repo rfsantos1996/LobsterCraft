@@ -24,7 +24,7 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 public class LoginCommand extends CommandExecutor {
 
     public LoginCommand() {
-        super(PacocaCraft.pacocaCraft, "login", "", "");
+        super(PacocaCraft.pacocaCraft, "login", "", "§c/login (§4senha§c)");
     }
 
 }

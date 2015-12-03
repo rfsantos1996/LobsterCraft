@@ -1,5 +1,6 @@
 package com.jabyftw.easiercommands;
 
+import com.sun.istack.internal.NotNull;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -27,7 +28,14 @@ public enum SenderType {
     CONSOLE,
     BOTH;
 
-    public boolean canHandleCommandSender(CommandSender commandSender) {
+    /**
+     * Check if command sender can fit into the sender type
+     *
+     * @param commandSender given sender of the command
+     *
+     * @return true if command sender fits into the requirement
+     */
+    public boolean canHandleCommandSender(@NotNull CommandSender commandSender) {
         return this == BOTH || (commandSender instanceof Player && this == PLAYER) || (!(commandSender instanceof Player) && this == CONSOLE);
     }
 }

@@ -1,5 +1,7 @@
 package com.jabyftw.easiercommands;
 
+import com.sun.istack.internal.NotNull;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -29,6 +31,6 @@ public @interface CommandHandler {
 
     SenderType senderType() default SenderType.BOTH;
 
-    String additionalPermission() default "";
+    @NotNull String additionalPermission() default "";
 
 }

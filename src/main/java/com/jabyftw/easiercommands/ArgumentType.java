@@ -1,8 +1,6 @@
 package com.jabyftw.easiercommands;
 
 import com.jabyftw.Util;
-import com.jabyftw.pacocacraft.player.UserProfile;
-import org.apache.commons.lang.math.NumberUtils;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
@@ -29,31 +27,148 @@ import org.bukkit.potion.PotionType;
  */
 public enum ArgumentType {
 
-    LOCATION(Location.class),
-    WORLD(World.class),
+    LOCATION(Location.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToLocation(
+                    commandSender instanceof Player ? ((Player) commandSender).getWorld() : null,
+                    string
+            );
+        }
+    },
+    WORLD(World.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToWorld(string);
+        }
+    },
 
-    TIME_DIFFERENCE(Long.class),
-    //NUMBER(Number.class), // Invalid, you couldn't use other values than double o.o
+    MATERIAL(Material.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToMaterial(string);
+        }
+    },
+    ENTITY_TYPE(EntityType.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToEntityType(string);
+        }
+    },
+    POTION_TYPE(PotionType.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToPotionType(string);
+        }
+    },
+    WEATHER_TYPE(WeatherType.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToWeatherType(string);
+        }
+    },
 
-    INTEGER(int.class),
-    LONG(long.class),
-    SHORT(short.class),
-    BYTE(byte.class),
-    FLOAT(float.class),
-    DOUBLE(double.class),
+    PLAYER_NAME(CommandExecutor.PLAYER_CLASS) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            // TODO change here your method
+            return Util.getPlayerThatMatches(string);
+        }
+    },
+    PLAYER_IP(String.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            for(Player player : Bukkit.getServer().getOnlinePlayers()) {
+                if(player.getAddress().getAddress().getHostName().equalsIgnoreCase(string)) {
+                    return string;
+                }
+            }
+            return null;
+        }
+    },
 
-    ENTITY_TYPE(EntityType.class),
-    POTION_TYPE(PotionType.class),
-    WEATHER_TYPE(WeatherType.class),
-    MATERIAL(Material.class),
+    INTEGER(int.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            try {
+                return Integer.valueOf(string);
+            } catch(NumberFormatException ignored) {
+            }
+            return null;
+        }
+    },
+    LONG(long.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            try {
+                return Long.valueOf(string);
+            } catch(NumberFormatException ignored) {
+            }
+            return null;
+        }
+    },
+    SHORT(short.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            try {
+                return Short.valueOf(string);
+            } catch(NumberFormatException ignored) {
+            }
+            return null;
+        }
+    },
+    BYTE(byte.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            try {
+                return Byte.valueOf(string);
+            } catch(NumberFormatException ignored) {
+            }
+            return null;
+        }
+    },
+    FLOAT(float.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            try {
+                return Float.valueOf(string);
+            } catch(NumberFormatException ignored) {
+            }
+            return null;
+        }
+    },
+    DOUBLE(double.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            try {
+                return Integer.valueOf(string);
+            } catch(NumberFormatException ignored) {
+            }
+            return null;
+        }
+    },
 
-    PLAYER_NAME(UserProfile.class),
+    TIME_DIFFERENCE(Long.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseTimeDifference(string);
+        }
+    },
 
-    PLAYER_IP(String.class),
-    STRING(String.class);
+    STRING(String.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return string;
+        }
+    };
 
     private final Class<?> clazz;
 
+    /**
+     * Ordered by priority of lookup!
+     *
+     * @param clazz object class
+     */
     ArgumentType(Class<?> clazz) {
         this.clazz = clazz;
     }
@@ -62,100 +177,15 @@ public enum ArgumentType {
         return clazz;
     }
 
+    protected abstract Object isPossible(CommandSender commandSender, String string);
+
     public static Argument handleArgument(CommandSender commandSender, String string) {
-        final Argument argument = new Argument(string);
+        final Argument argument = new Argument();
 
-        { // Check for location
-            Location location = Util.parseToLocation(
-                    commandSender instanceof Player ?
-                            ((Player) commandSender).getWorld() :
-                            null,
-                    string
-            );
-            if(location != null)
-                argument.addArgumentType(ArgumentType.LOCATION, location);
-        }
-
-        { // Check for world
-            World world = Util.parseToWorld(string);
-            if(world != null)
-                argument.addArgumentType(ArgumentType.WORLD, world);
-        }
-
-        { // Check for materials
-            Material material = Util.parseToMaterial(string);
-            if(material != null)
-                argument.addArgumentType(MATERIAL, material);
-        }
-
-        { // Check for entity types
-            EntityType entityType = Util.parseToEntityType(string);
-            if(entityType != null)
-                argument.addArgumentType(ENTITY_TYPE, entityType);
-        }
-
-        { // Check for weather types
-            WeatherType weatherType = Util.parseToWeatherType(string);
-            if(weatherType != null)
-                argument.addArgumentType(WEATHER_TYPE, weatherType);
-        }
-
-        { // Check for potion types
-            PotionType potionType = Util.parseToPotionType(string);
-            if(potionType != null)
-                argument.addArgumentType(POTION_TYPE, potionType);
-        }
-
-        { // Check for player names
-            UserProfile playerThatMatches = Util.getPlayerThatMatches(string);
-            if(playerThatMatches != null)
-                argument.addArgumentType(PLAYER_NAME, playerThatMatches);
-        }
-
-        { // Check for player IP
-            for(Player player : Bukkit.getServer().getOnlinePlayers()) {
-                if(player.getAddress().getAddress().getHostName().equalsIgnoreCase(string)) {
-                    argument.addArgumentType(PLAYER_IP, argument);
-                    break; // Don't repeat
-                }
-            }
-        }
-
-        { // Check for numbers
-            if(NumberUtils.isNumber(string)) {
-                try {
-                    argument.addArgumentType(DOUBLE, Double.valueOf(string));
-                } catch(NumberFormatException ignored) {
-                }
-                try {
-                    argument.addArgumentType(FLOAT, Float.valueOf(string));
-                } catch(NumberFormatException ignored) {
-                }
-                try {
-                    argument.addArgumentType(INTEGER, Integer.valueOf(string));
-                } catch(NumberFormatException ignored) {
-                }
-                try {
-                    argument.addArgumentType(LONG, Long.valueOf(string));
-                } catch(NumberFormatException ignored) {
-                }
-                try {
-                    argument.addArgumentType(SHORT, Short.valueOf(string));
-                } catch(NumberFormatException ignored) {
-                }
-                try {
-                    argument.addArgumentType(BYTE, Byte.valueOf(string));
-                } catch(NumberFormatException ignored) {
-                }
-            }
-        }
-
-        { // Check for date difference
-            try {
-                long timeDifference = Util.parseTimeDifference(string);
-                argument.addArgumentType(TIME_DIFFERENCE, timeDifference);
-            } catch(IllegalArgumentException ignored) {
-            }
+        for(ArgumentType argumentType : ArgumentType.values()) {
+            Object argumentTypeObject = argumentType.isPossible(commandSender, string);
+            if(argumentTypeObject != null)
+                argument.addArgumentType(argumentType, argumentTypeObject);
         }
 
         return argument;
