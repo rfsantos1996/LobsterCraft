@@ -1,7 +1,7 @@
 package com.jabyftw.easiercommands;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.UserProfile;
+import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -40,11 +40,10 @@ import java.util.logging.Logger;
 public class CommandExecutor implements org.bukkit.command.CommandExecutor {
 
     // TODO: change to your 'Player' class (can be Bukkit's Player)
-    public static final Class<?> PLAYER_CLASS = UserProfile.class;
+    public static final Class<?> PLAYER_CLASS = PlayerHandler.class;
 
     // Debug stuff
-    private static final boolean DEBUG = false;
-    private static String TITLE = "=======";
+    private static final boolean debug = false;
     private static final Logger logger = Bukkit.getLogger();
 
     /**
@@ -56,13 +55,17 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
      * @param description  command's description
      * @param usageMessage command's usage message
      */
-    public CommandExecutor(final JavaPlugin plugin, final String name, final String description, final String usageMessage) {
+    public CommandExecutor(final JavaPlugin plugin, final String name, final String permission, final String description, final String usageMessage) {
         final org.bukkit.command.CommandExecutor executor = this;
-        Bukkit.getServer().getScheduler().runTaskLater(plugin, () -> ((PluginCommand) plugin.getCommand(name)
-                .setDescription(description)
-                .setUsage("§6Uso: " + usageMessage)
-                .setPermissionMessage("§cVocê não tem permissão para isto!"))
-                .setExecutor(executor), 2);
+        Bukkit.getServer().getScheduler().runTaskLater(plugin, () -> {
+            PluginCommand command = plugin.getCommand(name);
+            ((PluginCommand) command
+                    .setDescription(description)
+                    .setUsage("§6Uso: " + usageMessage)
+                    .setPermissionMessage("§cVocê não tem permissão para isto!"))
+                    .setExecutor(executor);
+            command.setPermission(permission);
+        }, 2);
     }
 
     /**
@@ -85,27 +88,27 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
             return true;
         }
 
-        if(DEBUG)
-            logger.info(TITLE + "\nCommand used: " + stringArguments.length + " arguments -> /" + label + " " + Arrays.toString(stringArguments));
+        if(debug)
+            logger.info("§4[DEBUG]§r Command used: " + stringArguments.length + " arguments: §c/" + label + " " + Arrays.toString(stringArguments));
 
         // Parse string arguments as object arguments (our object)
-        Argument[] objectArguments = new Argument[stringArguments.length];
+        Argument[] availableArguments = new Argument[stringArguments.length];
         for(int i = 0; i < stringArguments.length; i++) {
-            objectArguments[i] = ArgumentType.handleArgument(commandSender, stringArguments[i]);
-            if(DEBUG)
-                logger.info("Handled argument: " + (i + 1) + "/" + stringArguments.length + ": " + objectArguments[i].toString());
+            availableArguments[i] = ArgumentType.handleArgument(commandSender, stringArguments[i]);
+            if(debug)
+                logger.info("§4[DEBUG]§r Handled argument " + (i + 1) + "/" + stringArguments.length + ": " + availableArguments[i].toString());
         }
 
         // Set up variables for look up the better method
-        Method mostNear = null;
+        Method mostNearMethod = null;
         int nearValue = Integer.MAX_VALUE;
 
         // Arguments that will be sent to the method
         LinkedList<Object> objects = new LinkedList<>();
 
+        if(debug) logger.info("§4[DEBUG]§r Started looping methods:");
         // Loop through declared methods from this class
         for(Method currentMethod : getClass().getDeclaredMethods()) {
-            if(DEBUG) logger.info(TITLE.replaceAll("=", "*"));
 
             // If method has @CommandHandler annotation
             if(currentMethod.isAnnotationPresent(CommandHandler.class)) {
@@ -129,8 +132,9 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
                             ((isPlayerNeeded = requiredArguments[0].isAssignableFrom(PLAYER_CLASS)) || requiredArguments[0].isAssignableFrom(CommandSender.class))) {
 
                         // If player didn't sent enough arguments to this command, continue searching
-                        if(objectArguments.length < (requiredArguments.length - 1)) {
-                            if(DEBUG) logger.info(currentMethod.getName() + " -> not enough arguments");
+                        if(availableArguments.length < (requiredArguments.length - 1)) {
+                            if(debug)
+                                logger.info("§4[DEBUG]§r §cMethod " + currentMethod.getName() + ":§r doesn't have enough arguments (" + availableArguments.length + "/" + requiredArguments.length + "), next");
                             continue; // Not enough arguments
                         }
 
@@ -142,7 +146,8 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
                         if(isPlayerNeeded) {
                             // If player is required but sender isn't a player, continue searching
                             if(!(commandSender instanceof Player)) {
-                                if(DEBUG) logger.info(currentMethod.getName() + " -> player is incompatible again");
+                                if(debug)
+                                    logger.info("§4[DEBUG]§r §cMethod " + currentMethod.getName() + ":§r sender isn't a Player");
                                 continue;
                             }
                             player = getPlayerClass((Player) commandSender);
@@ -151,62 +156,66 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
                         objectList.add(isPlayerNeeded ? player : commandSender);
 
                         // Check arguments (null - failed, not enough or incompatible, 0 - exactly filled, > 0 - there are remaining arguments, but the command would work)
-                        Integer integer = checkArgumentsToMethod(objectList, requiredArguments, objectArguments);
+                        Integer integer = checkArgumentsToMethod(objectList, requiredArguments, availableArguments);
 
-                        if(DEBUG)
-                            logger.info(currentMethod.getName() + " -> ** RESULT: " + integer + "/" + nearValue + " **");
+                        if(debug)
+                            logger.info("§4[DEBUG]§r §6Method " + currentMethod.getName() + ":§r " +
+                                    "§" + (integer != null ? (integer.equals(0) ? "a" + integer.toString() : "2" + integer.toString()) : "4null") + "/" + nearValue);
 
                         // Check if is a possible method to command execution and if it is the better so far
                         if(integer != null && integer <= nearValue) {
                             // Set as better so far
-                            mostNear = currentMethod;
+                            mostNearMethod = currentMethod;
                             nearValue = integer;
 
                             // Update object list to the new method
                             objects.clear();
                             objects.addAll(objectList);
 
-                            if(DEBUG) logger.info(currentMethod.getName() + " -> ** most near method **");
 
                             // If the arguments fit exactly, execute the command (as the computer wouldn't know the better method between 2 'perfect fit' methods)
                             if(integer == 0) {
-                                if(DEBUG)
-                                    logger.info(currentMethod.getName() + " -> ** perfect method: " + getMethodArgumentNames(currentMethod.getParameterTypes()) + " **");
+                                if(debug)
+                                    logger.info("§4[DEBUG]§r §cMethod " + currentMethod.getName() + ":§r set as perfect method");
                                 // Break method-iterator
                                 break;
+                            } else if(debug) {
+                                logger.info("§4[DEBUG]§r §cMethod " + currentMethod.getName() + ":§r set as most near method");
                             }
                         } else {
                             // Clear object list to next method (this isn't even necessary, but...)
                             objectList.clear();
                         }
 
-                    } else if(DEBUG) {
+                    } else if(debug) {
                         // Invalid method requirements (HandleResponse, Player/CommandSender)
-                        logger.info(currentMethod.getName() + " -> player is incompatible with first argument or method is invalid (" + PLAYER_CLASS.getName() + ")");
+                        logger.info("§4[DEBUG]§r §cMethod " + currentMethod.getName() + ":§r player isn't the first argument (" + PLAYER_CLASS.getSimpleName() + ")");
                     }
-                } else if(DEBUG) {
+                } else if(debug) {
                     // Invalid sender or missing permissions
-                    logger.info(currentMethod.getName() + " -> Player is incompatible or don't have permission");
+                    logger.info("§4[DEBUG]§r §cMethod " + currentMethod.getName() + ":§r player is incompatible or doesn't have permission");
                 }
             } // Invalid method requirements (annotation)
+            if(debug) logger.info("§4[DEBUG]§r Next method!");
         }
 
-        if(DEBUG) logger.info(TITLE.replaceAll("=", "*"));
+        if(debug) logger.info("§4[DEBUG]§r Processing command now");
 
         // After loop: if there isn't a matchable method, return command usage
-        if(mostNear == null) {
+        if(mostNearMethod == null) {
             // Return command usage
             commandSender.sendMessage(getColoredMessage(command.getUsage()));
-            if(DEBUG) logger.info("Processing: -> no method available");
+            if(debug) logger.info("§4[DEBUG]§r §cNo method is available");
             return true;
         } else {
             try {
-                if(DEBUG)
-                    logger.info("Processing: -> invoking method: " + mostNear.getName() + " (" + getMethodArgumentNames(mostNear.getParameterTypes()) + " -> " + getMethodArgumentNames(getClassesFromCollectionOfObjects(objects)) + ") " +
-                            "with " + objects.size() + "/" + mostNear.getParameterCount() + " arguments");
+                if(debug) {
+                    logger.info("§4[DEBUG]§r Invoking method " + mostNearMethod.getName() + ": " + objects.size() + "/" + mostNearMethod.getParameterCount() + " \n" +
+                            "(" + getMethodArgumentNames(mostNearMethod.getParameterTypes()) + ") -> (" + getMethodArgumentNames(getClassesFromCollectionOfObjects(objects)) + ")");
+                }
 
                 // Invoke method given arguments
-                HandleResponse handleResponse = (HandleResponse) mostNear.invoke(this, objects.toArray());
+                HandleResponse handleResponse = (HandleResponse) mostNearMethod.invoke(this, objects.toArray());
 
                 // Send player response based on command's HandleResponse
                 switch(handleResponse) {
@@ -225,7 +234,6 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
             }
         }
 
-        if(DEBUG) logger.info(TITLE);
         return false;
     }
 

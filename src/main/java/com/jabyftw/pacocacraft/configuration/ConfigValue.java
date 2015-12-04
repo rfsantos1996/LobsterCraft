@@ -30,7 +30,11 @@ public enum ConfigValue {
     MYSQL_CONNECTION_TIMEOUT("mysql.connection_timeout_minutes", 28800),
 
     LOGIN_PLAYERS_ALLOWED("login.max_number_of_players_joining", 16),
-    LOGIN_PERIOD_OF_TIME("login.period_of_time_seconds", 10.0f),;
+    LOGIN_PERIOD_OF_TIME("login.period_of_time_seconds", 10.0f),
+    LOGIN_ALLOWED_COMMANDS("login.allowed_commands_before_login", new String[]{"login", "register", "l", "entrar", "registrar"}),
+    LOGIN_TIME_BETWEEN_PROFILE_SAVES("login.time_between_profile_saves_seconds", 90),
+    LOGIN_PROFILE_WAITING_TIME("login.profile_waiting_on_queue_seconds", 60 * 4),
+    ;
 
     private final String path;
     private final Object defaultValue;

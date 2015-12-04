@@ -1,7 +1,8 @@
 package com.jabyftw;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.UserProfile;
+import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang.math.NumberUtils;
@@ -76,7 +77,7 @@ public abstract class Util {
         return new Location(world, position[0], position[1], position[2]);
     }
 
-    public static World parseToWorld(String string) {
+    public static World parseToWorld(@NotNull String string) {
         World mostEqual = null;
         int equality = 2;
 
@@ -92,7 +93,7 @@ public abstract class Util {
         return mostEqual;
     }
 
-    public static Material parseToMaterial(String string) {
+    public static Material parseToMaterial(@NotNull String string) {
         Material mostEqual = null;
         int equality = 2;
 
@@ -109,7 +110,7 @@ public abstract class Util {
         return mostEqual;
     }
 
-    public static EntityType parseToEntityType(String string) {
+    public static EntityType parseToEntityType(@NotNull String string) {
         EntityType mostEqual = null;
         int equality = 2;
 
@@ -126,7 +127,7 @@ public abstract class Util {
         return mostEqual;
     }
 
-    public static WeatherType parseToWeatherType(String string) {
+    public static WeatherType parseToWeatherType(@NotNull String string) {
         WeatherType mostEqual = null;
         int equality = 2;
 
@@ -143,7 +144,7 @@ public abstract class Util {
         return mostEqual;
     }
 
-    public static PotionType parseToPotionType(String string) {
+    public static PotionType parseToPotionType(@NotNull String string) {
         PotionType mostEqual = null;
         int equality = 2;
 
@@ -160,15 +161,14 @@ public abstract class Util {
         return mostEqual;
     }
 
-    public static UserProfile getPlayerThatMatches(String string) {
-        if(string == null || string.length() < 3) {
+    public static PlayerHandler getPlayerThatMatches(@NotNull String string) {
+        if(string.length() < 3)
             return null;
-        }
 
-        UserProfile mostEqual = null;
+        PlayerHandler mostEqual = null;
         int equalSize = 3;
 
-        for(UserProfile online : PacocaCraft.playerMap.values()) {
+        for(PlayerHandler online : PacocaCraft.playerMap.values()) {
             int thisSize = getEqualityOfNames(string.toCharArray(), online.getPlayer().getName().toCharArray());
 
             if(thisSize >= equalSize) {
@@ -188,7 +188,7 @@ public abstract class Util {
      *
      * @return the time in milliseconds
      */
-    public static long parseTimeDifference(String time) {
+    public static long parseTimeDifference(@NotNull String time) {
         Pattern timePattern = Pattern.compile("(?:([0-9]+)\\s*y[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*mo[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*w[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*d[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*h[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*m[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*(?:s[a-z]*)?)?", Pattern.CASE_INSENSITIVE);
         Matcher matcher = timePattern.matcher(time);
 
@@ -251,7 +251,7 @@ public abstract class Util {
         return calendar.getTimeInMillis() - System.currentTimeMillis();
     }
 
-    public static int getEqualityOfNames(char[] firstWord, char[] secondWord) {
+    public static int getEqualityOfNames(@NotNull char[] firstWord, @NotNull char[] secondWord) {
         if(firstWord.length > secondWord.length)  // do not accept search being bigger than player name. Jaby (4) < (5) Jaby2
             return 0;
 
@@ -281,7 +281,7 @@ public abstract class Util {
         return equality;
     }
 
-    public static int equalityOfWords(String sentence1, String sentence2) {
+    public static int equalityOfWords(@NotNull String sentence1, @NotNull String sentence2) {
         int equality = equalityOfWordsIgnoringLength(sentence1, sentence2),
                 max = Math.max(sentence1.length(), sentence2.length()),
                 min = Math.min(sentence1.length(), sentence2.length());
@@ -311,7 +311,7 @@ public abstract class Util {
      *
      * @return true for valid strings
      */
-    public static boolean checkString(String string, int minLength, int maxLength) {
+    public static boolean checkString(@NotNull String string, int minLength, int maxLength) {
         return string.matches("[A-Za-z_0-9]{" + minLength + "," + maxLength + "}");
     }
 

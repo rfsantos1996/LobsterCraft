@@ -8,4 +8,6 @@ depend: [Vault]
 
 commands:
   login:
-    description: Login command
+    aliases: [l, entrar]
+  register:
+    aliases: registrar

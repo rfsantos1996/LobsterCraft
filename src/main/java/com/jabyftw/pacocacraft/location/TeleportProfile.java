@@ -1,7 +1,11 @@
 package com.jabyftw.pacocacraft.location;
 
+import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.player.BasePlayerProfile;
+import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.player.PlayerProfile;
 import com.jabyftw.pacocacraft.player.ProfileType;
+import com.jabyftw.pacocacraft.login.UserProfile;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -27,35 +31,61 @@ import org.bukkit.entity.Player;
 public class TeleportProfile extends PlayerProfile {
 
     // Player usage
-    private Location lastLocation;
+    private Location lastLocation = null;
 
-    public TeleportProfile() {
-        super(ProfileType.TELEPORT_PROFILE);
+    public TeleportProfile(long playerId) {
+        super(ProfileType.TELEPORT_PROFILE, playerId);
+    }
+
+    public Location getLastLocation() {
+        return lastLocation;
+    }
+
+    @Override
+    public void onPlayerHandleApply(@NotNull PlayerHandler playerHandler) {
+    }
+
+    @Override
+    public void onPlayerHandleDestruction() {
     }
 
     /**
      * Teleport player to given Bukkit Location
+     * TeleportProfile will be checked as this is a static method
      *
+     * @param player               desired player
      * @param location             Bukkit's 'to' location
-     * @param registerPastLocation if last location should be recorded
+     * @param registerLastLocation if last location should be recorded
      *
      * @return if player was successfully teleported
      */
-    public boolean teleportInstantaneously(@NotNull Location location, boolean registerPastLocation) {
-        Player player = userProfile.getPlayer();
-        if(registerPastLocation) this.lastLocation = player.getLocation();
+    public static boolean teleportInstantaneously(@NotNull Player player, @NotNull Location location, boolean registerLastLocation) {
+        // Check if caller wants to register last location
+        if(registerLastLocation) {
+            PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(player);
+            TeleportProfile profile = playerHandler.getProfile(TeleportProfile.class);
+
+            // Check if profile was loaded before saving last location
+            if(profile != null) {
+                profile.lastLocation = player.getLocation();
+            } else {
+                player.sendMessage("§4Ocorreu um erro:§c histórico localização não carregado!");
+                return false;
+            }
+        }
         return player.teleport(location);
     }
 
     /**
      * Teleport player to given Storable Location
      *
+     * @param player               desired player
      * @param storableLocation     'to' location
      * @param registerPastLocation if last location should be recorded
      *
      * @return if player was successfully teleported
      */
-    public boolean teleportInstantaneously(@NotNull StorableLocation storableLocation, boolean registerPastLocation) {
-        return teleportInstantaneously(StorableLocation.toLocation(storableLocation), registerPastLocation);
+    public static boolean teleportInstantaneously(@NotNull Player player, @NotNull StorableLocation storableLocation, boolean registerPastLocation) {
+        return teleportInstantaneously(player, StorableLocation.toLocation(storableLocation), registerPastLocation);
     }
 }

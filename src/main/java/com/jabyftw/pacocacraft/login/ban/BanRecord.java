@@ -1,4 +1,4 @@
-package com.jabyftw.pacocacraft.login;
+package com.jabyftw.pacocacraft.login.ban;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin

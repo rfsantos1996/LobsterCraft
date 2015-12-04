@@ -2,18 +2,16 @@ package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.login.commands.LoginCommand;
-import com.jabyftw.pacocacraft.player.UserProfile;
+import com.jabyftw.pacocacraft.login.commands.RegisterCommand;
 import com.jabyftw.pacocacraft.util.ServerService;
 import com.sun.istack.internal.NotNull;
+import org.bukkit.Bukkit;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.*;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -35,15 +33,17 @@ import java.util.concurrent.ForkJoinTask;
  */
 public class UserLoginService implements ServerService {
 
+    // Command sent to public (register is needed to be aliased on login)
+    public static RegisterCommand registerCommand;
+
     // User profile management
     private final ConcurrentHashMap<String, ForkJoinTask<UserProfile>> userProfileRequests = new ConcurrentHashMap<>();
-    // TODO stored user profiles: set last time online on UserProfile and check its lifetime (if passed some time, save it and remove from cache)
-    private final ConcurrentHashMap<String, UserProfile> storedUserProfiles = new ConcurrentHashMap<>();
 
     @Override
     public void onEnable() {
-        PacocaCraft.server.getPluginManager().registerEvents(new PlayerListener(this), PacocaCraft.pacocaCraft);
-        PacocaCraft.server.getPluginCommand("login").setExecutor(new LoginCommand());
+        Bukkit.getServer().getPluginManager().registerEvents(new JoinListener(this), PacocaCraft.pacocaCraft);
+        Bukkit.getServer().getPluginCommand("login").setExecutor(new LoginCommand());
+        Bukkit.getServer().getPluginCommand("register").setExecutor((registerCommand = new RegisterCommand()));
     }
 
     @Override
@@ -51,13 +51,12 @@ public class UserLoginService implements ServerService {
     }
 
     /**
-     * Search on database for user profile, if don't exists, create default
+     * Search on database for UserProfile; if don't exists, create default
      *
-     * @param playerName player's name (caller should make sure this is lower cased)
+     * @param rawPlayerName player's name
      */
-    public void requestProfile(@NotNull String playerName) {
-        // Ignore for stored user profiles
-        if(storedUserProfiles.containsKey(playerName)) return;
+    public void requestUserProfile(@NotNull String rawPlayerName) {
+        final String playerName = rawPlayerName.toLowerCase();
 
         // Obtain user profile from MySQL asynchronously (preferably, there are other plugins)
         ForkJoinTask<UserProfile> forkJoinTask = ForkJoinPool.commonPool().submit(() -> {
@@ -105,25 +104,22 @@ public class UserLoginService implements ServerService {
     /**
      * Wait profile for arrival (join thread)
      *
-     * @param playerName player's name (caller should make sure this is lower cased)
+     * @param playerName player's name
      */
-    public void awaitProfile(@NotNull String playerName) {
-        // Ignored for stored user profiles
-        if(storedUserProfiles.containsKey(playerName)) return;
-
+    public void waitUserProfile(@NotNull String playerName) {
         // Wait for MySQL response and processing (quietly because major errors will be analyzed)
-        userProfileRequests.get(playerName).quietlyJoin();
+        userProfileRequests.get(playerName.toLowerCase()).quietlyJoin();
     }
 
     /**
      * Get loaded profile loaded at pre-login event and remove it from queue
      *
-     * @param playerName player's name (caller should make sure this is lower cased)
+     * @param playerName player's name
      *
-     * @return loaded (or default, if not found) user profile
+     * @return loaded/stored user profile or null if none found (but probably will throw exceptions)
      */
-    public UserProfile getProfile(@NotNull String playerName) throws ExecutionException, InterruptedException {
-        // Return stored or get from request
-        return storedUserProfiles.getOrDefault(playerName, userProfileRequests.remove(playerName).get());
+    public UserProfile getUserProfile(@NotNull String playerName) throws ExecutionException, InterruptedException {
+        // Get UserProfile from request
+        return userProfileRequests.get(playerName.toLowerCase()).get();
     }
 }

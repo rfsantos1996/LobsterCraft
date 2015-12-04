@@ -1,6 +1,7 @@
 package com.jabyftw.pacocacraft.player;
 
 import com.jabyftw.pacocacraft.location.TeleportProfile;
+import com.jabyftw.pacocacraft.login.UserProfile;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -22,26 +23,27 @@ import com.jabyftw.pacocacraft.location.TeleportProfile;
  */
 public enum ProfileType {
 
+    USER_PROFILE(UserProfile.class),
     TELEPORT_PROFILE(TeleportProfile.class),;
 
-    private final Class<? extends PlayerProfile> profileClass;
+    private final Class<? extends BasePlayerProfile> profileClass;
 
     /**
      * NOTE: Login profile will be part of UserProfile
      *
      * @param profileClass profile class for future lookup at UserProfile
      *
-     * @see com.jabyftw.pacocacraft.player.UserProfile#applyProfile(PlayerProfile)
+     * @see PlayerHandler#applyProfile(BasePlayerProfile)
      */
-    ProfileType(Class<? extends PlayerProfile> profileClass) {
+    ProfileType(Class<? extends BasePlayerProfile> profileClass) {
         this.profileClass = profileClass;
     }
 
-    public Class<? extends PlayerProfile> getProfileClass() {
+    public Class<? extends BasePlayerProfile> getProfileClass() {
         return profileClass;
     }
 
-    public static ProfileType getProfileType(Class<? extends PlayerProfile> profileClass) {
+    public static ProfileType getProfileType(Class<? extends BasePlayerProfile> profileClass) {
         for(ProfileType profileType : ProfileType.values()) {
             if(profileType.getProfileClass().equals(profileClass))
                 return profileType;

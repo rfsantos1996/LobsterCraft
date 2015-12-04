@@ -4,15 +4,16 @@ import com.jabyftw.pacocacraft.block_protection.BlockProtectionService;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.configuration.ConfigurationFile;
 import com.jabyftw.pacocacraft.login.UserLoginService;
-import com.jabyftw.pacocacraft.login.BanService;
-import com.jabyftw.pacocacraft.player.UserProfile;
+import com.jabyftw.pacocacraft.login.ban.BanService;
+import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.sun.istack.internal.NotNull;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.pool.HikariPool;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.permission.Permission;
-import org.bukkit.Server;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -45,17 +46,16 @@ import java.util.logging.Logger;
 public class PacocaCraft extends JavaPlugin {
 
     // Player list
-    public static ConcurrentHashMap<Player, UserProfile> playerMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<Player, PlayerHandler> playerMap = new ConcurrentHashMap<>();
 
     // Services
     public static BlockProtectionService blockProtectionService;
     public static UserLoginService userLoginService;
+    public static InvisibilityService invisibilityService;
     public static BanService banService;
 
     // Util
     public static PacocaCraft pacocaCraft;
-    public static Server server;
-    public static Logger logger;
     public static ConfigurationFile config;
 
     // Vault
@@ -73,11 +73,10 @@ public class PacocaCraft extends JavaPlugin {
     @Override
     public void onEnable() {
         pacocaCraft = this;
-        server = getServer();
-        logger = getLogger();
+        Logger logger = Bukkit.getLogger();
 
         // Start ticking
-        tickTimingTask = server.getScheduler().runTaskTimer(this, () -> {
+        tickTimingTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
             synchronized(tickLock) {
                 currentTick++; // not instantaneous event, need to synchronize
             }
@@ -132,6 +131,7 @@ public class PacocaCraft extends JavaPlugin {
         // Register and start services
         (blockProtectionService = new BlockProtectionService()).onEnable();
         (userLoginService = new UserLoginService()).onEnable();
+        (invisibilityService = new InvisibilityService()).onEnable();
         (banService = new BanService()).onEnable();
 
         // Announce we're ready
@@ -146,6 +146,7 @@ public class PacocaCraft extends JavaPlugin {
         // Shutdown services
         if(blockProtectionService != null) blockProtectionService.onDisable();
         if(userLoginService != null) userLoginService.onDisable();
+        if(invisibilityService != null) invisibilityService.onDisable();
         if(banService != null) banService.onDisable();
 
         // Shutdown MySQL
@@ -158,7 +159,7 @@ public class PacocaCraft extends JavaPlugin {
                 config.saveFile();
             } catch(IOException e) {
                 e.printStackTrace();
-                logger.warning("Failed to save configuration file!");
+                Bukkit.getLogger().warning("Failed to save configuration file!");
             }
 
         // Stop ticking
@@ -167,10 +168,17 @@ public class PacocaCraft extends JavaPlugin {
         // Un-register listeners
         getServer().getPluginManager().disablePlugin(this);
 
-        logger.info(getDescription().getName() + " is disabled!");
+        Bukkit.getLogger().info(getDescription().getName() + " is disabled!");
     }
 
-    public static UserProfile getUser(@NotNull Player player) {
+    /**
+     * Get PlayerHandler instance given Bukkit's Player instance
+     *
+     * @param player Bukkit's player to be searched
+     *
+     * @return correspondent PlayerHandler or null if none found
+     */
+    public static PlayerHandler getPlayerHandler(@NotNull Player player) {
         return playerMap.get(player);
     }
 }

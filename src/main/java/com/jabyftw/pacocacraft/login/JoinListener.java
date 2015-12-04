@@ -2,10 +2,10 @@ package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
-import com.jabyftw.pacocacraft.location.TeleportProfile;
-import com.jabyftw.pacocacraft.player.UserProfile;
+import com.jabyftw.pacocacraft.login.ban.BanRecord;
+import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
-import org.bukkit.ChatColor;
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -14,6 +14,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.concurrent.ExecutionException;
 
@@ -35,7 +36,7 @@ import java.util.concurrent.ExecutionException;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class PlayerListener implements Listener {
+public class JoinListener implements Listener {
 
     private final UserLoginService userLoginService;
 
@@ -44,7 +45,7 @@ public class PlayerListener implements Listener {
     private static int ticksPerJoin = (int) Math.ceil(1 / playersPerTick);
     private static long lastJoinTick = 0;
 
-    public PlayerListener(UserLoginService userLoginService) {
+    public JoinListener(UserLoginService userLoginService) {
         this.userLoginService = userLoginService;
     }
 
@@ -64,7 +65,7 @@ public class PlayerListener implements Listener {
         String playerName = preLoginEvent.getName().toLowerCase(); // Lower case everything
 
         // Check if server is full
-        Server server = PacocaCraft.server;
+        Server server = Bukkit.getServer();
         @SuppressWarnings("deprecation") OfflinePlayer offlinePlayer = server.getOfflinePlayer(playerName);
         // If is full && [ can't find player || (player isn't op || player don't have permission) ]
         if(server.getOnlinePlayers().size() > server.getMaxPlayers() &&
@@ -99,7 +100,7 @@ public class PlayerListener implements Listener {
         }
 
         // Request profile, let other plugins do their job
-        userLoginService.requestProfile(playerName);
+        userLoginService.requestUserProfile(playerName);
     }
 
     /**
@@ -110,7 +111,7 @@ public class PlayerListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
     public void onAsyncPreLoginLow(AsyncPlayerPreLoginEvent preLoginEvent) {
         // quietly join profile (never lock main thread)
-        userLoginService.awaitProfile(preLoginEvent.getName().toLowerCase());
+        userLoginService.waitUserProfile(preLoginEvent.getName());
     }
 
     /**
@@ -119,26 +120,40 @@ public class PlayerListener implements Listener {
      * @param joinEvent player join event
      */
     @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGHEST)
-    public void onPlayerLogin(PlayerJoinEvent joinEvent) {
+    public void onPlayerJoin(PlayerJoinEvent joinEvent) {
         Player player = joinEvent.getPlayer();
 
         // Retrieve user profile
         UserProfile userProfile;
         try {
-            userProfile = userLoginService.getProfile(player.getName().toLowerCase());
+            userProfile = userLoginService.getUserProfile(player.getName());
         } catch(ExecutionException | InterruptedException e) {
             player.kickPlayer("§cOcorreu um erro com seu perfil de usuário!\n§cTente novamente mais tarde.");
-            joinEvent.setJoinMessage("");
             e.printStackTrace();
             return;
         }
 
-        // Apply player to user profile
-        userProfile.setPlayerInstance(player);
+        // Create PlayerHandler (it'll add itself to the player list automatically)
+        new PlayerHandler(player, userProfile);
 
         // Update login message
-        joinEvent.setJoinMessage(PacocaCraft.permission.playerHas(player, Permissions.JOIN_VANISHED) ? "" : "§b+ §3" + player.getName());
+        joinEvent.setJoinMessage("");
     }
 
+    /**
+     * Sends UserProfile instance to waiting queue and remove player instance
+     *
+     * @param quitEvent player quit event
+     */
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST) // the last thing to do
+    public void onPlayerQuit(PlayerQuitEvent quitEvent) {
+        Player player = quitEvent.getPlayer();
+        PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(player);
 
+        // Update and show quit message if player is visible
+        quitEvent.setQuitMessage(playerHandler.isInvisible() ? "" : "§4- §c" + player.getName());
+
+        // Destroy PlayerHandler instance
+        playerHandler.destroy();
+    }
 }

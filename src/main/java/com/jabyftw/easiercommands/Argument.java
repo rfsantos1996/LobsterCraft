@@ -67,7 +67,7 @@ public class Argument {
 
     @Override
     public String toString() {
-        return getClass().getName() + " -> " + getArgumentTypes().toString();
+        return getClass().getSimpleName() + ": " + getArgumentTypes().toString();
     }
 }
 

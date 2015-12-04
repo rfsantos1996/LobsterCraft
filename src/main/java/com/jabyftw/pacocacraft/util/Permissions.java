@@ -22,6 +22,13 @@ public final class Permissions {
 
     public static final String
             JOIN_FULL_SERVER = "pacocacraft.join.join_full",
+    /**
+     * Works for register too
+     */
+    JOIN_PLAYER_LOGIN = "pacocacraft.join.login",
+            JOIN_OTHER_ACCOUNT_REGISTRATION = "pacocacraft.join.other_account_registration",
+            JOIN_OTHER_ACCOUNT_LOOKUP = "pacocacraft.join.other_account_lookup",
+            JOIN_PREVENT_ACCOUNT_LOOKUP = "pacocacraft.join.no_account_lookup",
             JOIN_VANISHED = "vanish.silentjoin";
 
 }

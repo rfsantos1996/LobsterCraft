@@ -1,7 +1,18 @@
 package com.jabyftw.pacocacraft.login.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
+import com.jabyftw.easiercommands.CommandHandler;
+import com.jabyftw.easiercommands.HandleResponse;
+import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.login.UserLoginService;
+import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.command.CommandSender;
+
+import java.security.NoSuchAlgorithmException;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -24,7 +35,47 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 public class LoginCommand extends CommandExecutor {
 
     public LoginCommand() {
-        super(PacocaCraft.pacocaCraft, "login", "", "§c/login (§4senha§c)");
+        super(PacocaCraft.pacocaCraft, "login", Permissions.JOIN_PLAYER_LOGIN, "§6Permite o jogador entrar no servidor usando sua senha", "§c/login (§4senha§c)");
     }
 
+    @CommandHandler(senderType = SenderType.PLAYER)
+    public HandleResponse onDefaultLogin(PlayerHandler playerHandler, String password) {
+        try {
+            // TODO make plugin execution async
+            playerHandler.getProfile(UserProfile.class).attemptLogin(Util.encryptString(password));
+            return HandleResponse.RETURN_TRUE;
+        } catch(NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return HandleResponse.RETURN_HELP;
+        }
+    }
+
+    @CommandHandler(senderType = SenderType.PLAYER, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
+    public HandleResponse onRegisterLogin(PlayerHandler playerHandler, String password1, String password2) {
+        return UserLoginService.registerCommand.onDefaultRegister(playerHandler, password1, password2);
+    }
+
+    /**
+     * Yes, the server may use your account. AND ONLY THE SERVER CONSOLE may allow this.
+     *
+     * @param commandSender command sender (console, in this case)
+     * @param playerHandler desired player
+     *
+     * @return a possible HandleResponse
+     */
+    @CommandHandler(senderType = SenderType.CONSOLE, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_LOOKUP)
+    public HandleResponse onConsoleLogin(CommandSender commandSender, PlayerHandler playerHandler) {
+        // Check if playerHandler can be looked up
+        if(PacocaCraft.permission.playerHas(playerHandler.getPlayer(), Permissions.JOIN_PREVENT_ACCOUNT_LOOKUP))
+            return HandleResponse.RETURN_NO_PERMISSION;
+
+        // TODO make command execution async
+        UserProfile profile = playerHandler.getProfile(UserProfile.class);
+        if(profile.attemptLogin(profile.getEncryptedPassword()))
+            commandSender.sendMessage("§aLogin de §6" + playerHandler.getPlayer().getName() + "§a foi bem sucedido");
+        else
+            commandSender.sendMessage("§cLogin de §6" + playerHandler.getPlayer().getName() + "§c falhou");
+
+        return HandleResponse.RETURN_TRUE;
+    }
 }

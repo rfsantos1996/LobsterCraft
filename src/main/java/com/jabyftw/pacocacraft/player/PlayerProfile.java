@@ -18,29 +18,18 @@ package com.jabyftw.pacocacraft.player;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public abstract class PlayerProfile {
+public abstract class PlayerProfile extends BasePlayerProfile {
 
-    // Profile type
-    private final ProfileType profileType;
-
-    // protected so its subclasses have access
-    protected UserProfile userProfile = null;
-    protected boolean modified = false;
-
-    public PlayerProfile(ProfileType profileType) {
-        this.profileType = profileType;
-    }
-
-    public ProfileType getProfileType() {
-        return profileType;
-    }
+    protected final long playerId;
 
     /**
-     * Check if profile was modified and if it should be saved
+     * Create PlayerProfile that requires UserProfile's player identification number (in other words, every other profile)
      *
-     * @return true if profile was modified
+     * @param profileType profile's type
+     * @param playerId    player's identification number on database
      */
-    public boolean shouldBeSaved() {
-        return modified;
+    public PlayerProfile(ProfileType profileType, long playerId) {
+        super(profileType);
+        this.playerId = playerId;
     }
 }

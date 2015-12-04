@@ -1,4 +1,4 @@
-package com.jabyftw.pacocacraft.login;
+package com.jabyftw.pacocacraft.login.ban;
 
 import com.jabyftw.pacocacraft.util.ServerService;
 

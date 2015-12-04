@@ -2,7 +2,9 @@ package com.jabyftw.pacocacraft.location;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.sun.istack.internal.NotNull;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.util.NumberConversions;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -57,6 +59,10 @@ public class StorableLocation {
         return x;
     }
 
+    public int getBlockX() {
+        return NumberConversions.floor(x);
+    }
+
     public void setX(double x) {
         this.x = x;
     }
@@ -65,12 +71,20 @@ public class StorableLocation {
         return y;
     }
 
+    public int getBlockY() {
+        return NumberConversions.floor(y);
+    }
+
     public void setY(double y) {
         this.y = y;
     }
 
     public double getZ() {
         return z;
+    }
+
+    public int getBlockZ() {
+        return NumberConversions.floor(z);
     }
 
     public void setZ(double z) {
@@ -93,7 +107,16 @@ public class StorableLocation {
         this.yaw = yaw;
     }
 
+    // From CraftWorld.java:
+    public int getChunkX() {
+        return getBlockX() >> 4;
+    }
+
+    public int getChunkZ() {
+        return getBlockZ() >> 4;
+    }
+
     public static Location toLocation(@NotNull StorableLocation location) {
-        return new Location(PacocaCraft.server.getWorld(location.worldName), location.x, location.y, location.z, location.yaw, location.pitch);
+        return new Location(Bukkit.getServer().getWorld(location.worldName), location.x, location.y, location.z, location.yaw, location.pitch);
     }
 }

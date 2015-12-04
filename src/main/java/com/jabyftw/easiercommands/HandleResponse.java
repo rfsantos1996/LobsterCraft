@@ -20,8 +20,19 @@ package com.jabyftw.easiercommands;
  */
 public enum HandleResponse {
 
+    /**
+     * The same as return false
+     */
     RETURN_HELP,
+
+    /**
+     * Return no permission message
+     */
     RETURN_NO_PERMISSION,
+
+    /**
+     * Return true
+     */
     RETURN_TRUE
 
 }
