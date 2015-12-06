@@ -2,6 +2,7 @@ package com.jabyftw.pacocacraft.player;
 
 import com.jabyftw.pacocacraft.login.UserProfile;
 import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -57,7 +58,7 @@ public abstract class BasePlayerProfile {
         return playerHandler;
     }
 
-    protected void setPlayerHandler(PlayerHandler playerHandler) {
+    protected void setPlayerHandler(@Nullable PlayerHandler playerHandler) {
         // Check for state exceptions
         if((playerHandler != null && this.playerHandler != null) || (playerHandler == null && this.playerHandler == null))
             throw new IllegalStateException("Player handler being set wrongly!");

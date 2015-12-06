@@ -17,6 +17,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -327,6 +328,23 @@ public abstract class Util {
         Date date = new Date();
         date.setTime(timeInMillis);
         return new SimpleDateFormat(dateFormat).format(date);
+
+    }
+
+    /**
+     * Parse time to string given millisecond time
+     *
+     * @param timeInMillis time in milliseconds
+     *
+     * @return string matching 0h00m00s format
+     */
+    public static String parseTimeInMillis(long timeInMillis) {
+        return String.format(
+                "%dh" + "%02dm" + "%02ds", // 0h00m00s
+                TimeUnit.MILLISECONDS.toHours(timeInMillis),
+                TimeUnit.MILLISECONDS.toMinutes(timeInMillis) % TimeUnit.HOURS.toMinutes(1),
+                TimeUnit.MILLISECONDS.toSeconds(timeInMillis) % TimeUnit.MINUTES.toSeconds(1)
+        );
     }
 
     /**

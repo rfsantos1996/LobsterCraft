@@ -1,19 +1,21 @@
 package com.jabyftw.pacocacraft;
 
-import com.jabyftw.pacocacraft.block_protection.BlockProtectionService;
+import com.jabyftw.pacocacraft.block.block_protection.BlockProtectionService;
+import com.jabyftw.pacocacraft.block.xray_protection.XrayProtectionService;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.configuration.ConfigurationFile;
 import com.jabyftw.pacocacraft.login.UserLoginService;
 import com.jabyftw.pacocacraft.login.ban.BanService;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.player.PlayerService;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.sun.istack.internal.NotNull;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.pool.HikariPool;
 import net.milkbowl.vault.chat.Chat;
 import net.milkbowl.vault.permission.Permission;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -46,38 +48,49 @@ import java.util.logging.Logger;
 public class PacocaCraft extends JavaPlugin {
 
     // Player list
-    public static ConcurrentHashMap<Player, PlayerHandler> playerMap = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<Player, PlayerHandler> playerMap = new ConcurrentHashMap<>(); // public as it is used on CommandExecutor and PlayerHandler
 
     // Services
     public static BlockProtectionService blockProtectionService;
     public static UserLoginService userLoginService;
+    public static PlayerService playerService;
     public static InvisibilityService invisibilityService;
     public static BanService banService;
+    public static XrayProtectionService xrayProtectionService;
 
     // Util
     public static PacocaCraft pacocaCraft;
+    public static Logger logger;
     public static ConfigurationFile config;
 
     // Vault
     public static Chat chat;
     public static Permission permission;
 
-    // MySQL
-    public volatile static HikariDataSource dataSource;
+    // MySQL (HikariCP is thread safe - I read on stackoverflow)
+    public static HikariDataSource dataSource;
 
-    // Timing
+    // Variables
     private BukkitTask tickTimingTask;
-    public static volatile long currentTick = 1; // read on async pre-join event -- no need to AtomicLong
-    public static final Object tickLock = new Object();
+    private static volatile long currentTick = 1; // after some reading, this should be fine now
+    private static final Object currentTickLock = new Object();
+
+    private static volatile boolean serverClosing; // with this, I don't need to worry about scheduling tasks to save stuff every time
+    private static final Object serverClosingLock = new Object();
 
     @Override
     public void onEnable() {
         pacocaCraft = this;
-        Logger logger = Bukkit.getLogger();
+        logger = getLogger(); // Use plugin's logger as it has our prefix <3
+
+        // Set server as not closing (affects custom BukkitScheduler)
+        synchronized(serverClosingLock) {
+            serverClosing = false;
+        }
 
         // Start ticking
-        tickTimingTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
-            synchronized(tickLock) {
+        tickTimingTask = BukkitScheduler.runTaskTimer(this, () -> {
+            synchronized(currentTickLock) {
                 currentTick++; // not instantaneous event, need to synchronize
             }
         }, 0, 1);
@@ -131,8 +144,10 @@ public class PacocaCraft extends JavaPlugin {
         // Register and start services
         (blockProtectionService = new BlockProtectionService()).onEnable();
         (userLoginService = new UserLoginService()).onEnable();
+        (playerService = new PlayerService()).onEnable();
         (invisibilityService = new InvisibilityService()).onEnable();
         (banService = new BanService()).onEnable();
+        (xrayProtectionService = new XrayProtectionService()).onEnable();
 
         // Announce we're ready
         logger.info(getDescription().getName() + " v" + getDescription().getVersion() + " is enabled!");
@@ -140,14 +155,23 @@ public class PacocaCraft extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Kick players
+        // Set server as closing to custom BukkitScheduler (as it'll run tasks on demand and therefore causing IllegalStateExceptions)
+        synchronized(serverClosingLock) {
+            serverClosing = true;
+        }
 
+        // Kick players
+        for(Player player : getServer().getOnlinePlayers()) {
+            player.kickPlayer("§cServidor está sendo fechado!\n§cTente entrar mais tarde...");
+        }
 
         // Shutdown services
         if(blockProtectionService != null) blockProtectionService.onDisable();
         if(userLoginService != null) userLoginService.onDisable();
+        if(playerService != null) playerService.onDisable();
         if(invisibilityService != null) invisibilityService.onDisable();
         if(banService != null) banService.onDisable();
+        if(xrayProtectionService != null) xrayProtectionService.onDisable();
 
         // Shutdown MySQL
         if(dataSource != null && !dataSource.isClosed())
@@ -159,7 +183,7 @@ public class PacocaCraft extends JavaPlugin {
                 config.saveFile();
             } catch(IOException e) {
                 e.printStackTrace();
-                Bukkit.getLogger().warning("Failed to save configuration file!");
+                logger.warning("Failed to save configuration file!");
             }
 
         // Stop ticking
@@ -168,7 +192,7 @@ public class PacocaCraft extends JavaPlugin {
         // Un-register listeners
         getServer().getPluginManager().disablePlugin(this);
 
-        Bukkit.getLogger().info(getDescription().getName() + " is disabled!");
+        logger.info(getDescription().getName() + " is disabled!");
     }
 
     /**
@@ -180,5 +204,23 @@ public class PacocaCraft extends JavaPlugin {
      */
     public static PlayerHandler getPlayerHandler(@NotNull Player player) {
         return playerMap.get(player);
+    }
+
+    /**
+     * @return current tick from server
+     */
+    public static long getCurrentTick() {
+        synchronized(currentTickLock) {
+            return currentTick;
+        }
+    }
+
+    /**
+     * @return true if server started closing
+     */
+    public static boolean isServerClosing() {
+        synchronized(serverClosingLock) {
+            return serverClosing;
+        }
     }
 }

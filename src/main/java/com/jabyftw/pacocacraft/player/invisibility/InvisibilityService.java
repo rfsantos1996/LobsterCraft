@@ -38,6 +38,7 @@ public class InvisibilityService implements ServerService {
     @Override
     public void onEnable() {
         Bukkit.getServer().getPluginManager().registerEvents(new InvisibilityListener(), PacocaCraft.pacocaCraft);
+        PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 
     @Override

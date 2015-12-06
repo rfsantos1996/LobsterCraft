@@ -1,6 +1,11 @@
 package com.jabyftw.pacocacraft.login.ban;
 
+import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.util.ServerService;
+import org.bukkit.Bukkit;
+
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -23,20 +28,18 @@ import com.jabyftw.pacocacraft.util.ServerService;
 // TODO finish
 public class BanService implements ServerService {
 
+    private static final ConcurrentHashMap<Long, ArrayList<BanRecord>> cachedPlayerRecords = new ConcurrentHashMap<>();
+
     @Override
     public void onEnable() {
-        // Cache MySQL bans
-        // Move old bans to player history and mark to delete
+        // TODO Cache valid (permanent, temporary bans that are not 'finished') MySQL bans
+        PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 
     @Override
     public void onDisable() {
-        // Save modified bans on ban database
-        // Save modified bans on player history
-        // Delete from ban database marked bans
+        // TODO Save modified (new) bans on ban database
     }
-
-    // add bans methods
 
     /**
      * Check on database (cache) if player name is banned
@@ -45,19 +48,18 @@ public class BanService implements ServerService {
      *
      * @return not null response if banned
      */
-    public BanRecord isPlayerBanned(String playerName) {
+    public static BanRecord isPlayerBanned(String playerName) {
         return null;
     }
 
-
-    /**
+    /*
      * Check on database (cache) if IP is banned
      *
-     * @param ip (should be byte[4]?) player IP
+     * @param ip (should be byte[4]) player IP
      *
      * @return not null response if banned
-     */
-    public BanRecord isIPBanned(byte[] ip) {
+     *
+    public static BanRecord isIPBanned(byte[] ip) {
         return null;
-    }
+    }*/
 }

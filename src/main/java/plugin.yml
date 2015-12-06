@@ -11,3 +11,5 @@ commands:
     aliases: [l, entrar]
   register:
     aliases: registrar
+  godmode:
+    aliases: god

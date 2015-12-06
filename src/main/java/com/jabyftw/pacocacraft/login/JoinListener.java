@@ -3,6 +3,7 @@ package com.jabyftw.pacocacraft.login;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.login.ban.BanRecord;
+import com.jabyftw.pacocacraft.login.ban.BanService;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.Bukkit;
@@ -76,11 +77,11 @@ public class JoinListener implements Listener {
         }
 
         // Check for number of joins if set to a number > 0 and if distance (in ticks) since last join is shorter than the required ticks
-        if(playersPerTick > 0 && (PacocaCraft.currentTick - lastJoinTick) < ticksPerJoin) {
+        if(playersPerTick > 0 && (PacocaCraft.getCurrentTick() - lastJoinTick) < ticksPerJoin) {
             preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_FULL, "§4Muitos usuários entrando!\n§cAguarde alguns segundos e tente novamente");
             return;
         }
-        lastJoinTick = PacocaCraft.currentTick;
+        lastJoinTick = PacocaCraft.getCurrentTick();
 
         // Check player's name (today the minimum length is 4, but there may be players using 3 letters still)
         if(!com.jabyftw.Util.checkString(playerName, 3, 16)) {
@@ -94,8 +95,8 @@ public class JoinListener implements Listener {
 
         // Check player's ban record
         BanRecord banRecord;
-        if((banRecord = PacocaCraft.banService.isPlayerBanned(playerName)) != null || (banRecord = PacocaCraft.banService.isIPBanned(preLoginEvent.getAddress().getAddress())) != null) {
-            preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§cVocê está banido:\n" + banRecord.getMessage());
+        if((banRecord = BanService.isPlayerBanned(playerName)) != null) { // || (banRecord = BanService.isIPBanned(preLoginEvent.getAddress().getAddress())) != null) {
+            preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§cVocê está banido\n" + banRecord.getKickMessage());
             return;
         }
 

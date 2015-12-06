@@ -2,6 +2,7 @@ package com.jabyftw.easiercommands;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -44,7 +45,7 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
 
     // Debug stuff
     private static final boolean debug = false;
-    private static final Logger logger = Bukkit.getLogger();
+    private static final Logger logger = PacocaCraft.logger;
 
     /**
      * Create a command executor given attributes
@@ -57,7 +58,7 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
      */
     public CommandExecutor(final JavaPlugin plugin, final String name, final String permission, final String description, final String usageMessage) {
         final org.bukkit.command.CommandExecutor executor = this;
-        Bukkit.getServer().getScheduler().runTaskLater(plugin, () -> {
+        BukkitScheduler.runTaskLater(plugin, () -> {
             PluginCommand command = plugin.getCommand(name);
             ((PluginCommand) command
                     .setDescription(description)

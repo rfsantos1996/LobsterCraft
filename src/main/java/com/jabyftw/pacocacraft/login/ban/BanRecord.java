@@ -1,5 +1,10 @@
 package com.jabyftw.pacocacraft.login.ban;
 
+import com.jabyftw.Util;
+import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.sun.istack.internal.NotNull;
+
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
  * <p>
@@ -19,14 +24,55 @@ package com.jabyftw.pacocacraft.login.ban;
  * Email address: rafael.sartori96@gmail.com
  */
 public class BanRecord {
-    // TODO
 
-    /**
-     * Get ban message to be shown (return colored message)
-     *
-     * @return message shown on ban screen upon login
-     */
-    public String getMessage() {
-        return null;
+    private final BanType banType;
+
+    // Database variables
+    private final long playerId;
+    private long responsibleId = -1;
+    private String responsibleName = "Unknown";
+    private final long recordDate;
+    private final String reason;
+    private long unbanDate = 0;
+
+    // Record variables
+    private boolean onDatabase = false;
+
+    public BanRecord(@NotNull BanType banType, long playerId, String responsibleName, long recordDate, @NotNull String reason) {
+        this.banType = banType;
+        this.playerId = playerId;
+        this.responsibleName = responsibleName;
+        this.recordDate = recordDate;
+        this.reason = reason;
+        this.onDatabase = true;
+    }
+
+    public BanRecord(long playerId, String responsibleName, long recordDate, @NotNull String reason, long unbanDate) {
+        this(BanType.TEMPORARY_BAN, playerId, responsibleName, recordDate, reason);
+        this.unbanDate = unbanDate;
+    }
+
+    public BanRecord(@NotNull BanType banType, PlayerHandler player, PlayerHandler responsible, @NotNull String reason) {
+        this.banType = banType;
+        // TODO make sure caller checks if player is online
+        this.playerId = player.getProfile(UserProfile.class).getPlayerId();
+        this.responsibleId = responsible.getProfile(UserProfile.class).getPlayerId();
+        this.responsibleName = responsible.getPlayer().getName();
+        this.recordDate = System.currentTimeMillis();
+        this.reason = reason;
+    }
+
+    public BanRecord(PlayerHandler player, PlayerHandler responsible, @NotNull String reason, long unbanDate) {
+        this(BanType.TEMPORARY_BAN, player, responsible, reason);
+        // TODO make sure caller sums the time with currentTimeMillis
+        this.unbanDate = unbanDate;
+    }
+
+    public String getKickMessage() {
+        return banType.getKickMessage()
+                .replaceAll("%reason", reason)
+                .replaceAll("%responsible", responsibleName)
+                .replaceAll("%recordDate", Util.parseTimeInMillis(recordDate, "dd/MM/yy HH:mm"))
+                .replaceAll("%unbanDate", Util.parseTimeInMillis(unbanDate, "dd/MM/yy HH:mm"));
     }
 }

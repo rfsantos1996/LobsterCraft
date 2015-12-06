@@ -8,12 +8,15 @@ import com.jabyftw.pacocacraft.player.PlayerMoment;
 import com.jabyftw.pacocacraft.player.BasePlayerProfile;
 import com.jabyftw.pacocacraft.player.ProfileType;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+
+import java.text.SimpleDateFormat;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -39,11 +42,16 @@ public class UserProfile extends BasePlayerProfile {
     private long playerId = -1;
     private String playerName;
     private String password = null;
+    // TODO make passwords [4,22] letters
     private long lastTimeOnline = -1;
+    private long playTime = 0;
+    private byte[] lastIp;
 
     // Variables (not database related)
+    private final Object passwordLock = new Object(); // synchronized because I don't want the password to change middle execution of some methods
+    private long loginTime;
     private volatile boolean loggedIn = false;
-    private PlayerMoment preLoginMoment = null;
+    private PlayerMoment preLoginMoment = null; // Lock not needed, even though it is used on login command (async), it requires Bukkit's API and so it is synchronized for this
 
     /**
      * Create user profile given player's name for first login identification
@@ -66,26 +74,35 @@ public class UserProfile extends BasePlayerProfile {
      *
      * @see System#currentTimeMillis()
      */
-    public UserProfile(@NotNull String playerName, long playerId, @NotNull String password, long lastTimeOnline) {
+    public UserProfile(@NotNull String playerName, long playerId, @NotNull String password, long lastTimeOnline, long playTime, byte[] lasIp) {
         super(ProfileType.USER_PROFILE);
         this.playerId = playerId;
         this.playerName = playerName;
-        this.password = password;
+        synchronized(passwordLock) {
+            this.password = password;
+        }
         this.lastTimeOnline = lastTimeOnline;
+        this.playTime = playTime;
+        this.lastIp = lasIp;
     }
 
     @Override
     public void onPlayerHandleApply(@NotNull PlayerHandler playerHandler) {
-        // TODO hide player for everybody and hide everybody from player (show upon login)
         Player player = playerHandler.getPlayer();
 
         // Update display name and send greetings
         player.setDisplayName(ChatColor.translateAlternateColorCodes('&', PacocaCraft.chat.getPlayerPrefix(player) + player.getName() + PacocaCraft.chat.getPlayerSuffix(player)));
-        player.sendMessage(
-                (password == null ? "§6Bem vindo, " : "§6Bem vindo novamente, ") +
-                        player.getDisplayName() + "§6!" +
-                        (password == null ? "" : "\n§6Você entrou pela ultima vez em §c" + Util.parseTimeInMillis(lastTimeOnline, "dd/MM/yyyy HH:mm"))
-        );
+        synchronized(passwordLock) {
+            player.sendMessage(
+                    (password == null ? "§6Bem vindo, " : "§6Bem vindo novamente, ") +
+                            player.getDisplayName() + "§6!" +
+                            (password == null ? "" : "\n§6Você entrou pela ultima vez em §c" + Util.parseTimeInMillis(lastTimeOnline, "dd/MM/yyyy HH:mm"))
+            );
+        }
+
+        // Need Bukkit API, but we're on PlayerJoinEvent
+        // Store last Ip
+        lastIp = player.getAddress().getAddress().getAddress();
 
         // Store before login information
         preLoginMoment = new PlayerMoment(player);
@@ -105,12 +122,16 @@ public class UserProfile extends BasePlayerProfile {
     public void onPlayerHandleDestruction() {
         // Update last time online if logged in
         if(isLoggedIn()) {
+            // Add playTime from login time
+            playTime += Math.abs(System.currentTimeMillis() - loginTime); // abs, just in case
+            // Update last time online
             lastTimeOnline = System.currentTimeMillis();
             modified = true;
         }
 
         // Restore login moment if player isn't logged in still
-        if(preLoginMoment != null) preLoginMoment.restorePlayerMoment();
+        if(preLoginMoment != null)
+            preLoginMoment.restorePlayerMoment(); // needs Bukkit API, but we're on PlayerQuitEvent
 
         // Set logged in to false in the end (because it may be checked before)
         loggedIn = false;
@@ -118,15 +139,18 @@ public class UserProfile extends BasePlayerProfile {
 
     @Override
     public boolean shouldBeSaved() {
-        return super.shouldBeSaved() && password != null;
+        synchronized(passwordLock) {
+            return super.shouldBeSaved() && password != null;
+        }
     }
 
     /**
      * Set player as logged in given password typed by player
-     * NOTE: player will already "be welcomed"/warned about its state
-     * NOTE: this should be ran asynchronously as it'll retrieve every profile on database
+     * <b>NOTE:</b> player will already "be welcomed"/warned about its state
+     * <b>NOTE:</b> this should be ran asynchronously as it'll retrieve every profile on database
+     * <b>NOTE:</b> as this requires async, DO NOT USE Bukkit API here without scheduling the task
      * <p>
-     * Conclusion: password, preLoginMoment, (not player, sendMessage is thread-safe)
+     * Conclusion: password (not player, sendMessage is thread-safe)
      *
      * @param encryptedPassword encrypted user given password (caller must encrypt the password)
      *
@@ -135,25 +159,32 @@ public class UserProfile extends BasePlayerProfile {
     public boolean attemptLogin(@NotNull String encryptedPassword) {
         Player player = getPlayerHandler().getPlayer();
 
-        // Check if password is the same or if the password even exists
-        if(this.password != null && !this.password.equals(encryptedPassword)) {
-            player.sendMessage("§4Senha incorreta! §cTente novamente...");
-            return false;
-        } else if(this.password == null) {
-            player.sendMessage("§4Você não está registrado! §cUse o comando §6/register");
-            return false;
+        synchronized(passwordLock) {
+            // Check if password is the same or if the password even exists
+            if(this.password != null && !this.password.equals(encryptedPassword)) {
+                player.sendMessage("§4Senha incorreta! §cTente novamente...");
+                return false;
+            } else if(this.password == null) {
+                player.sendMessage("§4Você não está registrado! §cUse o comando §6/register");
+                return false;
+            }
         }
 
         // else, everything went fine, log player in and restore everything
         this.loggedIn = true;
-        preLoginMoment.restorePlayerMoment();
-        preLoginMoment = null;
+        BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> {
+            preLoginMoment.restorePlayerMoment(); // Needs Bukkit API, run sync
+            preLoginMoment = null;
+        });
 
         // TODO retrieve and initiate all other profiles using retrieved playerId from register or database lookup
 
         // Show player to everyone and vice-versa
         InvisibilityService.showEveryoneToPlayer(player);
         InvisibilityService.showPlayerToEveryone(player);
+
+        // Store login time so we can calculate playTime
+        loginTime = System.currentTimeMillis();
 
         // Broadcast messages
         player.sendMessage("§6Login bem sucedido!");
@@ -174,14 +205,16 @@ public class UserProfile extends BasePlayerProfile {
      * @see UserProfile#attemptLogin(String): this should be ran asynchronously as it'll retrieve every profile on database
      */
     public boolean registerPlayer(@NotNull String encryptedPassword) {
-        // Check if player is already registered
-        if(this.password != null) {
-            getPlayerHandler().getPlayer().sendMessage("§cVocê já foi registrado!");
-            return false;
-        }
+        synchronized(passwordLock) {
+            // Check if player is already registered
+            if(this.password != null) {
+                getPlayerHandler().getPlayer().sendMessage("§cVocê já foi registrado!");
+                return false;
+            }
 
-        // Register player password (it'll be saved)
-        this.password = encryptedPassword;
+            // Register player password (it'll be saved)
+            this.password = encryptedPassword;
+        }
         // TODO register and retrieve playerId
         attemptLogin(encryptedPassword);
         return true;
@@ -206,12 +239,21 @@ public class UserProfile extends BasePlayerProfile {
         return playerName;
     }
 
-
     public long getLastTimeOnlineMillis() {
         return lastTimeOnline;
     }
 
+    public long getPlayTime() {
+        return playTime;
+    }
+
+    public String getFormattedPlayTime() {
+        return Util.parseTimeInMillis(playTime);
+    }
+
     public String getEncryptedPassword() {
-        return password;
+        synchronized(passwordLock) {
+            return password;
+        }
     }
 }

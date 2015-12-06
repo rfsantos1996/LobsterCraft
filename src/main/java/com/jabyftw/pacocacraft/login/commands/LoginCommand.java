@@ -9,7 +9,9 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.login.UserLoginService;
 import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
 import java.security.NoSuchAlgorithmException;
@@ -40,14 +42,16 @@ public class LoginCommand extends CommandExecutor {
 
     @CommandHandler(senderType = SenderType.PLAYER)
     public HandleResponse onDefaultLogin(PlayerHandler playerHandler, String password) {
-        try {
-            // TODO make plugin execution async
-            playerHandler.getProfile(UserProfile.class).attemptLogin(Util.encryptString(password));
-            return HandleResponse.RETURN_TRUE;
-        } catch(NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return HandleResponse.RETURN_HELP;
-        }
+        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+            try {
+                playerHandler.getProfile(UserProfile.class).attemptLogin(Util.encryptString(password));
+            } catch(NoSuchAlgorithmException e) {
+                e.printStackTrace();
+                playerHandler.getPlayer().sendMessage("§4Ocorreu um erro! §cTente novamente mais tarde");
+            }
+        });
+
+        return HandleResponse.RETURN_TRUE;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
@@ -64,17 +68,18 @@ public class LoginCommand extends CommandExecutor {
      * @return a possible HandleResponse
      */
     @CommandHandler(senderType = SenderType.CONSOLE, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_LOOKUP)
-    public HandleResponse onConsoleLogin(CommandSender commandSender, PlayerHandler playerHandler) {
+    public HandleResponse onConsoleLogin(CommandSender commandSender, final PlayerHandler playerHandler) {
         // Check if playerHandler can be looked up
         if(PacocaCraft.permission.playerHas(playerHandler.getPlayer(), Permissions.JOIN_PREVENT_ACCOUNT_LOOKUP))
             return HandleResponse.RETURN_NO_PERMISSION;
 
-        // TODO make command execution async
-        UserProfile profile = playerHandler.getProfile(UserProfile.class);
-        if(profile.attemptLogin(profile.getEncryptedPassword()))
-            commandSender.sendMessage("§aLogin de §6" + playerHandler.getPlayer().getName() + "§a foi bem sucedido");
-        else
-            commandSender.sendMessage("§cLogin de §6" + playerHandler.getPlayer().getName() + "§c falhou");
+        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+            UserProfile profile = playerHandler.getProfile(UserProfile.class);
+            if(profile.attemptLogin(profile.getEncryptedPassword()))
+                commandSender.sendMessage("§aLogin de §6" + playerHandler.getPlayer().getName() + "§a foi bem sucedido");
+            else
+                commandSender.sendMessage("§cLogin de §6" + playerHandler.getPlayer().getName() + "§c falhou");
+        });
 
         return HandleResponse.RETURN_TRUE;
     }

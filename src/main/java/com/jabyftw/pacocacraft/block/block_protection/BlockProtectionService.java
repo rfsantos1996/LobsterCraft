@@ -1,5 +1,6 @@
-package com.jabyftw.pacocacraft.block_protection;
+package com.jabyftw.pacocacraft.block.block_protection;
 
+import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.util.ServerService;
 
 /**
@@ -24,11 +25,10 @@ public class BlockProtectionService implements ServerService {
 
     @Override
     public void onEnable() {
-
+        PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 
     @Override
     public void onDisable() {
-
     }
 }

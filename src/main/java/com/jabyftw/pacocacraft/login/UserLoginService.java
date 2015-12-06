@@ -44,6 +44,7 @@ public class UserLoginService implements ServerService {
         Bukkit.getServer().getPluginManager().registerEvents(new JoinListener(this), PacocaCraft.pacocaCraft);
         Bukkit.getServer().getPluginCommand("login").setExecutor(new LoginCommand());
         Bukkit.getServer().getPluginCommand("register").setExecutor((registerCommand = new RegisterCommand()));
+        PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 
     @Override
@@ -60,41 +61,15 @@ public class UserLoginService implements ServerService {
 
         // Obtain user profile from MySQL asynchronously (preferably, there are other plugins)
         ForkJoinTask<UserProfile> forkJoinTask = ForkJoinPool.commonPool().submit(() -> {
-            // Create default (empty) profile
             UserProfile userProfile = null;
 
-            try {
-                // Get connection from pool and execute query
-                Connection connection = PacocaCraft.dataSource.getConnection();
-                {
-                    // Prepare statement arguments
-                    PreparedStatement preparedStatement = connection.prepareStatement(
-                            ""
-                    );
+            // Try to fetch user profile (erros will be caught by ForkJoinTask)
+            userProfile = fetchUserProfile(playerName);
 
-                    // Execute statement
-                    ResultSet resultSet = preparedStatement.executeQuery();
-                    if(!resultSet.next())
-                        // If player doesn't exists, return default profile
-                        return new UserProfile(playerName);
+            // If none found, create default
+            if(userProfile == null)
+                return new UserProfile(playerName);
 
-                    // Retrieve information
-                    long playerId = resultSet.getLong("playerId");
-                    String password = resultSet.getString("password");
-                    long lastTimeOnline = resultSet.getLong("lastTimeOnline");
-
-                    // Apply information to profile on a "loaded profile" constructor
-                    userProfile = new UserProfile(playerName, playerId, password, lastTimeOnline);
-
-                    // Close ResultSet and PreparedStatement
-                    resultSet.close();
-                    preparedStatement.close();
-                }
-                // Close connection and return profile
-                connection.close();
-            } catch(SQLException e) {
-                e.printStackTrace();
-            }
             // Return profile. If null, it'll be analyzed later and player will be kicked for safety
             return userProfile;
         });
@@ -107,8 +82,15 @@ public class UserLoginService implements ServerService {
      * @param playerName player's name
      */
     public void waitUserProfile(@NotNull String playerName) {
-        // Wait for MySQL response and processing (quietly because major errors will be analyzed)
-        userProfileRequests.get(playerName.toLowerCase()).quietlyJoin();
+        ForkJoinTask<UserProfile> joinTask = userProfileRequests.get(playerName.toLowerCase());
+        if(joinTask != null)
+            try {
+                // Wait for MySQL response and processing
+                joinTask.join();
+            } catch(Exception e) {
+                e.printStackTrace();
+                PacocaCraft.logger.warning("Couldn't fetch profile for " + playerName);
+            }
     }
 
     /**
@@ -121,5 +103,53 @@ public class UserLoginService implements ServerService {
     public UserProfile getUserProfile(@NotNull String playerName) throws ExecutionException, InterruptedException {
         // Get UserProfile from request
         return userProfileRequests.get(playerName.toLowerCase()).get();
+    }
+
+    /**
+     * Return user profile fetched from MySQL
+     * <b>NOTE:</b> should be on async since it'll lookup in the database
+     *
+     * @param playerName player's name
+     *
+     * @return null if profile wasn't found
+     *
+     * @throws SQLException
+     */
+    public static UserProfile fetchUserProfile(@NotNull String playerName) throws SQLException {
+        playerName = playerName.toLowerCase();
+        UserProfile userProfile;
+
+        // Get connection from pool and execute query
+        Connection connection = PacocaCraft.dataSource.getConnection();
+        {
+            // Prepare statement arguments
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    ""
+            );
+
+            // Execute statement
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if(!resultSet.next())
+                // If player doesn't exists, return null
+                return null;
+
+            // Retrieve information
+            long playerId = resultSet.getLong("playerId");
+            String password = resultSet.getString("password");
+            long lastTimeOnline = resultSet.getLong("lastTimeOnline");
+            long playTime = resultSet.getLong("playTime");
+            byte[] lastIp = resultSet.getBytes("lastIp");
+
+            // Apply information to profile on a "loaded profile" constructor
+            userProfile = new UserProfile(playerName, playerId, password, lastTimeOnline, playTime, lastIp);
+
+            // Close ResultSet and PreparedStatement
+            resultSet.close();
+            preparedStatement.close();
+        }
+        // Close connection and return profile
+        connection.close();
+
+        return userProfile;
     }
 }

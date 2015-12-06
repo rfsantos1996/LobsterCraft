@@ -8,7 +8,9 @@ import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
 import java.security.NoSuchAlgorithmException;
@@ -38,17 +40,18 @@ public class RegisterCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onDefaultRegister(PlayerHandler playerHandler, String password1, String password2) {
+    public HandleResponse onDefaultRegister(final PlayerHandler playerHandler, final String password1, String password2) {
         // Check if passwords match
         if(password1.equals(password2))
-            try {
-                // Register player (he will be already warned)
-                // TODO make command execution async
-                playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1));
-            } catch(NoSuchAlgorithmException e) {
-                e.printStackTrace();
-                return HandleResponse.RETURN_HELP;
-            }
+            BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+                try {
+                    // Register player (he will be already warned)
+                    playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1));
+                } catch(NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                    playerHandler.getPlayer().sendMessage("§4Um erro ocorreu! §cTente novamente mais tarde.");
+                }
+            });
         else
             playerHandler.getPlayer().sendMessage("§4As senhas não coincidem!");
 
@@ -59,17 +62,18 @@ public class RegisterCommand extends CommandExecutor {
     public HandleResponse onConsoleRegister(CommandSender commandSender, PlayerHandler playerHandler, String password1, String password2) {
         // Check if passwords match
         if(password1.equals(password2))
-            try {
-                // Register player and warn sender if succeeded
-                // TODO make command execution async
-                if(playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1)))
-                    commandSender.sendMessage("§aRegistro de " + playerHandler.getPlayer().getName() + "§a foi bem sucedido!");
-                else
-                    commandSender.sendMessage("§cRegistro de " + playerHandler.getPlayer().getName() + "§c falhou!");
-            } catch(NoSuchAlgorithmException e) {
-                e.printStackTrace();
-                return HandleResponse.RETURN_HELP;
-            }
+            BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+                try {
+                    // Register player and warn sender if succeeded
+                    if(playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1)))
+                        commandSender.sendMessage("§aRegistro de " + playerHandler.getPlayer().getName() + "§a foi bem sucedido!");
+                    else
+                        commandSender.sendMessage("§cRegistro de " + playerHandler.getPlayer().getName() + "§c falhou!");
+                } catch(NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                    playerHandler.getPlayer().sendMessage("§4Um erro ocorreu! §cTente novamente mais tarde.");
+                }
+            });
         else
             commandSender.sendMessage("§4As senhas não coincidem!");
 

@@ -1,4 +1,9 @@
-package com.jabyftw.pacocacraft.util;
+package com.jabyftw.pacocacraft.player;
+
+import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.player.commands.GodModeCommand;
+import com.jabyftw.pacocacraft.util.ServerService;
+import org.bukkit.Bukkit;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -18,20 +23,15 @@ package com.jabyftw.pacocacraft.util;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public final class Permissions {
+public class PlayerService implements ServerService {
 
-    public static final String
-            JOIN_FULL_SERVER = "pacocacraft.join.join_full",
-    /**
-     * Works for register too
-     */
-    JOIN_PLAYER_LOGIN = "pacocacraft.join.login",
-            JOIN_OTHER_ACCOUNT_REGISTRATION = "pacocacraft.join.other_account_registration",
-            JOIN_OTHER_ACCOUNT_LOOKUP = "pacocacraft.join.other_account_lookup",
-            JOIN_PREVENT_ACCOUNT_LOOKUP = "pacocacraft.join.no_account_lookup",
-            JOIN_VANISHED = "vanish.silentjoin",
+    @Override
+    public void onEnable() {
+        Bukkit.getServer().getPluginCommand("godmode").setExecutor(new GodModeCommand());
+        PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
+    }
 
-    PLAYER_GOD_MODE = "pacocacraft.player.god_mode",
-            PLAYER_GOD_MODE_OTHERS = "pacocacraft.player.god_mode.others";
-
+    @Override
+    public void onDisable() {
+    }
 }

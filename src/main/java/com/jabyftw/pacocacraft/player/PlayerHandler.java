@@ -1,15 +1,17 @@
 package com.jabyftw.pacocacraft.player;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.block.xray_protection.OreLocation;
 import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.bukkit.Location;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -37,6 +39,10 @@ public class PlayerHandler {
     // Profile interface
     private final Map<ProfileType, BasePlayerProfile> playerProfiles = Collections.synchronizedMap(new EnumMap<>(ProfileType.class));
 
+    // Variables
+    private boolean godMode = false;
+    private final LinkedList<OreLocation> oreLocationHistory = new LinkedList<>();
+
     /**
      * Create PlayerHandle instance (holder of all profiles and variables)
      * Initiated on PlayerJoinEvent (highest priority) and destroyed on PlayerQuitEvent (lowest priority)
@@ -58,7 +64,18 @@ public class PlayerHandler {
     }
 
     public void destroy() {
-        // TODO Deliver profiles to somewhere else and use their onPlayerHandleDestruction()
+        Iterator<BasePlayerProfile> iterator = playerProfiles.values().iterator();
+        while(iterator.hasNext()) {
+            BasePlayerProfile profile = iterator.next();
+
+            // Remove player handler for profile (prepare for destruction/reconstruction)
+            profile.setPlayerHandler(null);
+
+            // TODO Deliver profiles to somewhere else
+
+            // Remove profile from player handler
+            iterator.remove();
+        }
 
         // Remove player from list (instance will be removed)
         if(!PacocaCraft.playerMap.remove(this.player, this))
@@ -89,9 +106,21 @@ public class PlayerHandler {
 
     @SuppressWarnings("unchecked")
     public <T extends BasePlayerProfile> T getProfile(@NotNull ProfileType profileType) {
-        return (T) playerProfiles.get(profileType);
+        return getProfile((Class<T>) profileType.getProfileClass());
     }
 
+    /**
+     * Get requested profile
+     * <b><i>NOTE:</i> caller must be sure to check existence conditions</b> (player must be logged in so the profile can be loaded)
+     *
+     * @param profileClass profile's class
+     * @param <T>          class type of the requested profile (must be a BasePlayerProfile)
+     *
+     * @return requested profile
+     *
+     * @see BasePlayerProfile as the base of every profile
+     * @see ClassCastException will probably be thrown if profile isn't loaded
+     */
     public <T extends BasePlayerProfile> T getProfile(@NotNull Class<T> profileClass) {
         return profileClass.cast(playerProfiles.get(ProfileType.getProfileType(profileClass)));
     }
@@ -114,7 +143,29 @@ public class PlayerHandler {
     }
 
     public boolean isGodMode() {
-        return false;
+        return godMode;
+    }
+
+    /**
+     * Sets the player in or out of god mode
+     * NOTE: this already warns the player about its state
+     *
+     * @param godMode true if player should be set to god mode
+     */
+    public boolean setGodMode(boolean godMode, @Nullable CommandSender otherPlayer) {
+        // If he is and is set back to normal mode, warn player
+        if(isGodMode() && !godMode)
+            player.sendMessage(otherPlayer != null ? "§c" + otherPlayer.getName() + "§c te tirou do modo deus (god mode)." : "§cVocê saiu do modo deus (god mode).");
+        else if(!isGodMode() && godMode)
+            player.sendMessage(otherPlayer != null ? "§6" + otherPlayer.getName() + "§6 te colocou em modo deus (god mode)." : "§6Você entrou no modo deus (god mode).");
+        else return isGodMode(); // Nothing changed
+
+        this.godMode = godMode;
+        return isGodMode();
+    }
+
+    public LinkedList<OreLocation> getOreLocationHistory() {
+        return oreLocationHistory;
     }
 
     @Override
