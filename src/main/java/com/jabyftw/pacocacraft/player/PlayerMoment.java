@@ -33,7 +33,7 @@ public class PlayerMoment {
 
     // Variables
     private final float saturation, exhaustion, fallDistance;
-    private final boolean allowFlight, flying, canPickupItems;
+    private final boolean allowFlight, canPickupItems;
     private final int foodLevel, totalExperience, remainingAir;
     private final double health;
     private final Collection<PotionEffect> activePotionEffects;
@@ -49,7 +49,6 @@ public class PlayerMoment {
 
         // Set booleans
         allowFlight = player.getAllowFlight();
-        flying = player.isFlying();
         canPickupItems = player.getCanPickupItems();
 
         // Set integers
@@ -86,7 +85,7 @@ public class PlayerMoment {
 
         // Set booleans
         player.setAllowFlight(allowFlight);
-        player.setFlying(flying);
+        player.setFlying(false); // don't care about previously flying boolean
         player.setCanPickupItems(canPickupItems);
 
         // Restore stored inventory if it isn't null
@@ -121,7 +120,5 @@ public class PlayerMoment {
 
         // Empty player inventory
         player.getInventory().clear();
-        player.getInventory().setContents(null);
-        player.getInventory().setArmorContents(null);
     }
 }

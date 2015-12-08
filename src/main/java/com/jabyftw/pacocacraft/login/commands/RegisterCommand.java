@@ -10,7 +10,6 @@ import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
 import java.security.NoSuchAlgorithmException;
@@ -42,41 +41,55 @@ public class RegisterCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.PLAYER)
     public HandleResponse onDefaultRegister(final PlayerHandler playerHandler, final String password1, String password2) {
         // Check if passwords match
-        if(password1.equals(password2))
-            BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
-                try {
-                    // Register player (he will be already warned)
-                    playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1));
-                } catch(NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                    playerHandler.getPlayer().sendMessage("§4Um erro ocorreu! §cTente novamente mais tarde.");
-                }
-            });
-        else
+        if(!password1.equals(password2)) {
             playerHandler.getPlayer().sendMessage("§4As senhas não coincidem!");
+            return HandleResponse.RETURN_TRUE;
+        }
 
+        // Check password length (shouldn't be less than 4 or more than 22 - encrypted password has fixed value of 64 characters)
+        if(!Util.checkStringLength(password1, 4, 22)) {
+            playerHandler.getPlayer().sendMessage("§4Senha muito grande ou muito curta! §cDeve ter entre 4 e 22 caracteres");
+            return HandleResponse.RETURN_TRUE;
+        }
+
+        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+            try {
+                // Register player (he will be already warned)
+                playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1));
+            } catch(NoSuchAlgorithmException e) {
+                e.printStackTrace();
+                playerHandler.getPlayer().sendMessage("§4Um erro ocorreu! §cTente novamente mais tarde.");
+            }
+        });
         return HandleResponse.RETURN_TRUE;
     }
 
     @CommandHandler(senderType = SenderType.CONSOLE, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
     public HandleResponse onConsoleRegister(CommandSender commandSender, PlayerHandler playerHandler, String password1, String password2) {
         // Check if passwords match
-        if(password1.equals(password2))
-            BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
-                try {
-                    // Register player and warn sender if succeeded
-                    if(playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1)))
-                        commandSender.sendMessage("§aRegistro de " + playerHandler.getPlayer().getName() + "§a foi bem sucedido!");
-                    else
-                        commandSender.sendMessage("§cRegistro de " + playerHandler.getPlayer().getName() + "§c falhou!");
-                } catch(NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                    playerHandler.getPlayer().sendMessage("§4Um erro ocorreu! §cTente novamente mais tarde.");
-                }
-            });
-        else
+        if(!password1.equals(password2)) {
             commandSender.sendMessage("§4As senhas não coincidem!");
+            return HandleResponse.RETURN_TRUE;
+        }
 
+        // Check password length (shouldn't be less than 4 or more than 22 - encrypted password has fixed value of 64 characters)
+        if(!Util.checkStringLength(password1, 4, 22)) {
+            commandSender.sendMessage("§4Senha muito grande ou muito curta! §cDeve ter entre 4 e 22 caracteres");
+            return HandleResponse.RETURN_TRUE;
+        }
+
+        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+            try {
+                // Register player and warn sender if succeeded
+                if(playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1)))
+                    commandSender.sendMessage("§aRegistro de " + playerHandler.getPlayer().getName() + "§a foi bem sucedido!");
+                else
+                    commandSender.sendMessage("§cRegistro de " + playerHandler.getPlayer().getName() + "§c falhou!");
+            } catch(NoSuchAlgorithmException e) {
+                e.printStackTrace();
+                playerHandler.getPlayer().sendMessage("§4Um erro ocorreu! §cTente novamente mais tarde.");
+            }
+        });
         return HandleResponse.RETURN_TRUE;
     }
 }

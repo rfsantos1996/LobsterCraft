@@ -4,6 +4,7 @@ import com.jabyftw.pacocacraft.block.block_protection.BlockProtectionService;
 import com.jabyftw.pacocacraft.block.xray_protection.XrayProtectionService;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.configuration.ConfigurationFile;
+import com.jabyftw.pacocacraft.location.TeleportService;
 import com.jabyftw.pacocacraft.login.UserLoginService;
 import com.jabyftw.pacocacraft.login.ban.BanService;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
@@ -54,6 +55,7 @@ public class PacocaCraft extends JavaPlugin {
     public static BlockProtectionService blockProtectionService;
     public static UserLoginService userLoginService;
     public static PlayerService playerService;
+    public static TeleportService teleportService;
     public static InvisibilityService invisibilityService;
     public static BanService banService;
     public static XrayProtectionService xrayProtectionService;
@@ -91,7 +93,7 @@ public class PacocaCraft extends JavaPlugin {
         // Start ticking
         tickTimingTask = BukkitScheduler.runTaskTimer(this, () -> {
             synchronized(currentTickLock) {
-                currentTick++; // not instantaneous event, need to synchronize
+                currentTick++; // not atomic, need to synchronize
             }
         }, 0, 1);
 
@@ -121,13 +123,13 @@ public class PacocaCraft extends JavaPlugin {
         // Setup MySQL's Data Source
         HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setDataSourceClassName("org.mariadb.jdbc.MySQLDataSource");
-        //hikariConfig.setDriverClassName("MariaDB"); // May not be needed
         hikariConfig.setJdbcUrl(ConfigValue.MYSQL_JDBC_URL.<String>getValue());
         hikariConfig.setUsername(ConfigValue.MYSQL_USERNAME.<String>getValue());
         hikariConfig.setPassword(ConfigValue.MYSQL_PASSWORD.<String>getValue());
         hikariConfig.setMaximumPoolSize(ConfigValue.MYSQL_POOL_SIZE.<Integer>getValue()); // (Core count * 2) + spindle (?)
         hikariConfig.setConnectionTimeout(TimeUnit.SECONDS.toMillis(3)); // 3 seconds before throwing exceptions
         hikariConfig.setMaxLifetime(TimeUnit.SECONDS.toMillis(ConfigValue.MYSQL_CONNECTION_TIMEOUT.<Integer>getValue() - 60)); // one minute before MariaDB's idle timeout
+
         try {
             // Connect to database, close if it doesn't
             dataSource = new HikariDataSource(hikariConfig);
@@ -138,13 +140,13 @@ public class PacocaCraft extends JavaPlugin {
             return;
         }
 
-        // Setup and update MySQL tables
-
+        // TODO Setup and update MySQL tables (will do this after developing - will move server to my Ubuntu partition)
 
         // Register and start services
         (blockProtectionService = new BlockProtectionService()).onEnable();
         (userLoginService = new UserLoginService()).onEnable();
         (playerService = new PlayerService()).onEnable();
+        (teleportService = new TeleportService()).onEnable();
         (invisibilityService = new InvisibilityService()).onEnable();
         (banService = new BanService()).onEnable();
         (xrayProtectionService = new XrayProtectionService()).onEnable();
@@ -169,6 +171,7 @@ public class PacocaCraft extends JavaPlugin {
         if(blockProtectionService != null) blockProtectionService.onDisable();
         if(userLoginService != null) userLoginService.onDisable();
         if(playerService != null) playerService.onDisable();
+        if(teleportService != null) teleportService.onDisable();
         if(invisibilityService != null) invisibilityService.onDisable();
         if(banService != null) banService.onDisable();
         if(xrayProtectionService != null) xrayProtectionService.onDisable();

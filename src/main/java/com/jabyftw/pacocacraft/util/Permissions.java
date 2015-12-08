@@ -32,6 +32,11 @@ public final class Permissions {
             JOIN_VANISHED = "vanish.silentjoin",
 
     PLAYER_GOD_MODE = "pacocacraft.player.god_mode",
-            PLAYER_GOD_MODE_OTHERS = "pacocacraft.player.god_mode.others";
+            PLAYER_GOD_MODE_OTHERS = "pacocacraft.player.god_mode.others",
+            PLAYER_FLY = "pacocacraft.player.fly",
+            PLAYER_FLY_OTHERS = "pacocacraft.player.fly.others",
+            PLAYER_GAMEMODE = "pacocacraft.player.gamemode",
+            PLAYER_GAMEMODE_OTHERS = "pacocacraft.player.gamemode.others",
 
+    TELEPORT_INSTANTANEOUSLY = "pacocacraft.teleport.instantaneously";
 }

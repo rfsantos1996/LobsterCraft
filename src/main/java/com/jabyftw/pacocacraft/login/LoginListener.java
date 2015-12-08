@@ -41,7 +41,7 @@ import java.util.List;
 public class LoginListener implements Listener {
 
     // Allowed commands before log in
-    private final List<String> allowedCommands = Arrays.asList(ConfigValue.LOGIN_ALLOWED_COMMANDS.<String[]>getValue());
+    private final List<String> allowedCommands = Arrays.asList(ConfigValue.LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS.<String[]>getValue());
 
     public LoginListener() {
     }
@@ -243,7 +243,7 @@ public class LoginListener implements Listener {
     public void onCommandPreProcess(PlayerCommandPreprocessEvent commandPreprocessEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(commandPreprocessEvent.getPlayer());
         // If player isn't logged in, he should not
-        if(!playerHandler.getProfile(UserProfile.class).isLoggedIn() && !allowedCommands.contains(commandPreprocessEvent.getMessage().toLowerCase()))
+        if(!playerHandler.getProfile(UserProfile.class).isLoggedIn() && !allowedCommands.contains(commandPreprocessEvent.getMessage().split(" ")[0].replaceAll("/", "").toLowerCase()))
             commandPreprocessEvent.setCancelled(true);
     }
 

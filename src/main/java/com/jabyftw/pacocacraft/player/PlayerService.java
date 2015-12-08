@@ -1,9 +1,22 @@
 package com.jabyftw.pacocacraft.player;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.configuration.ConfigValue;
+import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.commands.FlyCommand;
+import com.jabyftw.pacocacraft.player.commands.GameModeCommand;
 import com.jabyftw.pacocacraft.player.commands.GodModeCommand;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.ServerService;
+import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
+import org.bukkit.scheduler.BukkitTask;
+
+import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -25,13 +38,128 @@ import org.bukkit.Bukkit;
  */
 public class PlayerService implements ServerService {
 
+    public static final long TIME_BETWEEN_PROFILE_SAVES_TICKS = ConfigValue.LOGIN_TIME_BETWEEN_PROFILE_SAVES.<Long>getValue() * 20L; // seconds * 20 = number of ticks
+    private static final Object storedProfileLock = new Object();
+    private static final HashBasedTable<Long, ProfileType, PlayerProfile> storedProfiles = HashBasedTable.create();
+    private StoredProfilesSavingTask profilesSavingTask;
+    private BukkitTask storedProfilesTask;
+
     @Override
     public void onEnable() {
         Bukkit.getServer().getPluginCommand("godmode").setExecutor(new GodModeCommand());
+        Bukkit.getServer().getPluginCommand("gamemode").setExecutor(new GameModeCommand());
+        Bukkit.getServer().getPluginCommand("fly").setExecutor(new FlyCommand());
+        storedProfilesTask = BukkitScheduler.runTaskTimerAsynchronously(
+                PacocaCraft.pacocaCraft,
+                (profilesSavingTask = new StoredProfilesSavingTask()),
+                TIME_BETWEEN_PROFILE_SAVES_TICKS,
+                TIME_BETWEEN_PROFILE_SAVES_TICKS
+        );
         PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 
     @Override
     public void onDisable() {
+        storedProfilesTask.cancel();
+        // Force run if server is closing
+        PacocaCraft.logger.info("Trying to save profiles; If stuck, tell developer");
+        while(!storedProfiles.isEmpty())
+            profilesSavingTask.run();
+    }
+
+    /**
+     * Store profile instance in case player rejoins in a few minutes
+     * <b>NOTE:</b> profiles are retrieved on successful login
+     *
+     * @param playerProfile given profile of a logged off player
+     *
+     * @see StoredProfilesSavingTask the saving task that will take care of the profile after its lifetime
+     */
+    public <T extends PlayerProfile> void storeProfile(@NotNull T playerProfile) {
+        // Make sure profile is correctly removed
+        if(playerProfile.getPlayerHandler() != null)
+            throw new IllegalArgumentException("Delivered a profile that wasn't correctly removed from the player!");
+
+        // Set the date when the profile was moved
+        playerProfile.setStoredSince(System.currentTimeMillis());
+
+        // Insert it on the table synchronously
+        synchronized(storedProfileLock) {
+            storedProfiles.put(playerProfile.playerId, playerProfile.getProfileType(), playerProfile);
+        }
+    }
+
+    public Map<ProfileType, PlayerProfile> getProfiles(long playerId) {
+        Map<ProfileType, PlayerProfile> row;
+
+        synchronized(storedProfileLock) {
+            // Copy map
+            row = new EnumMap<>(storedProfiles.row(playerId));
+
+            // Remove profiles from storage
+            for(ProfileType profileType : row.keySet())
+                storedProfiles.remove(playerId, profileType);
+        }
+
+        // Set as not stored
+        for(PlayerProfile playerProfile : row.values())
+            playerProfile.setStoredSince(-1);
+
+        return row;
+    }
+
+    protected class StoredProfilesSavingTask implements Runnable {
+
+        private final EnumMap<ProfileType, ArrayList<PlayerProfile>> pendingSaveProfiles = new EnumMap<>(ProfileType.class);
+        private final long PROFILE_LIFETIME_MILLIS = TimeUnit.SECONDS.toMillis(ConfigValue.LOGIN_PROFILE_WAITING_TIME.<Long>getValue());
+
+        protected StoredProfilesSavingTask() {
+            for(ProfileType profileType : ProfileType.values())
+                if(!pendingSaveProfiles.containsKey(profileType))
+                    pendingSaveProfiles.put(profileType, new ArrayList<>());
+        }
+
+        @Override
+        public void run() {
+            synchronized(storedProfileLock) {
+                Iterator<Table.Cell<Long, ProfileType, PlayerProfile>> iterator = storedProfiles.cellSet().iterator();
+
+                // Iterate through all values
+                while(iterator.hasNext()) {
+                    Table.Cell<Long, ProfileType, PlayerProfile> cell = iterator.next();
+
+                    // Check if profile waited its lifetime or if server is closing (forcing)
+                    if((System.currentTimeMillis() - cell.getValue().getStoredSince()) >= PROFILE_LIFETIME_MILLIS || PacocaCraft.isServerClosing()) {
+
+                        // Save profile if needed
+                        if(cell.getValue().shouldBeSaved()) // if it shouldn't, it'll be removed without updating database
+                            pendingSaveProfiles.get(cell.getColumnKey()).add(cell.getValue());
+
+                        // Remove profile, at last
+                        iterator.remove();
+                    }
+                }
+            }
+
+            // Iterate between profile types
+            for(ArrayList<PlayerProfile> playerProfiles : pendingSaveProfiles.values()) {
+                Iterator<PlayerProfile> iterator = playerProfiles.iterator();
+
+                // Iterate between profiles
+                while(iterator.hasNext()) {
+                    PlayerProfile next = iterator.next();
+
+                    // Save profile
+                    try {
+                        next.getProfileType().saveProfile(next);
+                    } catch(SQLException e) {
+                        e.printStackTrace();
+                    }
+
+                    // Remove profile from storage
+                    iterator.remove();
+                }
+            }
+        }
     }
 }

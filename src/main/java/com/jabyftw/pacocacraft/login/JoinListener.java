@@ -6,6 +6,7 @@ import com.jabyftw.pacocacraft.login.ban.BanRecord;
 import com.jabyftw.pacocacraft.login.ban.BanService;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
@@ -42,11 +43,11 @@ public class JoinListener implements Listener {
     private final UserLoginService userLoginService;
 
     // Player join limit
-    private static int playersPerTick = (int) Math.ceil(ConfigValue.LOGIN_PLAYERS_ALLOWED.<Integer>getValue() / (ConfigValue.LOGIN_PERIOD_OF_TIME.<Float>getValue() * 20f));
+    private static int playersPerTick = (int) Math.ceil(ConfigValue.LOGIN_JOIN_LIMITER_PLAYERS_ALLOWED.<Integer>getValue() / (ConfigValue.LOGIN_JOIN_LIMITER_PERIOD_OF_TIME.<Float>getValue() * 20f));
     private static int ticksPerJoin = (int) Math.ceil(1 / playersPerTick);
     private static long lastJoinTick = 0;
 
-    public JoinListener(UserLoginService userLoginService) {
+    public JoinListener(@NotNull UserLoginService userLoginService) {
         this.userLoginService = userLoginService;
     }
 
@@ -84,7 +85,7 @@ public class JoinListener implements Listener {
         lastJoinTick = PacocaCraft.getCurrentTick();
 
         // Check player's name (today the minimum length is 4, but there may be players using 3 letters still)
-        if(!com.jabyftw.Util.checkString(playerName, 3, 16)) {
+        if(!com.jabyftw.Util.checkStringCharactersAndLength(playerName, 3, 16)) {
             preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§cSeu nome contém caracteres inválidos\n§cou é muito longo/curto.");
             return;
         }

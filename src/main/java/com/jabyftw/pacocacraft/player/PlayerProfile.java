@@ -32,4 +32,8 @@ public abstract class PlayerProfile extends BasePlayerProfile {
         super(profileType);
         this.playerId = playerId;
     }
+
+    public long getPlayerId() {
+        return playerId;
+    }
 }

@@ -67,6 +67,12 @@ public enum ArgumentType {
             return Util.parseToWeatherType(string);
         }
     },
+    GAMEMODE_TYPE(GameMode.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToGameMode(string);
+        }
+    },
 
     PLAYER_NAME(CommandExecutor.PLAYER_CLASS) {
         @Override
@@ -183,7 +189,14 @@ public enum ArgumentType {
         final Argument argument = new Argument();
 
         for(ArgumentType argumentType : ArgumentType.values()) {
-            Object argumentTypeObject = argumentType.isPossible(commandSender, string);
+            // Acquire argument type object for each type
+            Object argumentTypeObject = null;
+            try {
+                argumentTypeObject = argumentType.isPossible(commandSender, string);
+            } catch(Exception ignored) {
+            }
+
+            // Check if argument isn't null and add to the possible arguments
             if(argumentTypeObject != null)
                 argument.addArgumentType(argumentType, argumentTypeObject);
         }

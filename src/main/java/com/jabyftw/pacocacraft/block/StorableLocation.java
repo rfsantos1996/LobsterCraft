@@ -1,8 +1,7 @@
-package com.jabyftw.pacocacraft.location;
+package com.jabyftw.pacocacraft.block;
 
-import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.Util;
 import com.sun.istack.internal.NotNull;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.util.NumberConversions;
 
@@ -117,6 +116,6 @@ public class StorableLocation {
     }
 
     public static Location toLocation(@NotNull StorableLocation location) {
-        return new Location(Bukkit.getServer().getWorld(location.worldName), location.x, location.y, location.z, location.yaw, location.pitch);
+        return new Location(Util.parseToWorld(location.worldName), location.x, location.y, location.z, location.yaw, location.pitch);
     }
 }

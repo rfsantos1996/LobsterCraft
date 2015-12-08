@@ -9,7 +9,10 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.bukkit.*;
 import org.bukkit.entity.EntityType;
 import org.bukkit.potion.PotionType;
+import sun.misc.BASE64Encoder;
 
+import javax.crypto.Cipher;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -121,6 +124,21 @@ public abstract class Util {
             int equalityOfWords = equalityOfWords(entityType.name().replaceAll("_", (useUnderline ? "" : "_")), string);
             if(equalityOfWords >= equality) {
                 mostEqual = entityType;
+                equality = equalityOfWords;
+            }
+        }
+
+        return mostEqual;
+    }
+
+    public static GameMode parseToGameMode(@NotNull String string) {
+        GameMode mostEqual = null;
+        int equality = 2;
+
+        for(GameMode gameMode : GameMode.values()) {
+            int equalityOfWords = equalityOfWords(gameMode.name(), string);
+            if(equalityOfWords >= equality) {
+                mostEqual = gameMode;
                 equality = equalityOfWords;
             }
         }
@@ -312,8 +330,21 @@ public abstract class Util {
      *
      * @return true for valid strings
      */
-    public static boolean checkString(@NotNull String string, int minLength, int maxLength) {
+    public static boolean checkStringCharactersAndLength(@NotNull String string, int minLength, int maxLength) {
         return string.matches("[A-Za-z_0-9]{" + minLength + "," + maxLength + "}");
+    }
+
+    /**
+     * CHeck String for its length
+     *
+     * @param string    string to be tested
+     * @param minLength minimum length
+     * @param maxLength maximum length
+     *
+     * @return true if password passes
+     */
+    public static boolean checkStringLength(@NotNull String string, int minLength, int maxLength) {
+        return string.matches("{" + minLength + "," + maxLength + "}");
     }
 
     /**
@@ -348,17 +379,20 @@ public abstract class Util {
     }
 
     /**
-     * Encrypt string using SHA-256
+     * Encrypt string using SHA1
      *
      * @param string string to be encrypted
      *
      * @return encrypted string acquired from encrypted bytes
      *
      * @throws NoSuchAlgorithmException
+     * @see <a href="https://github.com/Xephi/AuthMeReloaded/blob/master/src/main/java/fr/xephi/authme/security/crypts/SHA256.java">AuthMe Reloaded</a>
      */
     public static String encryptString(@NotNull String string) throws NoSuchAlgorithmException {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hash = digest.digest(string.getBytes(StandardCharsets.UTF_8));
-        return new String(hash);
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+        sha256.reset();
+        sha256.update(string.getBytes());
+        byte[] digest = sha256.digest();
+        return String.format("%0" + (digest.length << 1) + "x", new BigInteger(1, digest));
     }
 }

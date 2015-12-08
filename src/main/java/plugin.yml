@@ -13,3 +13,7 @@ commands:
     aliases: registrar
   godmode:
     aliases: god
+  gamemode:
+    aliases: gm
+  fly:
+    aliases: flight

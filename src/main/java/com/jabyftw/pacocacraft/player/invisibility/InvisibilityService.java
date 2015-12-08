@@ -94,45 +94,4 @@ public class InvisibilityService implements ServerService {
     public static boolean isPlayerAlone(Player player) {
         return alonePlayers.contains(player);
     }
-
-    /*public static final Object storedProfileLock = new Object();
-    private final HashBasedTable<String, ProfileType, BasePlayerProfile> storedProfiles = HashBasedTable.create();
-    private BukkitTask storedProfilesTask;
-
-
-    /**
-     * Store profile instance in case player rejoins in a few minutes
-     * UserLoginService will save it on destruction
-     *
-     * @param userProfile given user profile of a logged off player
-     *
-    public void storeProfile(@NotNull UserProfile userProfile) {
-        // Make sure player is removed
-        if(userProfile.getPlayer() != null)
-            throw new IllegalStateException("Tried to store a logged on user profile: " + userProfile.getPlayer().getName() + " which " +
-                    (userProfile.getPlayer().isOnline() ? "is online." : "is offline."));
-
-        storedProfiles.put(userProfile.getPlayerName().toLowerCase(), userProfile);
-    }
-
-    private class StoredProfilesSavingTask implements Runnable {
-        // TODO stored user profiles: set last time online on UserProfile and check its lifetime (if passed some time, save it and remove from cache)
-
-        private final long timeNeededToProfile = TimeUnit.SECONDS.toMillis(ConfigValue.LOGIN_PROFILE_WAITING_TIME.<Long>getValue());
-
-        @Override
-        public void run() {
-            // Iterate while has next
-            Iterator<UserProfile> iterator = storedProfiles.values().iterator();
-            while(iterator.hasNext()) {
-                UserProfile userProfile = iterator.next();
-
-                // If profile has been already been queued for long
-                if((System.currentTimeMillis() - userProfile.getLastTimeOnlineMillis()) > timeNeededToProfile) {
-                    iterator.remove();
-                }
-            }
-        }
-    }*/
-
 }

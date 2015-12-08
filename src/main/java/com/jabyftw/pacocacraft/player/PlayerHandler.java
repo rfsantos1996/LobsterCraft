@@ -50,8 +50,7 @@ public class PlayerHandler {
      * @param player      Bukkit's Player instance
      * @param userProfile base player's UserProfile so he can log in
      *
-     * @see com.jabyftw.pacocacraft.login.UserLoginService Profiles are kept under this queue until save-time
-     * // TODO change ^
+     * @see PlayerService#storeProfile(PlayerProfile) is where profiles are sent after player log off
      */
     public PlayerHandler(@NotNull Player player, @NotNull UserProfile userProfile) {
         this.player = player;
@@ -71,7 +70,15 @@ public class PlayerHandler {
             // Remove player handler for profile (prepare for destruction/reconstruction)
             profile.setPlayerHandler(null);
 
-            // TODO Deliver profiles to somewhere else
+            // Send all PlayerProfiles to storage (as it is compatible)
+            //noinspection Convert2streamapi
+            for(BasePlayerProfile basePlayerProfile : playerProfiles.values()) {
+                if(basePlayerProfile instanceof PlayerProfile)
+                    PacocaCraft.playerService.storeProfile((PlayerProfile) basePlayerProfile);
+            }
+
+            // Send UserProfile (BasePlayerProfile) to its personal storage
+            PacocaCraft.userLoginService.storeProfile(getProfile(UserProfile.class));
 
             // Remove profile from player handler
             iterator.remove();

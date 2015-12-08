@@ -1,16 +1,21 @@
 package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.login.commands.LoginCommand;
 import com.jabyftw.pacocacraft.login.commands.RegisterCommand;
+import com.jabyftw.pacocacraft.player.PlayerService;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.ServerService;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.concurrent.*;
 
 /**
@@ -38,17 +43,32 @@ public class UserLoginService implements ServerService {
 
     // User profile management
     private final ConcurrentHashMap<String, ForkJoinTask<UserProfile>> userProfileRequests = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, UserProfile> userProfileMap = new ConcurrentHashMap<>();
+    private UserProfileSavingTask profilesSavingTask;
+    private BukkitTask storedProfilesTask;
 
     @Override
     public void onEnable() {
         Bukkit.getServer().getPluginManager().registerEvents(new JoinListener(this), PacocaCraft.pacocaCraft);
+        Bukkit.getServer().getPluginManager().registerEvents(new LoginListener(), PacocaCraft.pacocaCraft);
         Bukkit.getServer().getPluginCommand("login").setExecutor(new LoginCommand());
         Bukkit.getServer().getPluginCommand("register").setExecutor((registerCommand = new RegisterCommand()));
+        storedProfilesTask = BukkitScheduler.runTaskTimerAsynchronously(
+                PacocaCraft.pacocaCraft,
+                (profilesSavingTask = new UserProfileSavingTask()),
+                PlayerService.TIME_BETWEEN_PROFILE_SAVES_TICKS,
+                PlayerService.TIME_BETWEEN_PROFILE_SAVES_TICKS
+        );
         PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 
     @Override
     public void onDisable() {
+        storedProfilesTask.cancel();
+        // Force run if server is closing
+        PacocaCraft.logger.info("Trying to save user profiles; If stuck, tell developer");
+        while(!userProfileMap.isEmpty())
+            profilesSavingTask.run();
     }
 
     /**
@@ -59,12 +79,16 @@ public class UserLoginService implements ServerService {
     public void requestUserProfile(@NotNull String rawPlayerName) {
         final String playerName = rawPlayerName.toLowerCase();
 
+        // Check if UserProfile isn't stored
+        if(userProfileMap.containsKey(playerName))
+            return;
+
         // Obtain user profile from MySQL asynchronously (preferably, there are other plugins)
         ForkJoinTask<UserProfile> forkJoinTask = ForkJoinPool.commonPool().submit(() -> {
             UserProfile userProfile = null;
 
             // Try to fetch user profile (erros will be caught by ForkJoinTask)
-            userProfile = fetchUserProfile(playerName);
+            userProfile = UserProfile.fetchUserProfile(playerName);
 
             // If none found, create default
             if(userProfile == null)
@@ -79,77 +103,84 @@ public class UserLoginService implements ServerService {
     /**
      * Wait profile for arrival (join thread)
      *
-     * @param playerName player's name
+     * @param rawPlayerName player's name
      */
-    public void waitUserProfile(@NotNull String playerName) {
-        ForkJoinTask<UserProfile> joinTask = userProfileRequests.get(playerName.toLowerCase());
+    public void waitUserProfile(@NotNull String rawPlayerName) {
+        String playerName = rawPlayerName.toLowerCase();
+
+        // Check if UserProfile isn't stored
+        if(userProfileMap.containsKey(playerName))
+            return;
+
+        ForkJoinTask<UserProfile> joinTask = userProfileRequests.get(playerName);
         if(joinTask != null)
             try {
                 // Wait for MySQL response and processing
                 joinTask.join();
             } catch(Exception e) {
                 e.printStackTrace();
-                PacocaCraft.logger.warning("Couldn't fetch profile for " + playerName);
+                PacocaCraft.logger.warning("Couldn't fetch profile for " + rawPlayerName);
             }
     }
 
     /**
      * Get loaded profile loaded at pre-login event and remove it from queue
      *
-     * @param playerName player's name
+     * @param rawPlayerName player's name
      *
      * @return loaded/stored user profile or null if none found (but probably will throw exceptions)
      */
-    public UserProfile getUserProfile(@NotNull String playerName) throws ExecutionException, InterruptedException {
-        // Get UserProfile from request
-        return userProfileRequests.get(playerName.toLowerCase()).get();
+    public UserProfile getUserProfile(@NotNull String rawPlayerName) throws ExecutionException, InterruptedException {
+        String playerName = rawPlayerName.toLowerCase();
+
+        // Get UserProfile from request or storage
+        UserProfile userProfile = userProfileMap.getOrDefault(playerName, userProfileRequests.get(playerName).get());
+
+        // Set profile as not stored
+        userProfile.setStoredSince(-1);
+
+        return userProfile;
     }
 
     /**
-     * Return user profile fetched from MySQL
-     * <b>NOTE:</b> should be on async since it'll lookup in the database
+     * Store profile until player needs it or it's lifetime passes waiting
+     * <b>NOTE:</b> it'll be saved if needed asynchronously
      *
-     * @param playerName player's name
-     *
-     * @return null if profile wasn't found
-     *
-     * @throws SQLException
+     * @param userProfile desired user profile to be stored
      */
-    public static UserProfile fetchUserProfile(@NotNull String playerName) throws SQLException {
-        playerName = playerName.toLowerCase();
-        UserProfile userProfile;
+    public void storeProfile(@NotNull UserProfile userProfile) {
+        userProfile.setStoredSince(System.currentTimeMillis());
+        userProfileMap.put(userProfile.getPlayerName().toLowerCase(), userProfile);
+    }
 
-        // Get connection from pool and execute query
-        Connection connection = PacocaCraft.dataSource.getConnection();
-        {
-            // Prepare statement arguments
-            PreparedStatement preparedStatement = connection.prepareStatement(
-                    ""
-            );
+    protected class UserProfileSavingTask implements Runnable {
 
-            // Execute statement
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if(!resultSet.next())
-                // If player doesn't exists, return null
-                return null;
+        private final long PROFILE_LIFETIME_MILLIS = TimeUnit.SECONDS.toMillis(ConfigValue.LOGIN_PROFILE_WAITING_TIME.<Long>getValue());
 
-            // Retrieve information
-            long playerId = resultSet.getLong("playerId");
-            String password = resultSet.getString("password");
-            long lastTimeOnline = resultSet.getLong("lastTimeOnline");
-            long playTime = resultSet.getLong("playTime");
-            byte[] lastIp = resultSet.getBytes("lastIp");
+        @Override
+        public void run() {
+            Iterator<UserProfile> iterator = userProfileMap.values().iterator();
 
-            // Apply information to profile on a "loaded profile" constructor
-            userProfile = new UserProfile(playerName, playerId, password, lastTimeOnline, playTime, lastIp);
+            // Iterate while have next
+            while(iterator.hasNext()) {
+                UserProfile profile = iterator.next();
 
-            // Close ResultSet and PreparedStatement
-            resultSet.close();
-            preparedStatement.close();
+                // Check if profile passed its lifetime or server is closing
+                if((System.currentTimeMillis() - profile.getStoredSince()) >= PROFILE_LIFETIME_MILLIS || PacocaCraft.isServerClosing()) {
+
+                    // Save profile if needed
+                    if(profile.shouldBeSaved())
+                        try {
+                            UserProfile.saveUserProfile(profile);
+                        } catch(SQLException e) {
+                            e.printStackTrace();
+                            PacocaCraft.logger.warning("Failed to save profile " + profile.getPlayerName());
+                        }
+
+                    // Remove from map
+                    iterator.remove();
+                }
+            }
         }
-        // Close connection and return profile
-        connection.close();
-
-        return userProfile;
     }
 }

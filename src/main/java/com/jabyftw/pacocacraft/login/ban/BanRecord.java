@@ -54,7 +54,7 @@ public class BanRecord {
 
     public BanRecord(@NotNull BanType banType, PlayerHandler player, PlayerHandler responsible, @NotNull String reason) {
         this.banType = banType;
-        // TODO make sure caller checks if player is online
+        // TODO make sure caller checks if player is online (user profile required)
         this.playerId = player.getProfile(UserProfile.class).getPlayerId();
         this.responsibleId = responsible.getProfile(UserProfile.class).getPlayerId();
         this.responsibleName = responsible.getPlayer().getName();

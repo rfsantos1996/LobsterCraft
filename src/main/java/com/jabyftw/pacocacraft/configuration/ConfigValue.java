@@ -29,14 +29,16 @@ public enum ConfigValue {
     MYSQL_POOL_SIZE("mysql.pool_size", 8),
     MYSQL_CONNECTION_TIMEOUT("mysql.connection_timeout_minutes", 28800),
 
-    LOGIN_PLAYERS_ALLOWED("login.max_number_of_players_joining", 16),
-    LOGIN_PERIOD_OF_TIME("login.period_of_time_seconds", 10.0f),
-    LOGIN_ALLOWED_COMMANDS("login.allowed_commands_before_login", new String[]{"login", "register", "l", "entrar", "registrar"}),
-    LOGIN_TIME_BETWEEN_PROFILE_SAVES("login.time_between_profile_saves_seconds", 90),
-    LOGIN_PROFILE_WAITING_TIME("login.profile_waiting_on_queue_seconds", 60 * 4),
+    LOGIN_JOIN_LIMITER_PLAYERS_ALLOWED("login.max_number_of_players_joining", 16),
+    LOGIN_JOIN_LIMITER_PERIOD_OF_TIME("login.period_of_time_seconds", 10.0f),
+    LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS("login.allowed_commands_before_login", new String[]{"login", "register", "l", "entrar", "registrar"}),
+    LOGIN_TIME_BETWEEN_PROFILE_SAVES("login.time_between_profile_saves_seconds", 30L),
+    LOGIN_PROFILE_WAITING_TIME("login.profile_waiting_on_queue_seconds", 60 * 4L),
 
-    XRAY_TIME_TO_CONSIDER_SAME_MINE("xray.time_to_consider_same_mining_session_seconds", 60 * 4),
+    XRAY_TIME_TO_CONSIDER_SAME_MINE("xray.time_to_consider_same_mining_session_seconds", 60 * 4L),
     XRAY_DISTANCE_TO_CONSIDER_SAME_MINE("xray.distance_to_consider_same_mining_session_blocks", 75.0d),
+
+    TELEPORT_TIME_WAITING("teleport.time_waiting_seconds", 4L),
     ;
 
     private final String path;

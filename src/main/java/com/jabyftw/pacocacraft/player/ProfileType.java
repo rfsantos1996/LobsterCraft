@@ -2,6 +2,9 @@ package com.jabyftw.pacocacraft.player;
 
 import com.jabyftw.pacocacraft.location.TeleportProfile;
 import com.jabyftw.pacocacraft.login.UserProfile;
+import com.sun.istack.internal.NotNull;
+
+import java.sql.SQLException;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -23,8 +26,31 @@ import com.jabyftw.pacocacraft.login.UserProfile;
  */
 public enum ProfileType {
 
-    USER_PROFILE(UserProfile.class),
-    TELEPORT_PROFILE(TeleportProfile.class),;
+    USER_PROFILE(UserProfile.class) {
+        @Override
+        public <T extends BasePlayerProfile> void saveProfile(@NotNull T basePlayerProfile) throws SQLException {
+            UserProfile.saveUserProfile((UserProfile) basePlayerProfile);
+        }
+
+        @Override
+        public <T extends PlayerProfile> T retrieveProfile(long playerId) throws SQLException {
+            return null; // Retrieve requires player name
+        }
+    },
+
+    TELEPORT_PROFILE(TeleportProfile.class) {
+        @Override
+        public <T extends BasePlayerProfile> void saveProfile(@NotNull T basePlayerProfile) throws SQLException {
+            TeleportProfile.saveTeleportProfile((TeleportProfile) basePlayerProfile);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T extends PlayerProfile> T retrieveProfile(long playerId) throws SQLException {
+            return (T) TeleportProfile.fetchTeleportProfile(playerId);
+        }
+    },
+    ;
 
     private final Class<? extends BasePlayerProfile> profileClass;
 
@@ -50,4 +76,8 @@ public enum ProfileType {
         }
         throw new NullPointerException("Profile isn't set on ProfileType Enum");
     }
+
+    public abstract <T extends BasePlayerProfile> void saveProfile(@NotNull T basePlayerProfile) throws SQLException;
+
+    public abstract <T extends PlayerProfile> T retrieveProfile(long playerId) throws SQLException;
 }

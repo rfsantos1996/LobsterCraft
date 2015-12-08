@@ -30,6 +30,7 @@ public abstract class BasePlayerProfile {
 
     // protected so its subclasses have access
     protected boolean modified = false;
+    protected long storedSince = -1;
 
     public BasePlayerProfile(ProfileType profileType) {
         this.profileType = profileType;
@@ -77,5 +78,20 @@ public abstract class BasePlayerProfile {
 
     public ProfileType getProfileType() {
         return profileType;
+    }
+
+    public long getStoredSince() {
+        return storedSince;
+    }
+
+    /**
+     * Set the date that the profile was stored (used to check its lifetime on PlayerService)
+     *
+     * @param storedSince the date of storage; -1 means it isn't stored
+     *
+     * @see PlayerService#storeProfile(PlayerProfile) for more information
+     */
+    public void setStoredSince(long storedSince) {
+        this.storedSince = storedSince;
     }
 }
