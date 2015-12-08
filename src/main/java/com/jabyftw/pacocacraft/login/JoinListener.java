@@ -62,7 +62,8 @@ public class JoinListener implements Listener {
      *
      * @param preLoginEvent async player pre-login event
      */
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGHEST)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
+    // the first thing to do on AsyncPlayerPreLoginEvent
     public void onAsyncPreLoginHighest(AsyncPlayerPreLoginEvent preLoginEvent) {
         String playerName = preLoginEvent.getName().toLowerCase(); // Lower case everything
 
@@ -110,10 +111,12 @@ public class JoinListener implements Listener {
      *
      * @param preLoginEvent async player pre-login event
      */
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
-    public void onAsyncPreLoginLow(AsyncPlayerPreLoginEvent preLoginEvent) {
-        // quietly join profile (never lock main thread)
-        userLoginService.waitUserProfile(preLoginEvent.getName());
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    // the last thing to do on AsyncPlayerPreLoginEvent
+    public void onAsyncPreLoginMonitor(AsyncPlayerPreLoginEvent preLoginEvent) {
+        // Wait for profile (never lock main thread)
+        if(preLoginEvent.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED)
+            userLoginService.waitUserProfile(preLoginEvent.getName());
     }
 
     /**
@@ -121,8 +124,8 @@ public class JoinListener implements Listener {
      *
      * @param joinEvent player join event
      */
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGHEST)
-    public void onPlayerJoin(PlayerJoinEvent joinEvent) {
+    @EventHandler(priority = EventPriority.LOWEST) // the first one
+    public void onPlayerJoinMonitor(PlayerJoinEvent joinEvent) {
         Player player = joinEvent.getPlayer();
 
         // Retrieve user profile
@@ -135,11 +138,11 @@ public class JoinListener implements Listener {
             return;
         }
 
+        // Remove login message
+        joinEvent.setJoinMessage("");
+
         // Create PlayerHandler (it'll add itself to the player list automatically)
         new PlayerHandler(player, userProfile);
-
-        // Update login message
-        joinEvent.setJoinMessage("");
     }
 
     /**
@@ -147,15 +150,17 @@ public class JoinListener implements Listener {
      *
      * @param quitEvent player quit event
      */
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST) // the last thing to do
-    public void onPlayerQuit(PlayerQuitEvent quitEvent) {
-        Player player = quitEvent.getPlayer();
-        PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(player);
-
-        // Update and show quit message if player is visible
-        quitEvent.setQuitMessage(playerHandler.isInvisible() ? "" : "§4- §c" + player.getName());
-
+    @EventHandler(priority = EventPriority.MONITOR) // the last thing to do: destroy PlayerHandler
+    public void onPlayerQuitMonitor(PlayerQuitEvent quitEvent) {
         // Destroy PlayerHandler instance
-        playerHandler.destroy();
+        PacocaCraft.getPlayerHandler(quitEvent.getPlayer()).destroy();
     }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerQuitHighest(PlayerQuitEvent quitEvent) {
+        // Update and show quit message if player is visible
+        quitEvent.setQuitMessage(PacocaCraft.getPlayerHandler(quitEvent.getPlayer()).isInvisible() ? "" : "§4- §c" + quitEvent.getPlayer().getName());
+    }
+
+
 }

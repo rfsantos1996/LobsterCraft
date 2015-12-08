@@ -56,17 +56,19 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
      * @param description  command's description
      * @param usageMessage command's usage message
      */
-    public CommandExecutor(final JavaPlugin plugin, final String name, final String permission, final String description, final String usageMessage) {
+    public CommandExecutor(final @NotNull JavaPlugin plugin, final @NotNull String name, final String permission, final String description, final String usageMessage) {
         final org.bukkit.command.CommandExecutor executor = this;
-        BukkitScheduler.runTaskLater(plugin, () -> {
-            PluginCommand command = plugin.getCommand(name);
-            ((PluginCommand) command
-                    .setDescription(description)
-                    .setUsage("§6Uso: " + usageMessage)
-                    .setPermissionMessage("§cVocê não tem permissão para isto!"))
-                    .setExecutor(executor);
-            command.setPermission(permission);
-        }, 2);
+        PluginCommand command = plugin.getCommand(name);
+        // Check command's existence
+        if(command == null || name.length() == 0)
+            throw new IllegalArgumentException("You must register the command on plugin.yml!");
+
+        ((PluginCommand) command
+                .setDescription(description)
+                .setUsage("§6Uso: " + usageMessage)
+                .setPermissionMessage("§cVocê não tem permissão para isto!"))
+                .setExecutor(executor);
+        command.setPermission(permission);
     }
 
     /**

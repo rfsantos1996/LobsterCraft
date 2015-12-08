@@ -34,7 +34,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class GameModeCommand extends CommandExecutor {
 
     public GameModeCommand() {
-        super(PacocaCraft.pacocaCraft, "", Permissions.PLAYER_GAMEMODE, "§6Altera o modo de jogo do jogador", "§c/gamemode (§4modo de jogo: SURVIVAL, CREATIVE etc§c)");
+        super(PacocaCraft.pacocaCraft, "gamemode", Permissions.PLAYER_GAMEMODE, "§6Altera o modo de jogo do jogador", "§c/gamemode (§4modo de jogo: SURVIVAL, CREATIVE etc§c)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)

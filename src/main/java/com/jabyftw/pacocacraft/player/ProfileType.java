@@ -47,10 +47,10 @@ public enum ProfileType {
         @SuppressWarnings("unchecked")
         @Override
         public <T extends PlayerProfile> T retrieveProfile(long playerId) throws SQLException {
-            return (T) TeleportProfile.fetchTeleportProfile(playerId);
+            T fetchTeleportProfile = (T) TeleportProfile.fetchTeleportProfile(playerId);
+            return fetchTeleportProfile == null ? (T) new TeleportProfile(playerId) : fetchTeleportProfile;
         }
-    },
-    ;
+    },;
 
     private final Class<? extends BasePlayerProfile> profileClass;
 

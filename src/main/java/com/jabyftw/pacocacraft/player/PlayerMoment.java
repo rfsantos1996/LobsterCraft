@@ -1,6 +1,9 @@
 package com.jabyftw.pacocacraft.player;
 
+import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.location.TeleportProfile;
+import com.jabyftw.pacocacraft.location.TeleportService;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -29,7 +32,7 @@ import java.util.Collection;
  */
 public class PlayerMoment {
 
-    private final Player player;
+    private final PlayerHandler playerHandler;
 
     // Variables
     private final float saturation, exhaustion, fallDistance;
@@ -40,8 +43,10 @@ public class PlayerMoment {
     private final ItemStack[] inventoryContents, armorContents;
     private final Location momentLocation;
 
-    public PlayerMoment(@NotNull Player player) {
-        this.player = player;
+    public PlayerMoment(@NotNull PlayerHandler playerHandler) {
+        this.playerHandler = playerHandler;
+        Player player = playerHandler.getPlayer();
+
         // Set floats
         saturation = player.getSaturation();
         exhaustion = player.getExhaustion();
@@ -71,7 +76,8 @@ public class PlayerMoment {
      */
     public void restorePlayerMoment() {
         // Teleport player back to its pre-login location
-        TeleportProfile.teleportInstantaneously(player, momentLocation, false);
+        TeleportBuilder.getBuilder(playerHandler).setLocation(momentLocation).setInstantaneousTeleport(true).execute();
+        Player player = playerHandler.getPlayer();
 
         // Restore everything
         player.addPotionEffects(activePotionEffects);

@@ -379,7 +379,7 @@ public abstract class Util {
     }
 
     /**
-     * Encrypt string using SHA1
+     * Encrypt string using SHA-256
      *
      * @param string string to be encrypted
      *

@@ -2,7 +2,9 @@ package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.location.TeleportProfile;
+import com.jabyftw.pacocacraft.location.TeleportService;
 import com.jabyftw.pacocacraft.player.*;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
@@ -100,9 +102,10 @@ public class UserProfile extends BasePlayerProfile {
         // Need Bukkit API, but we're on PlayerJoinEvent
         // Store last Ip
         lastIp = player.getAddress().getAddress().getAddress();
+        modified = true;
 
         // Store before login information
-        preLoginMoment = new PlayerMoment(player);
+        preLoginMoment = new PlayerMoment(playerHandler);
 
         // Set login 'ideal status' (no potion effects, no pending damage etc)
         PlayerMoment.setIdealStatus(player);
@@ -112,7 +115,7 @@ public class UserProfile extends BasePlayerProfile {
         InvisibilityService.hidePlayerFromEveryone(player);
 
         // Teleport to spawn (without saving player's last location but saving server's before-login location)
-        TeleportProfile.teleportInstantaneously(player, player.getWorld().getSpawnLocation(), false);
+        TeleportBuilder.getBuilder(playerHandler).setLocation(player.getWorld().getSpawnLocation()).setInstantaneousTeleport(true).execute();
     }
 
     @Override

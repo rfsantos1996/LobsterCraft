@@ -38,5 +38,7 @@ public final class Permissions {
             PLAYER_GAMEMODE = "pacocacraft.player.gamemode",
             PLAYER_GAMEMODE_OTHERS = "pacocacraft.player.gamemode.others",
 
-    TELEPORT_INSTANTANEOUSLY = "pacocacraft.teleport.instantaneously";
+    TELEPORT_INSTANTANEOUSLY = "pacocacraft.teleport.instantaneously",
+            TELEPORT_TELEPORT_TO = "pacocacraft.teleport.teleport_to",
+            TELEPORT_TELEPORT_QUIETLY = "pacocacraft.teleport.teleport_quietly";
 }

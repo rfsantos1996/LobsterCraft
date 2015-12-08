@@ -66,9 +66,10 @@ public class UserLoginService implements ServerService {
     public void onDisable() {
         storedProfilesTask.cancel();
         // Force run if server is closing
-        PacocaCraft.logger.info("Trying to save user profiles; If stuck, tell developer");
-        while(!userProfileMap.isEmpty())
+        while(!userProfileMap.isEmpty()) {
+            PacocaCraft.logger.info("Trying to save all user profiles; If stuck, tell developer");
             profilesSavingTask.run();
+        }
     }
 
     /**

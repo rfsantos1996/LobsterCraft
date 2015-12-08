@@ -62,9 +62,10 @@ public class PlayerService implements ServerService {
     public void onDisable() {
         storedProfilesTask.cancel();
         // Force run if server is closing
-        PacocaCraft.logger.info("Trying to save profiles; If stuck, tell developer");
-        while(!storedProfiles.isEmpty())
+        while(!storedProfiles.isEmpty()) {
+            PacocaCraft.logger.info("Trying to save all player profiles; If stuck, tell developer");
             profilesSavingTask.run();
+        }
     }
 
     /**
@@ -90,11 +91,16 @@ public class PlayerService implements ServerService {
     }
 
     public Map<ProfileType, PlayerProfile> getProfiles(long playerId) {
-        Map<ProfileType, PlayerProfile> row;
+        Map<ProfileType, PlayerProfile> row = new EnumMap<>(ProfileType.class);
 
         synchronized(storedProfileLock) {
-            // Copy map
-            row = new EnumMap<>(storedProfiles.row(playerId));
+            // Check if map is not empty
+            Map<ProfileType, PlayerProfile> storedProfilesRow = storedProfiles.row(playerId);
+            if(storedProfilesRow.isEmpty())
+                return row;
+
+            // put map if it isn't empty
+            row.putAll(storedProfilesRow);
 
             // Remove profiles from storage
             for(ProfileType profileType : row.keySet())

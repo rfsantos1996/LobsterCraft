@@ -40,13 +40,14 @@ import java.util.List;
  */
 public class LoginListener implements Listener {
 
+    /*
+     * NOTE: all priorities are set to Lowest so the events are removed already
+     */
+
     // Allowed commands before log in
     private final List<String> allowedCommands = Arrays.asList(ConfigValue.LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS.<String[]>getValue());
 
-    public LoginListener() {
-    }
-
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onBlockBreak(BlockBreakEvent breakEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(breakEvent.getPlayer());
         // If player isn't logged on or isn't visible, he shouldn't be able to interact with blocks
@@ -54,7 +55,7 @@ public class LoginListener implements Listener {
             breakEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onBlockDamage(BlockDamageEvent damageEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(damageEvent.getPlayer());
         // If player isn't logged on or isn't visible, he shouldn't be able to interact with blocks
@@ -62,7 +63,7 @@ public class LoginListener implements Listener {
             damageEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onBlockMultiPlace(BlockMultiPlaceEvent multiPlaceEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(multiPlaceEvent.getPlayer());
         // If player isn't logged on or isn't visible, he shouldn't be able to interact with blocks
@@ -70,7 +71,7 @@ public class LoginListener implements Listener {
             multiPlaceEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onBlockPlace(BlockPlaceEvent placeEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(placeEvent.getPlayer());
         // If player isn't logged on or isn't visible, he shouldn't be able to interact with blocks
@@ -78,7 +79,7 @@ public class LoginListener implements Listener {
             placeEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onSignChange(SignChangeEvent signChangeEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(signChangeEvent.getPlayer());
         // If player isn't logged on or isn't visible, he shouldn't be able to interact with blocks
@@ -86,7 +87,7 @@ public class LoginListener implements Listener {
             signChangeEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onHangingBreak(HangingBreakByEntityEvent hangingBreakEvent) {
         if(hangingBreakEvent.getEntity() instanceof Player) {
             PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) hangingBreakEvent.getEntity()));
@@ -96,7 +97,7 @@ public class LoginListener implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPlayerLeash(PlayerLeashEntityEvent leashEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(leashEvent.getPlayer());
         // If he isn't logged on or isn't visible, he shouldn't be able to leash entities
@@ -104,7 +105,7 @@ public class LoginListener implements Listener {
             leashEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPlayerTargeted(EntityTargetLivingEntityEvent targetEvent) {
         if(targetEvent.getTarget() instanceof Player) {
             PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) targetEvent.getTarget()));
@@ -115,7 +116,7 @@ public class LoginListener implements Listener {
     }
 
     // NOTE: It isn't possible to cancel PlayerDeathEvent
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPlayerDamaged(EntityDamageEvent damageEvent) {
         if(damageEvent.getEntity() instanceof Player) {
             PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) damageEvent.getEntity()));
@@ -125,13 +126,13 @@ public class LoginListener implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onEntityDamagedByPlayer(EntityDamageByEntityEvent damageEvent) {
         if(damageEvent.getDamager() instanceof Player && checkDamager(damageEvent.getEntity(), PacocaCraft.getPlayerHandler(((Player) damageEvent.getDamager()))))
             damageEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onEntityDamagedByProjectile(EntityDamageByEntityEvent damageEvent) {
         if(damageEvent.getDamager() instanceof Projectile) {
             Projectile projectile = (Projectile) damageEvent.getDamager();
@@ -157,7 +158,7 @@ public class LoginListener implements Listener {
         return !damager.isDamageable();
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onInventoryOpen(InventoryOpenEvent inventoryOpenEvent) {
         // Safe cast, the only subinterface is Player
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) inventoryOpenEvent.getPlayer()));
@@ -166,7 +167,7 @@ public class LoginListener implements Listener {
             inventoryOpenEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onInventoryOpen(InventoryInteractEvent inventoryInteractEvent) {
         // Safe cast, the only subinterface is Player
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) inventoryInteractEvent.getWhoClicked()));
@@ -175,7 +176,7 @@ public class LoginListener implements Listener {
             inventoryInteractEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onFoodLevelChange(FoodLevelChangeEvent foodLevelChangeEvent) {
         // Safe cast, the only subinterface is Player
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) foodLevelChangeEvent.getEntity()));
@@ -185,7 +186,7 @@ public class LoginListener implements Listener {
             foodLevelChangeEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onEntityCombust(EntityCombustEvent combustEvent) {
         if(combustEvent.getEntity() instanceof Player) {
             PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) combustEvent.getEntity()));
@@ -195,7 +196,7 @@ public class LoginListener implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPortalEvent(EntityPortalEvent portalEvent) {
         if(portalEvent.getEntity() instanceof Player) {
             PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) portalEvent.getEntity()));
@@ -205,7 +206,7 @@ public class LoginListener implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onShootBow(EntityShootBowEvent shootBowEvent) {
         if(shootBowEvent.getEntity() instanceof Player) {
             PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(((Player) shootBowEvent.getEntity()));
@@ -215,7 +216,7 @@ public class LoginListener implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onInteraction(PlayerInteractEvent interactEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(interactEvent.getPlayer());
         // If player isn't logged in, he should not interact
@@ -223,7 +224,7 @@ public class LoginListener implements Listener {
             interactEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onExpChange(PlayerExpChangeEvent expChangeEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(expChangeEvent.getPlayer());
         // If player isn't logged in, he should not receive exp
@@ -231,7 +232,7 @@ public class LoginListener implements Listener {
             expChangeEvent.setAmount(0);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onChat(AsyncPlayerChatEvent chatEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(chatEvent.getPlayer());
         // If player isn't logged in, he should not chat
@@ -239,7 +240,7 @@ public class LoginListener implements Listener {
             chatEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onCommandPreProcess(PlayerCommandPreprocessEvent commandPreprocessEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(commandPreprocessEvent.getPlayer());
         // If player isn't logged in, he should not
@@ -247,7 +248,7 @@ public class LoginListener implements Listener {
             commandPreprocessEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onItemDrop(PlayerDropItemEvent dropItemEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(dropItemEvent.getPlayer());
         // If player isn't logged in or invisible, he should not drop items
@@ -255,7 +256,7 @@ public class LoginListener implements Listener {
             dropItemEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onItemConsume(PlayerItemConsumeEvent itemConsumeEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(itemConsumeEvent.getPlayer());
         // If player isn't logged in or invisible, he should not consume items
@@ -263,7 +264,7 @@ public class LoginListener implements Listener {
             itemConsumeEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onItemDamage(PlayerItemDamageEvent damageEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(damageEvent.getPlayer());
         // If player isn't logged in or invisible, he should not damage items
@@ -271,7 +272,7 @@ public class LoginListener implements Listener {
             damageEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPickupItems(PlayerPickupItemEvent pickupItemEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(pickupItemEvent.getPlayer());
         // If player isn't logged in or invisible, he should not pickup items
@@ -279,7 +280,7 @@ public class LoginListener implements Listener {
             pickupItemEvent.setCancelled(true);
     }
 
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGH)
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPlayerMove(PlayerMoveEvent playerMoveEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(playerMoveEvent.getPlayer());
         Location from, to;

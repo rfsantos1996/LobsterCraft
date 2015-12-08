@@ -17,3 +17,5 @@ commands:
     aliases: gm
   fly:
     aliases: flight
+  teleport:
+    aliases: tp

@@ -45,7 +45,7 @@ public class PlayerHandler {
 
     /**
      * Create PlayerHandle instance (holder of all profiles and variables)
-     * Initiated on PlayerJoinEvent (highest priority) and destroyed on PlayerQuitEvent (lowest priority)
+     * Initiated on PlayerJoinEvent (lowest priority - the first one) and destroyed on PlayerQuitEvent (monitor priority)
      *
      * @param player      Bukkit's Player instance
      * @param userProfile base player's UserProfile so he can log in
@@ -60,33 +60,6 @@ public class PlayerHandler {
 
         // Add user profile (acquired at AsyncPreLogin - before PlayerJoin)
         applyProfile(userProfile);
-    }
-
-    public void destroy() {
-        Iterator<BasePlayerProfile> iterator = playerProfiles.values().iterator();
-        while(iterator.hasNext()) {
-            BasePlayerProfile profile = iterator.next();
-
-            // Remove player handler for profile (prepare for destruction/reconstruction)
-            profile.setPlayerHandler(null);
-
-            // Send all PlayerProfiles to storage (as it is compatible)
-            //noinspection Convert2streamapi
-            for(BasePlayerProfile basePlayerProfile : playerProfiles.values()) {
-                if(basePlayerProfile instanceof PlayerProfile)
-                    PacocaCraft.playerService.storeProfile((PlayerProfile) basePlayerProfile);
-            }
-
-            // Send UserProfile (BasePlayerProfile) to its personal storage
-            PacocaCraft.userLoginService.storeProfile(getProfile(UserProfile.class));
-
-            // Remove profile from player handler
-            iterator.remove();
-        }
-
-        // Remove player from list (instance will be removed)
-        if(!PacocaCraft.playerMap.remove(this.player, this))
-            throw new IllegalStateException("Tried to remove PlayerHandler but it is stored as something else");
     }
 
     /**
@@ -105,6 +78,34 @@ public class PlayerHandler {
         // Apply player profile
         profile.setPlayerHandler(this);
         playerProfiles.put(profileType, profile);
+    }
+
+    public void destroy() {
+        Iterator<BasePlayerProfile> iterator = playerProfiles.values().iterator();
+        while(iterator.hasNext()) {
+            BasePlayerProfile profile = iterator.next();
+
+            // Remove player handler for profile (prepare for destruction/reconstruction)
+            profile.setPlayerHandler(null);
+
+            // Send all PlayerProfiles to storage (as it is compatible)
+            if(profile instanceof UserProfile) {
+                // Send UserProfile (BasePlayerProfile) to its personal storage
+                PacocaCraft.userLoginService.storeProfile((UserProfile) profile);
+            } else if(profile instanceof PlayerProfile) {
+                // Send other profiles (PlayerProfile) to general storage
+                PacocaCraft.playerService.storeProfile((PlayerProfile) profile);
+            } else {
+                PacocaCraft.logger.warning(profile.getProfileType().name() + " is not handled at PlayerHandler#destroy");
+            }
+
+            // Remove profile from player handler
+            iterator.remove();
+        }
+
+        // Remove player from list (instance will be removed)
+        if(!PacocaCraft.playerMap.remove(this.player, this))
+            throw new IllegalStateException("Tried to remove PlayerHandler but it is stored as something else");
     }
 
     public Player getPlayer() {

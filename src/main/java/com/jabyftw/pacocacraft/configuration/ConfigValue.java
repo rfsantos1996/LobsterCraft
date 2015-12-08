@@ -39,6 +39,8 @@ public enum ConfigValue {
     XRAY_DISTANCE_TO_CONSIDER_SAME_MINE("xray.distance_to_consider_same_mining_session_blocks", 75.0d),
 
     TELEPORT_TIME_WAITING("teleport.time_waiting_seconds", 4L),
+    TELEPORT_REQUEST_TIMEOUT("teleport.request_timeout_seconds", 60 * 2L),
+    TELEPORT_TIME_ACCEPT_TELEPORT("teleport.time_between_accept_and_teleport_ticks", 12L),
     ;
 
     private final String path;

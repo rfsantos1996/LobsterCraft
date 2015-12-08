@@ -2,21 +2,14 @@ package com.jabyftw.pacocacraft.location;
 
 import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.BasePlayerProfile;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.player.PlayerProfile;
 import com.jabyftw.pacocacraft.player.ProfileType;
-import com.jabyftw.pacocacraft.login.UserProfile;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -38,11 +31,6 @@ import java.util.HashMap;
  */
 public class TeleportProfile extends PlayerProfile {
 
-    protected static final HashMap<Player, TeleportProfile> waitingTeleportPlayers = new HashMap<>();
-
-    // Variables
-    private BukkitTask currentTeleport = null;
-
     // Database related
     private Location lastLocation = null;
 
@@ -61,48 +49,13 @@ public class TeleportProfile extends PlayerProfile {
 
     @Override
     public void onPlayerHandleDestruction() {
-        setCurrentTeleport(null, false);
-    }
-
-    public BukkitTask getCurrentTeleport() {
-        return currentTeleport;
-    }
-
-    /**
-     * Set delayed teleport task (it'll check for player move, damage etc)
-     *
-     * @param currentTeleport current task (null means finished teleporting and player will be removed from listener)
-     * @param warnPlayer      if player should be warned about being cancelled or started teleporting
-     */
-    public void setCurrentTeleport(@Nullable BukkitTask currentTeleport, boolean warnPlayer) {
-        // Cancel current teleport task if it exists
-        if(this.currentTeleport != null)
-            this.currentTeleport.cancel(); // Cancel current (it won't set null)
-
-        Player player = getPlayerHandler().getPlayer();
-
-        // If new teleport isn't null, don't let player move and stuff (used on listener)
-        if(currentTeleport != null) {
-            waitingTeleportPlayers.put(player, this);
-
-            // Warn player
-            if(warnPlayer) player.sendMessage("§4NÃO SE MOVA! §cTeleporte iniciado...");
-        } else {
-            // Else if teleport is finished (set as null), remove from listener
-            waitingTeleportPlayers.remove(player);
-
-            // Warn player
-            if(warnPlayer) player.sendMessage("§cSeu teleporte foi cancelado!");
-        }
-
-        this.currentTeleport = currentTeleport;
     }
 
     public Location getLastLocation() {
         return lastLocation;
     }
 
-    public void setLastLocation(Location lastLocation) {
+    protected void setLastLocation(@Nullable Location lastLocation) {
         this.lastLocation = lastLocation;
     }
 
@@ -160,24 +113,25 @@ public class TeleportProfile extends PlayerProfile {
             // Update statement where needed
             preparedStatement.setLong(1, teleportProfile.getPlayerId());
 
+            // This table supports null values, so... (this looks ugly but I would need to store something to get if it is on database ); )
             Location lastLocation = teleportProfile.getLastLocation();
-            preparedStatement.setString(2, lastLocation.getWorld().getName().toLowerCase());
-            preparedStatement.setString(8, lastLocation.getWorld().getName().toLowerCase());
+            preparedStatement.setObject(2, lastLocation == null ? null : lastLocation.getWorld().getName().toLowerCase(), Types.VARCHAR);
+            preparedStatement.setObject(8, lastLocation == null ? null : lastLocation.getWorld().getName().toLowerCase(), Types.VARCHAR);
 
-            preparedStatement.setDouble(3, lastLocation.getX());
-            preparedStatement.setDouble(9, lastLocation.getX());
+            preparedStatement.setObject(3, lastLocation == null ? null : lastLocation.getX(), Types.DOUBLE);
+            preparedStatement.setObject(9, lastLocation == null ? null : lastLocation.getX(), Types.DOUBLE);
 
-            preparedStatement.setDouble(4, lastLocation.getY());
-            preparedStatement.setDouble(10, lastLocation.getY());
+            preparedStatement.setObject(4, lastLocation == null ? null : lastLocation.getY(), Types.DOUBLE);
+            preparedStatement.setObject(10, lastLocation == null ? null : lastLocation.getY(), Types.DOUBLE);
 
-            preparedStatement.setDouble(5, lastLocation.getZ());
-            preparedStatement.setDouble(11, lastLocation.getZ());
+            preparedStatement.setObject(5, lastLocation == null ? null : lastLocation.getZ(), Types.DOUBLE);
+            preparedStatement.setObject(11, lastLocation == null ? null : lastLocation.getZ(), Types.DOUBLE);
 
-            preparedStatement.setFloat(6, lastLocation.getYaw());
-            preparedStatement.setFloat(12, lastLocation.getYaw());
+            preparedStatement.setObject(6, lastLocation == null ? null : lastLocation.getYaw(), Types.FLOAT);
+            preparedStatement.setObject(12, lastLocation == null ? null : lastLocation.getYaw(), Types.FLOAT);
 
-            preparedStatement.setFloat(7, lastLocation.getPitch());
-            preparedStatement.setFloat(13, lastLocation.getPitch());
+            preparedStatement.setObject(7, lastLocation == null ? null : lastLocation.getPitch(), Types.FLOAT);
+            preparedStatement.setObject(13, lastLocation == null ? null : lastLocation.getPitch(), Types.FLOAT);
 
             // Execute statement
             preparedStatement.execute();
