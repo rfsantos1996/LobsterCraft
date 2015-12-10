@@ -5,6 +5,8 @@ import com.sun.istack.internal.NotNull;
 import org.bukkit.Location;
 import org.bukkit.util.NumberConversions;
 
+import java.text.DecimalFormat;
+
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
  * <p>
@@ -117,5 +119,11 @@ public class StorableLocation {
 
     public static Location toLocation(@NotNull StorableLocation location) {
         return new Location(Util.parseToWorld(location.worldName), location.x, location.y, location.z, location.yaw, location.pitch);
+    }
+
+    @Override
+    public String toString() {
+        DecimalFormat decimalFormat = new DecimalFormat("0.0");
+        return "{" + worldName + ", " + decimalFormat.format(getX()) + ", " + decimalFormat.format(getY()) + ", " + decimalFormat.format(getZ()) + "}";
     }
 }

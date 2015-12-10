@@ -123,12 +123,12 @@ public class PacocaCraft extends JavaPlugin {
         // Setup MySQL's Data Source
         HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setDataSourceClassName("org.mariadb.jdbc.MySQLDataSource");
-        hikariConfig.setJdbcUrl(ConfigValue.MYSQL_JDBC_URL.<String>getValue());
-        hikariConfig.setUsername(ConfigValue.MYSQL_USERNAME.<String>getValue());
-        hikariConfig.setPassword(ConfigValue.MYSQL_PASSWORD.<String>getValue());
-        hikariConfig.setMaximumPoolSize(ConfigValue.MYSQL_POOL_SIZE.<Integer>getValue()); // (Core count * 2) + spindle (?)
+        hikariConfig.setJdbcUrl(PacocaCraft.config.getString(ConfigValue.MYSQL_JDBC_URL.getPath()));
+        hikariConfig.setUsername(PacocaCraft.config.getString(ConfigValue.MYSQL_USERNAME.getPath()));
+        hikariConfig.setPassword(PacocaCraft.config.getString(ConfigValue.MYSQL_PASSWORD.getPath()));
+        hikariConfig.setMaximumPoolSize(PacocaCraft.config.getInt(ConfigValue.MYSQL_POOL_SIZE.getPath())); // (Core count * 2) + spindle (?)
         hikariConfig.setConnectionTimeout(TimeUnit.SECONDS.toMillis(3)); // 3 seconds before throwing exceptions
-        hikariConfig.setMaxLifetime(TimeUnit.SECONDS.toMillis(ConfigValue.MYSQL_CONNECTION_TIMEOUT.<Integer>getValue() - 60)); // one minute before MariaDB's idle timeout
+        hikariConfig.setMaxLifetime(TimeUnit.SECONDS.toMillis(PacocaCraft.config.getInt(ConfigValue.MYSQL_CONNECTION_TIMEOUT.getPath()) - 60)); // one minute before MariaDB's idle timeout
 
         try {
             // Connect to database, close if it doesn't

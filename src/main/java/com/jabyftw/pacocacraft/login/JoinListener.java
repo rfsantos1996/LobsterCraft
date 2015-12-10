@@ -43,7 +43,8 @@ public class JoinListener implements Listener {
     private final UserLoginService userLoginService;
 
     // Player join limit
-    private static int playersPerTick = (int) Math.ceil(ConfigValue.LOGIN_JOIN_LIMITER_PLAYERS_ALLOWED.<Integer>getValue() / (ConfigValue.LOGIN_JOIN_LIMITER_PERIOD_OF_TIME.<Float>getValue() * 20f));
+    private static int playersPerTick = (int) Math.ceil(PacocaCraft.config.getInt(ConfigValue.LOGIN_JOIN_LIMITER_PLAYERS_ALLOWED.getPath()) /
+            (PacocaCraft.config.getDouble(ConfigValue.LOGIN_JOIN_LIMITER_PERIOD_OF_TIME.getPath()) * 20f));
     private static int ticksPerJoin = (int) Math.ceil(1 / playersPerTick);
     private static long lastJoinTick = 0;
 

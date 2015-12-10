@@ -64,7 +64,7 @@ public class RegisterCommand extends CommandExecutor {
         return HandleResponse.RETURN_TRUE;
     }
 
-    @CommandHandler(senderType = SenderType.CONSOLE, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
+    @CommandHandler(senderType = SenderType.CONSOLE, additionalPermissions = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
     public HandleResponse onConsoleRegister(CommandSender commandSender, PlayerHandler playerHandler, String password1, String password2) {
         // Check if passwords match
         if(!password1.equals(password2)) {

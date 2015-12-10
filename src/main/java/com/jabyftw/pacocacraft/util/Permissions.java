@@ -37,8 +37,21 @@ public final class Permissions {
             PLAYER_FLY_OTHERS = "pacocacraft.player.fly.others",
             PLAYER_GAMEMODE = "pacocacraft.player.gamemode",
             PLAYER_GAMEMODE_OTHERS = "pacocacraft.player.gamemode.others",
+            PLAYER_PENDING_ITEMS = "pacocacraft.player.pending_items",
+            PLAYER_GIVE = "pacocacraft.player.give",
+            PLAYER_GIVE_OTHERS = "pacocacraft.player.give.others",
 
     TELEPORT_INSTANTANEOUSLY = "pacocacraft.teleport.instantaneously",
+            TELEPORT_WORLD = "pacocacraft.teleport.world",
+            TELEPORT_WORLD_OTHERS = "pacocacraft.teleport.world.others",
+            TELEPORT_BACK = "pacocacraft.teleport.back",
+            TELEPORT_SPAWN = "pacocacraft.teleport.spawn",
+            TELEPORT_SPAWN_OTHERS = "pacocacraft.teleport.spawn.others",
+            TELEPORT_SPAWN_SET = "pacocacraft.teleport.spawn.set",
             TELEPORT_TELEPORT_TO = "pacocacraft.teleport.teleport_to",
-            TELEPORT_TELEPORT_QUIETLY = "pacocacraft.teleport.teleport_quietly";
+            TELEPORT_TELEPORT_TO_OTHERS = "pacocacraft.teleport.teleport_to.others",
+            TELEPORT_TELEPORT_HERE = "pacocacraft.teleport.teleport_here",
+            TELEPORT_TELEPORT_QUIETLY = "pacocacraft.teleport.teleport_quietly",
+            TELEPORT_TOP = "pacocacraft.teleport.top",
+            TELEPORT_TOP_OTHERS = "pacocacraft.teleport.top.others";
 }

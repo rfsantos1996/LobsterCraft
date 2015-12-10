@@ -8,7 +8,6 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.command.CommandSender;
-import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -45,12 +44,12 @@ public class GodModeCommand extends CommandExecutor {
         return HandleResponse.RETURN_TRUE;
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermission = Permissions.PLAYER_GOD_MODE_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GOD_MODE_OTHERS)
     public HandleResponse onGodModeByOther(CommandSender commandSender, PlayerHandler targetPlayer) {
         return onGodModeByOther(commandSender, targetPlayer, !targetPlayer.isGodMode()); // toggle
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermission = Permissions.PLAYER_GOD_MODE_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GOD_MODE_OTHERS)
     public HandleResponse onGodModeByOther(CommandSender commandSender, PlayerHandler targetPlayer, boolean godMode) {
         if(targetPlayer.setGodMode(!targetPlayer.isGodMode(), commandSender))
             commandSender.sendMessage("§6Jogador " + targetPlayer.getPlayer().getName() + " está em modo deus (god mode).");

@@ -2,9 +2,7 @@ package com.jabyftw.easiercommands;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
-import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.sun.istack.internal.NotNull;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -118,20 +116,19 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
 
                 // Check for additional information
                 CommandHandler declaredAnnotation = currentMethod.getDeclaredAnnotation(CommandHandler.class);
-                String additionalPermission = declaredAnnotation.additionalPermission();
 
                 // Check if command sender can handle this command and has permission to do so
-                if(declaredAnnotation.senderType().canHandleCommandSender(commandSender) && (additionalPermission.length() == 0 || commandSender.hasPermission(additionalPermission))) {
+                if(declaredAnnotation.senderType().canHandleCommandSender(commandSender) && hasPermissions(commandSender, declaredAnnotation.additionalPermissions())) {
                     Class<?>[] requiredArguments = currentMethod.getParameterTypes();
                     boolean isPlayerNeeded;
 
                     /*
                      * Is a valid command?
                      * - Has more than one argument
-                     * - Return a HandleResponse
+                     * - Return a HandleResponse or boolean
                      * - Is player or command sender required at first argument
                      */
-                    if(requiredArguments.length > 0 && currentMethod.getReturnType().isAssignableFrom(HandleResponse.class) &&
+                    if(requiredArguments.length > 0 && (currentMethod.getReturnType().isAssignableFrom(HandleResponse.class) || currentMethod.getReturnType().isAssignableFrom(boolean.class)) &&
                             ((isPlayerNeeded = requiredArguments[0].isAssignableFrom(PLAYER_CLASS)) || requiredArguments[0].isAssignableFrom(CommandSender.class))) {
 
                         // If player didn't sent enough arguments to this command, continue searching
@@ -218,18 +215,25 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
                 }
 
                 // Invoke method given arguments
-                HandleResponse handleResponse = (HandleResponse) mostNearMethod.invoke(this, objects.toArray());
+                Object invoke = mostNearMethod.invoke(this, objects.toArray());
 
-                // Send player response based on command's HandleResponse
-                switch(handleResponse) {
-                    case RETURN_HELP:
-                        commandSender.sendMessage(getColoredMessage(command.getUsage()));
-                        return true;
-                    case RETURN_NO_PERMISSION:
-                        commandSender.sendMessage(getColoredMessage(command.getPermissionMessage()));
-                        return true;
-                    case RETURN_TRUE:
-                        return true;
+                // Check response given to player
+                if(mostNearMethod.getReturnType().isAssignableFrom(HandleResponse.class)) {
+                    HandleResponse handleResponse = (HandleResponse) invoke;
+
+                    // Send player response based on command's HandleResponse
+                    switch(handleResponse) {
+                        case RETURN_HELP:
+                            commandSender.sendMessage(getColoredMessage(command.getUsage()));
+                            return true;
+                        case RETURN_NO_PERMISSION:
+                            commandSender.sendMessage(getColoredMessage(command.getPermissionMessage()));
+                            return true;
+                        case RETURN_TRUE:
+                            return true;
+                    }
+                } else {
+                    return (boolean) invoke;
                 }
             } catch(IllegalAccessException | InvocationTargetException | ClassCastException e) {
                 e.printStackTrace();
@@ -361,5 +365,21 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
      */
     public static String getColoredMessage(String original) {
         return ChatColor.translateAlternateColorCodes('&', original);
+    }
+
+    /**
+     * Check if command sender have every permission requested
+     *
+     * @param commandSender         the sender of the command
+     * @param additionalPermissions array of permissions
+     *
+     * @return true if player have all requested permissions
+     */
+    private boolean hasPermissions(CommandSender commandSender, String[] additionalPermissions) {
+        for(String additionalPermission : additionalPermissions)
+            if(additionalPermission.length() > 0 && !commandSender.hasPermission(additionalPermission))
+                return false;
+
+        return true;
     }
 }

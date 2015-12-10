@@ -1,6 +1,5 @@
 package com.jabyftw.pacocacraft.player.commands;
 
-import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.HandleResponse;
@@ -10,8 +9,6 @@ import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
-import org.bukkit.event.EventHandler;
-import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -48,7 +45,7 @@ public class GameModeCommand extends CommandExecutor {
         return HandleResponse.RETURN_TRUE;
     }
 
-    @CommandHandler(additionalPermission = Permissions.PLAYER_GAMEMODE_OTHERS)
+    @CommandHandler(additionalPermissions = Permissions.PLAYER_GAMEMODE_OTHERS)
     public HandleResponse onGameModeOther(CommandSender commandSender, PlayerHandler target, GameMode gameMode) {
         if(target.getPlayer().getGameMode() != gameMode) {
             target.getPlayer().setGameMode(gameMode);

@@ -156,7 +156,7 @@ public class UserLoginService implements ServerService {
 
     protected class UserProfileSavingTask implements Runnable {
 
-        private final long PROFILE_LIFETIME_MILLIS = TimeUnit.SECONDS.toMillis(ConfigValue.LOGIN_PROFILE_WAITING_TIME.<Long>getValue());
+        private final long PROFILE_LIFETIME_MILLIS = TimeUnit.SECONDS.toMillis(PacocaCraft.config.getLong(ConfigValue.LOGIN_PROFILE_WAITING_TIME.getPath()));
 
         @Override
         public void run() {

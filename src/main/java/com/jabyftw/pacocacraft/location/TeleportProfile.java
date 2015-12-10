@@ -38,7 +38,7 @@ public class TeleportProfile extends PlayerProfile {
         super(ProfileType.TELEPORT_PROFILE, playerId);
     }
 
-    public TeleportProfile(long playerId, @NotNull Location lastLocation) {
+    public TeleportProfile(long playerId, @Nullable Location lastLocation) {
         super(ProfileType.TELEPORT_PROFILE, playerId);
         this.lastLocation = lastLocation;
     }
@@ -57,6 +57,7 @@ public class TeleportProfile extends PlayerProfile {
 
     protected void setLastLocation(@Nullable Location lastLocation) {
         this.lastLocation = lastLocation;
+        modified = true;
     }
 
     public static TeleportProfile fetchTeleportProfile(long playerId) throws SQLException {
@@ -73,19 +74,32 @@ public class TeleportProfile extends PlayerProfile {
 
             // Execute statement
             ResultSet resultSet = preparedStatement.executeQuery();
-            if(!resultSet.next())
+            if(!resultSet.next()) {
+
+                // Returning before, close everything
+                resultSet.close();
+                preparedStatement.close();
+                connection.close();
+
                 // If player doesn't exists, return null
                 return null;
+            }
 
-            // Retrieve information
-            Location lastLocation = new Location(
-                    Util.parseToWorld(resultSet.getString("worldName")),
-                    resultSet.getDouble("x"),
-                    resultSet.getDouble("y"),
-                    resultSet.getDouble("z"),
-                    resultSet.getFloat("yaw"),
-                    resultSet.getFloat("pitch")
-            );
+            Location lastLocation;
+            String worldName = resultSet.getString("worldName");
+
+            // Check if lastLocation is null on database
+            if(resultSet.wasNull())
+                lastLocation = null; // Don't search for more values
+            else
+                lastLocation = new Location(
+                        Util.parseToWorld(worldName),
+                        resultSet.getDouble("x"),
+                        resultSet.getDouble("y"),
+                        resultSet.getDouble("z"),
+                        resultSet.getFloat("yaw"),
+                        resultSet.getFloat("pitch")
+                );
 
             // Apply information to profile on a "loaded profile" constructor
             teleportProfile = new TeleportProfile(playerId, lastLocation);

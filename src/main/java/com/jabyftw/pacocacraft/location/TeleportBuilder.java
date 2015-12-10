@@ -30,8 +30,8 @@ import org.bukkit.scheduler.BukkitTask;
  */
 public class TeleportBuilder {
 
-    private static final long TIME_TO_TELEPORT_TICKS = ConfigValue.TELEPORT_TIME_WAITING.<Long>getValue() * 20L; // Seconds
-    private static final long TIME_BEFORE_LISTENER_TRIGGERS = ConfigValue.TELEPORT_TIME_ACCEPT_TELEPORT.<Long>getValue(); // Already in ticks
+    private static final long TIME_TO_TELEPORT_TICKS = PacocaCraft.config.getLong(ConfigValue.TELEPORT_TIME_WAITING.getPath()) * 20L; // Seconds
+    private static final long TIME_BEFORE_LISTENER_TRIGGERS = PacocaCraft.config.getLong(ConfigValue.TELEPORT_TIME_ACCEPT_TELEPORT.getPath()); // Already in ticks
 
     private final Teleport teleport;
 
@@ -87,7 +87,7 @@ public class TeleportBuilder {
             this.teleportingProfile = teleportingPlayerHandler.getProfile(TeleportProfile.class);
             this.teleportingPlayer = teleportingPlayerHandler.getPlayer();
             // Check if player has permission to do a instantaneous teleport
-            instantaneous = PacocaCraft.permission.has(teleportingProfile.getPlayerHandler().getPlayer(), Permissions.TELEPORT_INSTANTANEOUSLY);
+            instantaneous = PacocaCraft.permission.has(teleportingPlayerHandler.getPlayer(), Permissions.TELEPORT_INSTANTANEOUSLY);
         }
 
         @Override
@@ -113,12 +113,17 @@ public class TeleportBuilder {
             if(teleport.targetLocation == null && teleport.targetPlayer == null)
                 throw new IllegalArgumentException("You didn't set up the target location!");
 
-            // Warn teleporting player not to move
-            if(warnTeleportingBefore)
+            // Check if TeleportProfile is ready in case of usage
+            if(teleport.teleportingProfile == null && teleport.registerLastLocation)
+                throw new IllegalArgumentException("TeleportProfile is null with the intention to register last location!");
+
+            // Warn teleporting player not to move if not instantaneous
+            if(warnTeleportingBefore && !isInstantaneous())
                 teleportingPlayer.sendMessage("§4NÃO SE MOVA! §cTeleporte irá começar...");
 
-            // Warn target player that player is teleporting to you
-            if(warnTargetBefore && targetPlayer != null && targetPlayer.getPlayer().isOnline())
+            // Warn target player that player is teleporting to you if teleporting player doesn't have quietly permission
+            if(warnTargetBefore && targetPlayer != null && targetPlayer.getPlayer().isOnline() &&
+                    !PacocaCraft.permission.has(teleportingPlayer, Permissions.TELEPORT_TELEPORT_QUIETLY))
                 targetPlayer.getPlayer().sendMessage(teleportingPlayer.getDisplayName() + "§c está teleportando até você.");
 
             // Execute teleport task

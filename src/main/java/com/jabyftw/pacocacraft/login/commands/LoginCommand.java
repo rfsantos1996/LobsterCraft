@@ -11,7 +11,6 @@ import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
 import java.security.NoSuchAlgorithmException;
@@ -54,7 +53,7 @@ public class LoginCommand extends CommandExecutor {
         return HandleResponse.RETURN_TRUE;
     }
 
-    @CommandHandler(senderType = SenderType.PLAYER, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
+    @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
     public HandleResponse onRegisterLogin(PlayerHandler playerHandler, String password1, String password2) {
         return UserLoginService.registerCommand.onDefaultRegister(playerHandler, password1, password2);
     }
@@ -67,7 +66,7 @@ public class LoginCommand extends CommandExecutor {
      *
      * @return a possible HandleResponse
      */
-    @CommandHandler(senderType = SenderType.CONSOLE, additionalPermission = Permissions.JOIN_OTHER_ACCOUNT_LOOKUP)
+    @CommandHandler(senderType = SenderType.CONSOLE, additionalPermissions = Permissions.JOIN_OTHER_ACCOUNT_LOOKUP)
     public HandleResponse onConsoleLogin(CommandSender commandSender, final PlayerHandler playerHandler) {
         // Check if playerHandler can be looked up
         if(PacocaCraft.permission.playerHas(playerHandler.getPlayer(), Permissions.JOIN_PREVENT_ACCOUNT_LOOKUP))

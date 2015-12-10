@@ -25,34 +25,32 @@ import java.io.IOException;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class ConfigurationFile {
+public class ConfigurationFile extends YamlConfiguration {
 
     private final File configurationFile;
-    private final YamlConfiguration yamlConfiguration;
 
     public ConfigurationFile(Plugin plugin, String fileName) throws IOException, InvalidConfigurationException {
+        super();
         this.configurationFile = new File(plugin.getDataFolder(), fileName + ".yml");
-        this.yamlConfiguration = new YamlConfiguration();
         loadFile();
     }
 
     public void saveFile() throws IOException {
-        yamlConfiguration.save(configurationFile);
+        save(configurationFile);
     }
 
     public void loadFile() throws IOException, InvalidConfigurationException {
-        // If doesn't exist, create default
-        if(!configurationFile.exists()) {
-            for(ConfigValue configValue : ConfigValue.values())
-                yamlConfiguration.set(configValue.getPath(), configValue.getDefaultValue());
-            saveFile();
-        }
-        yamlConfiguration.load(configurationFile);
-    }
+        // Load file if it exists
+        if(configurationFile.exists())
+            load(configurationFile);
 
-    @SuppressWarnings("unchecked")
-    public <T> T getValue(ConfigValue configValue) {
-        return (T) yamlConfiguration.get(configValue.getPath(), configValue.getDefaultValue());
-    }
+        // Insert non-present default configurations
+        for(ConfigValue configValue : ConfigValue.values())
+            if(!contains(configValue.getPath()))
+                set(configValue.getPath(), configValue.getDefaultValue());
 
+        // Save changes and load file
+        saveFile();
+        load(configurationFile);
+    }
 }

@@ -35,8 +35,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class XrayProtectionService implements ServerService {
 
-    private static final long TIME_TO_CONSIDER_SAME_MINE = ConfigValue.XRAY_TIME_TO_CONSIDER_SAME_MINE.<Long>getValue();
-    private static final double DISTANCE_NEEDED_TO_CONSIDER_SAME_MINE = NumberConversions.square(ConfigValue.XRAY_DISTANCE_TO_CONSIDER_SAME_MINE.<Double>getValue());
+    private static final long TIME_TO_CONSIDER_SAME_MINE = PacocaCraft.config.getLong(ConfigValue.XRAY_TIME_TO_CONSIDER_SAME_MINE.getPath());
+    private static final double DISTANCE_NEEDED_TO_CONSIDER_SAME_MINE = NumberConversions.square(PacocaCraft.config.getDouble(ConfigValue.XRAY_DISTANCE_TO_CONSIDER_SAME_MINE.getPath()));
     protected final static Vector
             versorX = new Vector(1, 0, 0).normalize(),
             versorY = new Vector(0, 1, 0).normalize(),

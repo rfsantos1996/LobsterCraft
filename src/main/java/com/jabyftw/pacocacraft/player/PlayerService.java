@@ -4,10 +4,9 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
+import com.jabyftw.pacocacraft.location.TeleportListener;
 import com.jabyftw.pacocacraft.login.UserProfile;
-import com.jabyftw.pacocacraft.player.commands.FlyCommand;
-import com.jabyftw.pacocacraft.player.commands.GameModeCommand;
-import com.jabyftw.pacocacraft.player.commands.GodModeCommand;
+import com.jabyftw.pacocacraft.player.commands.*;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.ServerService;
 import com.sun.istack.internal.NotNull;
@@ -38,7 +37,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class PlayerService implements ServerService {
 
-    public static final long TIME_BETWEEN_PROFILE_SAVES_TICKS = ConfigValue.LOGIN_TIME_BETWEEN_PROFILE_SAVES.<Long>getValue() * 20L; // seconds * 20 = number of ticks
+    public static final long TIME_BETWEEN_PROFILE_SAVES_TICKS = PacocaCraft.config.getLong(ConfigValue.LOGIN_TIME_BETWEEN_PROFILE_SAVES.getPath()) * 20L; // seconds * 20 = number of ticks
     private static final Object storedProfileLock = new Object();
     private static final HashBasedTable<Long, ProfileType, PlayerProfile> storedProfiles = HashBasedTable.create();
     private StoredProfilesSavingTask profilesSavingTask;
@@ -49,6 +48,29 @@ public class PlayerService implements ServerService {
         Bukkit.getServer().getPluginCommand("godmode").setExecutor(new GodModeCommand());
         Bukkit.getServer().getPluginCommand("gamemode").setExecutor(new GameModeCommand());
         Bukkit.getServer().getPluginCommand("fly").setExecutor(new FlyCommand());
+        Bukkit.getServer().getPluginCommand("item").setExecutor(new PendingItemsCommand());
+        Bukkit.getServer().getPluginCommand("give").setExecutor(new GiveCommand());
+        Bukkit.getServer().getPluginCommand("heal").setExecutor(new HealCommand());
+        Bukkit.getServer().getPluginCommand("enchant").setExecutor(new EnchantCommand());
+        Bukkit.getServer().getPluginCommand("workbench").setExecutor(new WorkbenchCommand());
+        Bukkit.getServer().getPluginCommand("list").setExecutor(new ListCommand());
+        Bukkit.getServer().getPluginCommand("wishper").setExecutor(new WishperCommand());
+        Bukkit.getServer().getPluginCommand("r").setExecutor(new ReplyCommand());
+        Bukkit.getServer().getPluginCommand("mute").setExecutor(new MuteCommand());
+        Bukkit.getServer().getPluginCommand("clear").setExecutor(new ClearInventoryCommand());
+        Bukkit.getServer().getPluginCommand("suicide").setExecutor(new SuicideCommand());
+        Bukkit.getServer().getPluginCommand("kill").setExecutor(new KillPlayersCommand());
+        Bukkit.getServer().getPluginCommand("killall").setExecutor(new KillEntitiesCommand());
+        Bukkit.getServer().getPluginCommand("spawnmob").setExecutor(new SpawnEntitiesCommand());
+        Bukkit.getServer().getPluginCommand("pweather").setExecutor(new PlayerWeatherCommand());
+        Bukkit.getServer().getPluginCommand("ptime").setExecutor(new PlayerTimeCommand());
+        Bukkit.getServer().getPluginCommand("speed").setExecutor(new SpeedCommand());
+        Bukkit.getServer().getPluginCommand("repair").setExecutor(new RepairCommand());
+        Bukkit.getServer().getPluginCommand("spyinv").setExecutor(new InventorySpyCommand());
+        Bukkit.getServer().getPluginCommand("exp").setExecutor(new ExpCommandCommand());
+        Bukkit.getServer().getPluginCommand("feed").setExecutor(new FeedEventCommand());
+        Bukkit.getServer().getPluginCommand("hat").setExecutor(new HatCommand());
+        Bukkit.getServer().getPluginManager().registerEvents(new PlayerListener(), PacocaCraft.pacocaCraft);
         storedProfilesTask = BukkitScheduler.runTaskTimerAsynchronously(
                 PacocaCraft.pacocaCraft,
                 (profilesSavingTask = new StoredProfilesSavingTask()),
@@ -117,7 +139,7 @@ public class PlayerService implements ServerService {
     protected class StoredProfilesSavingTask implements Runnable {
 
         private final EnumMap<ProfileType, ArrayList<PlayerProfile>> pendingSaveProfiles = new EnumMap<>(ProfileType.class);
-        private final long PROFILE_LIFETIME_MILLIS = TimeUnit.SECONDS.toMillis(ConfigValue.LOGIN_PROFILE_WAITING_TIME.<Long>getValue());
+        private final long PROFILE_LIFETIME_MILLIS = TimeUnit.SECONDS.toMillis(PacocaCraft.config.getLong(ConfigValue.LOGIN_PROFILE_WAITING_TIME.getPath()));
 
         protected StoredProfilesSavingTask() {
             for(ProfileType profileType : ProfileType.values())

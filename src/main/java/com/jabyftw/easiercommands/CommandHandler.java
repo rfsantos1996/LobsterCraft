@@ -31,6 +31,6 @@ public @interface CommandHandler {
 
     SenderType senderType() default SenderType.BOTH;
 
-    @NotNull String additionalPermission() default "";
+    @NotNull String[] additionalPermissions() default {""};
 
 }

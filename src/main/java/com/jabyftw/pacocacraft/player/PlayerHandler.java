@@ -10,6 +10,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 
@@ -42,6 +43,7 @@ public class PlayerHandler {
     // Variables
     private boolean godMode = false;
     private final LinkedList<OreLocation> oreLocationHistory = new LinkedList<>();
+    private final ArrayList<ItemStack> pendingItems = new ArrayList<>();
 
     /**
      * Create PlayerHandle instance (holder of all profiles and variables)
@@ -174,6 +176,23 @@ public class PlayerHandler {
 
     public LinkedList<OreLocation> getOreLocationHistory() {
         return oreLocationHistory;
+    }
+
+    public ArrayList<ItemStack> getPendingItems() {
+        return pendingItems;
+    }
+
+    public boolean addItem(boolean warnPlayer, @NotNull ItemStack... itemStacks) {
+        Collection<ItemStack> values = player.getInventory().addItem(itemStacks).values();
+
+        // Add not given items on pending list
+        if(!values.isEmpty()) {
+            Collections.addAll(pendingItems, itemStacks);
+
+            // Warn player if requested
+            if(warnPlayer) player.sendMessage("§cVocês tem itens pendentes. Use §6/itens§c para obtê-los.");
+        }
+        return values.isEmpty();
     }
 
     @Override

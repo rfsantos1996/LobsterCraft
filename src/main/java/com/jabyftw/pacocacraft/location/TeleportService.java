@@ -2,6 +2,7 @@ package com.jabyftw.pacocacraft.location;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
+import com.jabyftw.pacocacraft.location.commands.*;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
@@ -30,9 +31,17 @@ import org.bukkit.Location;
  */
 public class TeleportService implements ServerService {
 
+    public static WorldCommand worldCommand;
+
     @Override
     public void onEnable() {
-        //Bukkit.getPluginCommand("teleport").setExecutor(new TeleportCommand());
+        Bukkit.getPluginCommand("teleport").setExecutor(new TeleportCommand());
+        Bukkit.getPluginCommand("teleporthere").setExecutor(new TeleportHereCommand());
+        Bukkit.getPluginCommand("world").setExecutor((worldCommand = new WorldCommand()));
+        Bukkit.getPluginCommand("spawn").setExecutor(new SpawnCommand());
+        Bukkit.getPluginCommand("spawnset").setExecutor(new SpawnSetCommand());
+        Bukkit.getPluginCommand("back").setExecutor(new BackCommand());
+        Bukkit.getPluginCommand("top").setExecutor(new TopCommand());
         Bukkit.getServer().getPluginManager().registerEvents(new TeleportListener(), PacocaCraft.pacocaCraft);
         PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }

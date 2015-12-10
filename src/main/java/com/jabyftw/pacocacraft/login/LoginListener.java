@@ -3,6 +3,8 @@ package com.jabyftw.pacocacraft.login;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.player.custom_events.PlayerDamageEntityEvent;
+import com.jabyftw.pacocacraft.player.custom_events.PlayerDamagePlayerEvent;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -17,6 +19,7 @@ import org.bukkit.event.inventory.InventoryInteractEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -45,7 +48,7 @@ public class LoginListener implements Listener {
      */
 
     // Allowed commands before log in
-    private final List<String> allowedCommands = Arrays.asList(ConfigValue.LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS.<String[]>getValue());
+    private final List<String> allowedCommands = PacocaCraft.config.getStringList(ConfigValue.LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS.getPath());
 
     @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onBlockBreak(BlockBreakEvent breakEvent) {
@@ -127,18 +130,9 @@ public class LoginListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
-    public void onEntityDamagedByPlayer(EntityDamageByEntityEvent damageEvent) {
-        if(damageEvent.getDamager() instanceof Player && checkDamager(damageEvent.getEntity(), PacocaCraft.getPlayerHandler(((Player) damageEvent.getDamager()))))
-            damageEvent.setCancelled(true);
-    }
-
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
-    public void onEntityDamagedByProjectile(EntityDamageByEntityEvent damageEvent) {
-        if(damageEvent.getDamager() instanceof Projectile) {
-            Projectile projectile = (Projectile) damageEvent.getDamager();
-            if(projectile.getShooter() instanceof Player && checkDamager(damageEvent.getEntity(), PacocaCraft.getPlayerHandler(((Player) projectile.getShooter()))))
-                damageEvent.setCancelled(true);
-        }
+    public void onPlayerDamageEvent(PlayerDamageEntityEvent damageEntityEvent) {
+        if(checkDamager(damageEntityEvent.getDamaged(), PacocaCraft.getPlayerHandler(damageEntityEvent.getPlayer())))
+            damageEntityEvent.setCancelled(true);
     }
 
     /**
@@ -150,7 +144,7 @@ public class LoginListener implements Listener {
      * @return true if event is cancelled
      */
     private boolean checkDamager(Entity damaged, PlayerHandler damager) {
-        // If damaged is an entity (not a player) AND damager is logged in, allow damage (no matter if he is damageable)
+        // If damaged is not a player AND damager is logged in, allow damage (no matter if he is damageable)
         if(!(damaged instanceof Player) && damager.getProfile(UserProfile.class).isLoggedIn())
             return false;
 

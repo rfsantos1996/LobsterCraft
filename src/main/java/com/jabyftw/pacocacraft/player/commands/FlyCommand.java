@@ -45,14 +45,14 @@ public class FlyCommand extends CommandExecutor {
         return onFly(playerHandler, !playerHandler.getPlayer().getAllowFlight());
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermission = Permissions.PLAYER_FLY_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FLY_OTHERS)
     public HandleResponse onFlyOthers(CommandSender commandSender, PlayerHandler target, boolean fly) {
         onFly(target, fly);
         commandSender.sendMessage((fly ? "§6" : "§c") + target.getPlayer().getDisplayName() + (fly ? "§6 está voando" : "§c não está voando."));
         return HandleResponse.RETURN_TRUE;
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermission = Permissions.PLAYER_FLY_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FLY_OTHERS)
     public HandleResponse onFlyOthers(CommandSender commandSender, PlayerHandler target) {
         return onFlyOthers(commandSender, target, !target.getPlayer().getAllowFlight());
     }

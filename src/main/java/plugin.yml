@@ -4,7 +4,7 @@ description: Private plugin for server
 
 main: com.jabyftw.pacocacraft.PacocaCraft
 author: rfsantos1996
-depend: [Vault]
+depend: [Vault ProtocolLib]
 
 commands:
   login:
@@ -19,3 +19,59 @@ commands:
     aliases: flight
   teleport:
     aliases: tp
+  teleporthere:
+    aliases: tphere
+  spawn:
+    description: dont know if I can remove every command attribute
+  spawnset:
+    description: dont know if I can remove every command attribute
+  world:
+    aliases: world
+  give:
+    description: dont know if I can remove every command attribute
+  itens:
+    aliases: item
+  back:
+    aliases: [b, voltar]
+  heal:
+    aliases: curar
+  enchant:
+    aliases: [enchantment, encantar]
+  workbench:
+    description: dont know if I can remove every command attribute
+  list:
+    aliases: [players, jogadores, lista]
+  wishper:
+    aliases: [m, msg]
+  r:
+    description: dont know if I can remove every command attribute
+  broadcast:
+    description: dont know if I can remove every command attribute
+  clear:
+    aliases: [cl, clearinventory]
+  suicide:
+    description: dont know if I can remove every command attribute
+  kill:
+    aliases: [matar]
+  killall:
+    description: dont know if I can remove every command attribute
+  spawnmob:
+    description: dont know if I can remove every command attribute
+  mute:
+    description: dont know if I can remove every command attribute
+  ptime:
+    aliases: tempo
+  pweather:
+    aliases: clima
+  repair:
+    aliases: [reparar, fix]
+  spyinv:
+    aliases: [invsee, inventory]
+  speed:
+    aliases: [flyspeed, walkspeed]
+  exp:
+    aliases: [experience, level]
+  feed:
+    aliases: [eat, hunger]
+  hat:
+    aliases: [chapeu]

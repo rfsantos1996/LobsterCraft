@@ -40,7 +40,7 @@ import java.util.HashMap;
  */
 public class TeleportListener implements Listener {
 
-    protected static final HashMap<Player, TeleportBuilder.Teleport> waitingTeleportPlayers = new HashMap<>(); // TODO
+    protected static final HashMap<Player, TeleportBuilder.Teleport> waitingTeleportPlayers = new HashMap<>();
 
     protected static TeleportBuilder.Teleport getPlayerTeleport(@NotNull Player player) {
         return waitingTeleportPlayers.get(player);
