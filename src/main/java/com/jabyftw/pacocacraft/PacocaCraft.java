@@ -1,5 +1,7 @@
 package com.jabyftw.pacocacraft;
 
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
 import com.jabyftw.pacocacraft.block.block_protection.BlockProtectionService;
 import com.jabyftw.pacocacraft.block.xray_protection.XrayProtectionService;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
@@ -72,6 +74,9 @@ public class PacocaCraft extends JavaPlugin {
     // MySQL (HikariCP is thread safe - I read on stackoverflow)
     public static HikariDataSource dataSource;
 
+    // ProtocolLib
+    public static ProtocolManager protocolManager;
+
     // Variables
     private BukkitTask tickTimingTask;
     private static volatile long currentTick = 1; // after some reading, this should be fine now
@@ -111,6 +116,13 @@ public class PacocaCraft extends JavaPlugin {
             return;
         }
 
+        // Check up for ProtocolLib
+        if(getServer().getPluginManager().getPlugin("ProtocolLib") == null) {
+            logger.severe("Failed to start ProtocolLib! Go get it before!");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         // Get Permission and Chat instances from Vault
         RegisteredServiceProvider<Permission> permissionServiceProvider = getServer().getServicesManager().getRegistration(Permission.class);
         RegisteredServiceProvider<Chat> chatServiceProvider = getServer().getServicesManager().getRegistration(Chat.class);
@@ -119,6 +131,9 @@ public class PacocaCraft extends JavaPlugin {
             logger.warning("Failed to start Vault's permission service!");
         if((chat = chatServiceProvider.getProvider()) == null)
             logger.warning("Failed to start Vault's chat service!");
+
+        // Setup ProtocolLib
+        protocolManager = ProtocolLibrary.getProtocolManager();
 
         // Setup MySQL's Data Source
         HikariConfig hikariConfig = new HikariConfig();

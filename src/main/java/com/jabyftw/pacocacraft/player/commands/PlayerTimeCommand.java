@@ -1,14 +1,14 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
-import org.bukkit.inventory.ItemStack;
 
-import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -28,27 +28,24 @@ import java.util.Iterator;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class PendingItemsCommand extends CommandExecutor {
+public class PlayerTimeCommand extends CommandExecutor {
 
-    public PendingItemsCommand() {
-        super(PacocaCraft.pacocaCraft, "itens", Permissions.PLAYER_PENDING_ITEMS, "§6Permite ao jogador receber os itens pendentes", "§c/itens");
+    public PlayerTimeCommand() {
+        super(PacocaCraft.pacocaCraft, "ptime", Permissions.PLAYER_INDIVIDUAL_TIME_CHANGE, "§6Permite ao jogador alterar seu proprio horario", "§c/ptime (§4horas do dia - 7h28m§c)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onPendingItems(PlayerHandler playerHandler) {
-        Iterator<ItemStack> iterator = playerHandler.getPendingItems().iterator();
+    public boolean onPlayerTime(PlayerHandler playerHandler) {
+        playerHandler.getPlayer().resetPlayerTime();
+        playerHandler.getPlayer().sendMessage("§cTempo restaurado!");
+        return true;
+    }
 
-        // Iterate through items
-        while(iterator.hasNext()) {
-            ItemStack next = iterator.next();
-
-            // Add items until it can't handle anymore
-            if(playerHandler.addItem(false, next))
-                iterator.remove();
-            else
-                break;
-        }
-        playerHandler.getPlayer().sendMessage(playerHandler.getPendingItems().isEmpty() ? "§6Todos os itens foram entregues!" : "§cAinda restam itens a serem entregues!");
+    @CommandHandler(senderType = SenderType.PLAYER)
+    public boolean onPlayerTime(PlayerHandler playerHandler, Long timeDifference) {
+        long timeDifferenceSeconds = timeDifference / TimeUnit.SECONDS.toMillis(1); // Millis / (millis / second) => seconds
+        playerHandler.getPlayer().setPlayerTime(Math.abs(playerHandler.getPlayer().getWorld().getTime() - Util.getMinecraftTime(timeDifferenceSeconds)), true);
+        playerHandler.getPlayer().sendMessage("§6Tempo atualizado! Use §c/ptime§6 para restaurar.");
         return true;
     }
 }

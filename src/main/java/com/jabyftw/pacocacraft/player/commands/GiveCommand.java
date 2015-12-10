@@ -2,6 +2,7 @@ package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
+import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
@@ -33,39 +34,39 @@ public class GiveCommand extends CommandExecutor {
         super(PacocaCraft.pacocaCraft, "give", Permissions.PLAYER_GIVE, "§6Permite ao jogador obter itens", "§c/give (§4material§c) (§4quantidade§c) (§4damage§c)");
     }
 
-    @CommandHandler
+    @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onGive(PlayerHandler playerHandler, Material material) {
         return onGive(playerHandler, material, 1);
     }
 
-    @CommandHandler
-    public boolean onGive(PlayerHandler playerHandler, Material material, Integer amount) {
+    @CommandHandler(senderType = SenderType.PLAYER)
+    public boolean onGive(PlayerHandler playerHandler, Material material, int amount) {
         return onGive(playerHandler, material, amount, (short) 0);
     }
 
-    @CommandHandler
-    public boolean onGive(PlayerHandler playerHandler, Material material, Integer amount, short damage) {
+    @CommandHandler(senderType = SenderType.PLAYER)
+    public boolean onGive(PlayerHandler playerHandler, Material material, int amount, short damage) {
         playerHandler.addItem(true, new ItemStack(material, amount, damage));
         return true;
     }
 
-    @CommandHandler(additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
     public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material) {
         return onGive(commandSender, playerHandler, material, 1, true, (short) 0);
     }
 
-    @CommandHandler(additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
     public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, boolean warnPlayer) {
         return onGive(commandSender, playerHandler, material, 1, warnPlayer, (short) 0);
     }
 
-    @CommandHandler(additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
-    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, Integer amount, boolean warnPlayer) {
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
+    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, int amount, boolean warnPlayer) {
         return onGive(commandSender, playerHandler, material, amount, warnPlayer, (short) 0);
     }
 
-    @CommandHandler(additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
-    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, Integer amount, boolean warnPlayer, short damage) {
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
+    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, int amount, boolean warnPlayer, short damage) {
         ItemStack itemStack = new ItemStack(material, amount, damage);
         playerHandler.addItem(warnPlayer, itemStack);
         commandSender.sendMessage("§c" + amount + "§6 de §c" + material.name().toLowerCase().replaceAll("_", " ") + ":" + damage + "§6 entregue a " + playerHandler.getPlayer().getDisplayName());

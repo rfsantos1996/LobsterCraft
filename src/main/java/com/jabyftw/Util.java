@@ -7,6 +7,7 @@ import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang.math.NumberUtils;
 import org.bukkit.*;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.potion.PotionType;
 import sun.misc.BASE64Encoder;
@@ -146,6 +147,23 @@ public abstract class Util {
         return mostEqual;
     }
 
+    public static Enchantment parseToEnchantmentType(String string) {
+        Enchantment mostEqual = null;
+        int equality = 2;
+
+        for(Enchantment enchantment : Enchantment.values()) {
+            boolean useUnderline = string.contains("_");
+
+            int equalityOfWords = equalityOfWords(enchantment.getName().replaceAll("_", (useUnderline ? "" : "_")), string);
+            if(equalityOfWords >= equality) {
+                mostEqual = enchantment;
+                equality = equalityOfWords;
+            }
+        }
+
+        return mostEqual;
+    }
+
     public static WeatherType parseToWeatherType(@NotNull String string) {
         WeatherType mostEqual = null;
         int equality = 2;
@@ -201,11 +219,13 @@ public abstract class Util {
 
     /**
      * Source: Essentials (found through Ban-Management)
-     * https://github.com/BanManagement/BanManager/ @ Util.java
+     * <b>Letters used:</b> y mo w d h m s
      *
      * @param time string with the time, eg: "3w4h" - three weeks and four hours
      *
      * @return the time in milliseconds
+     *
+     * @see <a href=https://github.com/BanManagement/BanManager/blob/master/src/main/java/me/confuser/banmanager/util/DateUtils.java>Credits to Essentials</a>
      */
     public static long parseTimeDifference(@NotNull String time) {
         Pattern timePattern = Pattern.compile("(?:([0-9]+)\\s*y[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*mo[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*w[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*d[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*h[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*m[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*(?:s[a-z]*)?)?", Pattern.CASE_INSENSITIVE);
@@ -394,5 +414,27 @@ public abstract class Util {
         sha256.update(string.getBytes());
         byte[] digest = sha256.digest();
         return String.format("%0" + (digest.length << 1) + "x", new BigInteger(1, digest));
+    }
+
+    private final static double minecraftTime_x = 1.0d / 36d;
+    private final static long minecraftTime_y = 600L;
+
+    /**
+     * 0 -> 6h00
+     * 18.000 -> 0h00
+     * <p>
+     * Time in seconds: t
+     * Minecraft time: m
+     * <p>
+     * m = t.x + y, using these values we have that x = 1/36 and y = 600
+     *
+     * @param earthTimeInSeconds time parsed as seconds
+     *
+     * @return Minecraft's time
+     *
+     * @see Util#parseTimeDifference(String) will return time in millis, parse it to seconds
+     */
+    public static long getMinecraftTime(long earthTimeInSeconds) {
+        return (long) (earthTimeInSeconds * minecraftTime_x) + minecraftTime_y;
     }
 }

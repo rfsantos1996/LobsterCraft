@@ -45,7 +45,7 @@ public class GameModeCommand extends CommandExecutor {
         return HandleResponse.RETURN_TRUE;
     }
 
-    @CommandHandler(additionalPermissions = Permissions.PLAYER_GAMEMODE_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH,additionalPermissions = Permissions.PLAYER_GAMEMODE_OTHERS)
     public HandleResponse onGameModeOther(CommandSender commandSender, PlayerHandler target, GameMode gameMode) {
         if(target.getPlayer().getGameMode() != gameMode) {
             target.getPlayer().setGameMode(gameMode);

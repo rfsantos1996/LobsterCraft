@@ -1,13 +1,12 @@
-package com.jabyftw.pacocacraft.location.commands;
+package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.command.CommandSender;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -27,15 +26,24 @@ import com.jabyftw.pacocacraft.util.Permissions;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class TeleportHereCommand extends CommandExecutor {
+public class FeedEventCommand extends CommandExecutor {
 
-    public TeleportHereCommand() {
-        super(PacocaCraft.pacocaCraft, "teleporthere", Permissions.TELEPORT_TELEPORT_HERE, "§6Permite chamar jogadores até sua localização", "§c/teleporthere (§4jogador§c)");
+    public FeedEventCommand() {
+        super(PacocaCraft.pacocaCraft, "feed", Permissions.PLAYER_FEED, "§6Permite ao jogador tirar sua fome", "§c/feed");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
-        TeleportBuilder.getBuilder(target).setPlayerLocation(playerHandler).setInstantaneousTeleport(true).registerLastLocation(true).execute();
-        return HandleResponse.RETURN_TRUE;
+    public boolean onFeed(PlayerHandler playerHandler) {
+        playerHandler.getPlayer().setFoodLevel(20);
+        playerHandler.getPlayer().sendMessage("§6Hunger restaurada!");
+        return true;
+    }
+
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FEED_OTHERS)
+    public boolean onFeedOthers(CommandSender commandSender, PlayerHandler playerHandler) {
+        playerHandler.getPlayer().setFoodLevel(20);
+        playerHandler.getPlayer().sendMessage("§6Hunger restaurada por " + commandSender.getName() + "!");
+        commandSender.sendMessage("§6Hunger de " + playerHandler.getPlayer().getDisplayName() + "§6 foi restaurada.");
+        return true;
     }
 }

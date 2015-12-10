@@ -3,6 +3,7 @@ package com.jabyftw.easiercommands;
 import com.jabyftw.Util;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionType;
@@ -71,6 +72,12 @@ public enum ArgumentType {
         @Override
         protected Object isPossible(CommandSender commandSender, String string) {
             return Util.parseToGameMode(string);
+        }
+    },
+    ENCHANTMENT_TYPE(Enchantment.class) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return Util.parseToEnchantmentType(string);
         }
     },
 

@@ -1,13 +1,12 @@
-package com.jabyftw.pacocacraft.location.commands;
+package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.WeatherType;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -27,15 +26,23 @@ import com.jabyftw.pacocacraft.util.Permissions;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class TeleportHereCommand extends CommandExecutor {
+public class PlayerWeatherCommand extends CommandExecutor {
 
-    public TeleportHereCommand() {
-        super(PacocaCraft.pacocaCraft, "teleporthere", Permissions.TELEPORT_TELEPORT_HERE, "§6Permite chamar jogadores até sua localização", "§c/teleporthere (§4jogador§c)");
+    public PlayerWeatherCommand() {
+        super(PacocaCraft.pacocaCraft, "pweather", Permissions.PLAYER_INDIVIDUAL_WEATHER_CHANGE, "§6Permite ao jogador mudar o clima individual", "§c/pweather (§4tipo de clima§c)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
-        TeleportBuilder.getBuilder(target).setPlayerLocation(playerHandler).setInstantaneousTeleport(true).registerLastLocation(true).execute();
-        return HandleResponse.RETURN_TRUE;
+    public boolean onChangeWeather(PlayerHandler playerHandler) {
+        playerHandler.getPlayer().resetPlayerWeather();
+        playerHandler.getPlayer().sendMessage("§cClima restaurado!");
+        return true;
+    }
+
+    @CommandHandler(senderType = SenderType.PLAYER)
+    public boolean onChangeWeather(PlayerHandler playerHandler, WeatherType weatherType) {
+        playerHandler.getPlayer().setPlayerWeather(weatherType);
+        playerHandler.getPlayer().sendMessage("§6Clima atualizado! Use §c/pweather§6 para restaurar.");
+        return true;
     }
 }

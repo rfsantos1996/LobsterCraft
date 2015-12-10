@@ -1,13 +1,12 @@
-package com.jabyftw.pacocacraft.location.commands;
+package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.command.CommandSender;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -27,15 +26,24 @@ import com.jabyftw.pacocacraft.util.Permissions;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class TeleportHereCommand extends CommandExecutor {
+public class WorkbenchCommand extends CommandExecutor {
 
-    public TeleportHereCommand() {
-        super(PacocaCraft.pacocaCraft, "teleporthere", Permissions.TELEPORT_TELEPORT_HERE, "§6Permite chamar jogadores até sua localização", "§c/teleporthere (§4jogador§c)");
+    public WorkbenchCommand() {
+        super(PacocaCraft.pacocaCraft, "workbench", Permissions.PLAYER_WORKBENCH, "§6Permite ao jogador acessar um workbench", "§c/workbench");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
-        TeleportBuilder.getBuilder(target).setPlayerLocation(playerHandler).setInstantaneousTeleport(true).registerLastLocation(true).execute();
-        return HandleResponse.RETURN_TRUE;
+    public boolean onWorkbench(PlayerHandler playerHandler) {
+        playerHandler.getPlayer().closeInventory();
+        playerHandler.getPlayer().openWorkbench(null, true);
+        return true;
+    }
+
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_WORKBENCH_OTHERS)
+    public boolean onWorkbenchOthers(CommandSender commandSender, PlayerHandler playerHandler) {
+        onWorkbench(playerHandler);
+        commandSender.sendMessage("§6Você abriu um workbench para " + playerHandler.getPlayer().getDisplayName());
+        playerHandler.getPlayer().sendMessage("§6" + commandSender.getName() + " abriu um workbench para você");
+        return true;
     }
 }

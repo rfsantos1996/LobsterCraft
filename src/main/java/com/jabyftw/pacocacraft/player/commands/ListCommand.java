@@ -4,11 +4,14 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.Permissions;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -28,27 +31,24 @@ import java.util.Iterator;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class PendingItemsCommand extends CommandExecutor {
+public class ListCommand extends CommandExecutor {
 
-    public PendingItemsCommand() {
-        super(PacocaCraft.pacocaCraft, "itens", Permissions.PLAYER_PENDING_ITEMS, "§6Permite ao jogador receber os itens pendentes", "§c/itens");
+    public ListCommand() {
+        super(PacocaCraft.pacocaCraft, "list", Permissions.PLAYER_LIST, "§6Permite ao jogador ver a lista de pessoas online", "§c/list");
     }
 
-    @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onPendingItems(PlayerHandler playerHandler) {
-        Iterator<ItemStack> iterator = playerHandler.getPendingItems().iterator();
+    @CommandHandler(senderType = SenderType.BOTH)
+    public boolean onList(CommandSender commandSender) {
+        ArrayList<String> playerNames = new ArrayList<>();
 
-        // Iterate through items
-        while(iterator.hasNext()) {
-            ItemStack next = iterator.next();
-
-            // Add items until it can't handle anymore
-            if(playerHandler.addItem(false, next))
-                iterator.remove();
-            else
-                break;
+        //noinspection Convert2streamapi
+        for(Player player : Bukkit.getOnlinePlayers()) {
+            // Add if player don't have permission to be hidden or if player isn't hidden
+            if(!PacocaCraft.permission.has(player, Permissions.PLAYER_LIST_HIDE) && !InvisibilityService.isPlayerHidden(player))
+                playerNames.add(player.getDisplayName() + "§r");
         }
-        playerHandler.getPlayer().sendMessage(playerHandler.getPendingItems().isEmpty() ? "§6Todos os itens foram entregues!" : "§cAinda restam itens a serem entregues!");
+
+        commandSender.sendMessage("§6Jogadores: §r" + playerNames);
         return true;
     }
 }

@@ -2,6 +2,7 @@ package com.jabyftw.pacocacraft.location.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
+import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
@@ -33,13 +34,13 @@ public class TopCommand extends CommandExecutor {
         super(PacocaCraft.pacocaCraft, "top", Permissions.TELEPORT_TOP, "§6Permite ao jogador teleportar ao bloco mais alto", "§c/top");
     }
 
-    @CommandHandler
+    @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onTop(PlayerHandler playerHandler) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(getHighestLocation(playerHandler)).warnTeleportingPlayer(true).waitBeforeListenerTriggers(true).execute();
         return true;
     }
 
-    @CommandHandler(additionalPermissions = Permissions.TELEPORT_TOP_OTHERS)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_TOP_OTHERS)
     public boolean onTopOthers(CommandSender commandSender, PlayerHandler playerHandler) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(getHighestLocation(playerHandler)).setInstantaneousTeleport(true).execute();
         return true;

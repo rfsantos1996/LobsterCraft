@@ -4,8 +4,6 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
-import com.jabyftw.pacocacraft.location.TeleportListener;
-import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.commands.*;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.ServerService;
@@ -38,13 +36,17 @@ import java.util.concurrent.TimeUnit;
 public class PlayerService implements ServerService {
 
     public static final long TIME_BETWEEN_PROFILE_SAVES_TICKS = PacocaCraft.config.getLong(ConfigValue.LOGIN_TIME_BETWEEN_PROFILE_SAVES.getPath()) * 20L; // seconds * 20 = number of ticks
+
     private static final Object storedProfileLock = new Object();
     private static final HashBasedTable<Long, ProfileType, PlayerProfile> storedProfiles = HashBasedTable.create();
+
     private StoredProfilesSavingTask profilesSavingTask;
     private BukkitTask storedProfilesTask;
 
     @Override
     public void onEnable() {
+        InventorySpyCommand inventorySpyCommand;
+
         Bukkit.getServer().getPluginCommand("godmode").setExecutor(new GodModeCommand());
         Bukkit.getServer().getPluginCommand("gamemode").setExecutor(new GameModeCommand());
         Bukkit.getServer().getPluginCommand("fly").setExecutor(new FlyCommand());
@@ -52,11 +54,12 @@ public class PlayerService implements ServerService {
         Bukkit.getServer().getPluginCommand("give").setExecutor(new GiveCommand());
         Bukkit.getServer().getPluginCommand("heal").setExecutor(new HealCommand());
         Bukkit.getServer().getPluginCommand("enchant").setExecutor(new EnchantCommand());
+        Bukkit.getServer().getPluginCommand("clearenchantment").setExecutor(new ClearEnchantmentCommand());
         Bukkit.getServer().getPluginCommand("workbench").setExecutor(new WorkbenchCommand());
         Bukkit.getServer().getPluginCommand("list").setExecutor(new ListCommand());
-        Bukkit.getServer().getPluginCommand("wishper").setExecutor(new WishperCommand());
-        Bukkit.getServer().getPluginCommand("r").setExecutor(new ReplyCommand());
-        Bukkit.getServer().getPluginCommand("mute").setExecutor(new MuteCommand());
+        //Bukkit.getServer().getPluginCommand("whisper").setExecutor(new WhisperCommand()); // TODO after my chat idea
+        //Bukkit.getServer().getPluginCommand("r").setExecutor(new ReplyCommand());
+        //Bukkit.getServer().getPluginCommand("mute").setExecutor(new MuteCommand());
         Bukkit.getServer().getPluginCommand("clear").setExecutor(new ClearInventoryCommand());
         Bukkit.getServer().getPluginCommand("suicide").setExecutor(new SuicideCommand());
         Bukkit.getServer().getPluginCommand("kill").setExecutor(new KillPlayersCommand());
@@ -66,11 +69,15 @@ public class PlayerService implements ServerService {
         Bukkit.getServer().getPluginCommand("ptime").setExecutor(new PlayerTimeCommand());
         Bukkit.getServer().getPluginCommand("speed").setExecutor(new SpeedCommand());
         Bukkit.getServer().getPluginCommand("repair").setExecutor(new RepairCommand());
-        Bukkit.getServer().getPluginCommand("spyinv").setExecutor(new InventorySpyCommand());
-        Bukkit.getServer().getPluginCommand("exp").setExecutor(new ExpCommandCommand());
+        Bukkit.getServer().getPluginCommand("spyinv").setExecutor((inventorySpyCommand = new InventorySpyCommand()));
+        Bukkit.getServer().getPluginCommand("exp").setExecutor(new ExpCommand());
+        Bukkit.getServer().getPluginCommand("level").setExecutor(new LevelCommand());
         Bukkit.getServer().getPluginCommand("feed").setExecutor(new FeedEventCommand());
         Bukkit.getServer().getPluginCommand("hat").setExecutor(new HatCommand());
+
         Bukkit.getServer().getPluginManager().registerEvents(new PlayerListener(), PacocaCraft.pacocaCraft);
+        Bukkit.getServer().getPluginManager().registerEvents(inventorySpyCommand, PacocaCraft.pacocaCraft);
+
         storedProfilesTask = BukkitScheduler.runTaskTimerAsynchronously(
                 PacocaCraft.pacocaCraft,
                 (profilesSavingTask = new StoredProfilesSavingTask()),

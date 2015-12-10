@@ -42,6 +42,7 @@ public class TeleportService implements ServerService {
         Bukkit.getPluginCommand("spawnset").setExecutor(new SpawnSetCommand());
         Bukkit.getPluginCommand("back").setExecutor(new BackCommand());
         Bukkit.getPluginCommand("top").setExecutor(new TopCommand());
+
         Bukkit.getServer().getPluginManager().registerEvents(new TeleportListener(), PacocaCraft.pacocaCraft);
         PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }

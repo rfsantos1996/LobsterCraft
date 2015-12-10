@@ -49,10 +49,14 @@ public class UserLoginService implements ServerService {
 
     @Override
     public void onEnable() {
+        Bukkit.getServer().getPluginCommand("login").setExecutor(new LoginCommand());
+        //Bukkit.getServer().getPluginCommand("changepass").setExecutor(new ChangePasswordCommand()); // TODO
+        //Bukkit.getServer().getPluginCommand("changeuser").setExecutor(new ChangeUsernameCommand());
+        Bukkit.getServer().getPluginCommand("register").setExecutor((registerCommand = new RegisterCommand()));
+
         Bukkit.getServer().getPluginManager().registerEvents(new JoinListener(this), PacocaCraft.pacocaCraft);
         Bukkit.getServer().getPluginManager().registerEvents(new LoginListener(), PacocaCraft.pacocaCraft);
-        Bukkit.getServer().getPluginCommand("login").setExecutor(new LoginCommand());
-        Bukkit.getServer().getPluginCommand("register").setExecutor((registerCommand = new RegisterCommand()));
+
         storedProfilesTask = BukkitScheduler.runTaskTimerAsynchronously(
                 PacocaCraft.pacocaCraft,
                 (profilesSavingTask = new UserProfileSavingTask()),

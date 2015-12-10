@@ -1,13 +1,12 @@
-package com.jabyftw.pacocacraft.location.commands;
+package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.command.CommandSender;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -27,15 +26,22 @@ import com.jabyftw.pacocacraft.util.Permissions;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class TeleportHereCommand extends CommandExecutor {
+public class KillPlayersCommand extends CommandExecutor {
 
-    public TeleportHereCommand() {
-        super(PacocaCraft.pacocaCraft, "teleporthere", Permissions.TELEPORT_TELEPORT_HERE, "§6Permite chamar jogadores até sua localização", "§c/teleporthere (§4jogador§c)");
+    public KillPlayersCommand() {
+        super(PacocaCraft.pacocaCraft, "kill", Permissions.PLAYER_KILL, "§6Permite ao jogador matar jogadores", "§c/kill (§4jogador§c)");
     }
 
-    @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
-        TeleportBuilder.getBuilder(target).setPlayerLocation(playerHandler).setInstantaneousTeleport(true).registerLastLocation(true).execute();
-        return HandleResponse.RETURN_TRUE;
+    @CommandHandler(senderType = SenderType.BOTH)
+    public boolean onKill(CommandSender commandSender, PlayerHandler playerHandler) {
+        playerHandler.getPlayer().damage(Double.MAX_VALUE - 1);
+
+        // Make sure he is dead
+        if(playerHandler.getPlayer().getHealth() > 0d)
+            playerHandler.getPlayer().setHealth(0d);
+
+        playerHandler.getPlayer().sendMessage("§cVocê foi morto por §4" + commandSender.getName() + "§c através de comando.");
+        commandSender.sendMessage("§cVocê matou " + playerHandler.getPlayer().getDisplayName());
+        return true;
     }
 }

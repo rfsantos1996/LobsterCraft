@@ -1,13 +1,14 @@
-package com.jabyftw.pacocacraft.location.commands;
+package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -27,15 +28,30 @@ import com.jabyftw.pacocacraft.util.Permissions;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public class TeleportHereCommand extends CommandExecutor {
+public class RepairCommand extends CommandExecutor {
 
-    public TeleportHereCommand() {
-        super(PacocaCraft.pacocaCraft, "teleporthere", Permissions.TELEPORT_TELEPORT_HERE, "§6Permite chamar jogadores até sua localização", "§c/teleporthere (§4jogador§c)");
+    public RepairCommand() {
+        super(PacocaCraft.pacocaCraft, "repair", Permissions.PLAYER_REPAIR, "§6Permite ao jogador reparar seus itens", "§c/repair");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
-        TeleportBuilder.getBuilder(target).setPlayerLocation(playerHandler).setInstantaneousTeleport(true).registerLastLocation(true).execute();
-        return HandleResponse.RETURN_TRUE;
+    public boolean onRepair(PlayerHandler playerHandler) {
+        Player player = playerHandler.getPlayer();
+        ItemStack itemInHand = player.getItemInHand();
+
+        // Check if item exists
+        if(itemInHand == null || itemInHand.getType() == Material.AIR) {
+            player.sendMessage("§cVocê não tem item na sua mão!");
+            return true;
+        }
+
+        // Check if it is possible to be repaired
+        if(itemInHand.getType().isBlock() || itemInHand.getType().getMaxDurability() == 0) {
+            player.sendMessage("§cEste item não pode ser reparado!");
+        } else {
+            itemInHand.setDurability((short) 0);
+            player.sendMessage("§6Item reparado! <3");
+        }
+        return true;
     }
 }

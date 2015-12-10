@@ -40,7 +40,7 @@ public class WorldCommand extends CommandExecutor {
         super(PacocaCraft.pacocaCraft, "world", Permissions.TELEPORT_WORLD, "§6Permite ao jogador mudar de mundo", "§c/world (§4nome§c)");
     }
 
-    @CommandHandler
+    @CommandHandler(senderType = SenderType.BOTH)
     public HandleResponse onWorldList(CommandSender commandSender) {
         List<World> worlds = Bukkit.getWorlds();
         String[] worldNames = new String[worlds.size()];
