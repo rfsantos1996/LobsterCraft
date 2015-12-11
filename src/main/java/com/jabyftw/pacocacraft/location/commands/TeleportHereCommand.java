@@ -2,7 +2,6 @@ package com.jabyftw.pacocacraft.location.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
@@ -34,8 +33,8 @@ public class TeleportHereCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
+    public boolean onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
         TeleportBuilder.getBuilder(target).setPlayerLocation(playerHandler).setInstantaneousTeleport(true).registerLastLocation(true).execute();
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 }

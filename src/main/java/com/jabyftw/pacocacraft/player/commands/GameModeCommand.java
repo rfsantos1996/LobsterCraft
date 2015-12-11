@@ -2,7 +2,6 @@ package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
@@ -35,18 +34,18 @@ public class GameModeCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onGameMode(PlayerHandler playerHandler, GameMode gameMode) {
+    public boolean onGameMode(PlayerHandler playerHandler, GameMode gameMode) {
         if(playerHandler.getPlayer().getGameMode() != gameMode) {
             playerHandler.getPlayer().setGameMode(gameMode);
             playerHandler.getPlayer().sendMessage("§6Seu modo de jogo foi alterado para " + gameMode.name());
         } else {
             playerHandler.getPlayer().sendMessage("§cSeu modo de jogo já é este!");
         }
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
-    @CommandHandler(senderType = SenderType.BOTH,additionalPermissions = Permissions.PLAYER_GAMEMODE_OTHERS)
-    public HandleResponse onGameModeOther(CommandSender commandSender, PlayerHandler target, GameMode gameMode) {
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GAMEMODE_OTHERS)
+    public boolean onGameModeOther(CommandSender commandSender, PlayerHandler target, GameMode gameMode) {
         if(target.getPlayer().getGameMode() != gameMode) {
             target.getPlayer().setGameMode(gameMode);
             target.getPlayer().sendMessage("§6Seu modo de jogo foi alterado para " + gameMode.name());
@@ -54,6 +53,6 @@ public class GameModeCommand extends CommandExecutor {
         } else {
             commandSender.sendMessage("§cO modo de jogo de " + target.getPlayer().getName() + " já é este!");
         }
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 }

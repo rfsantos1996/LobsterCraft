@@ -2,7 +2,6 @@ package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
@@ -34,27 +33,27 @@ public class GodModeCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onGodMode(PlayerHandler playerHandler) {
+    public boolean onGodMode(PlayerHandler playerHandler) {
         return onGodMode(playerHandler, !playerHandler.isGodMode()); // toggle
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onGodMode(PlayerHandler playerHandler, boolean godMode) {
+    public boolean onGodMode(PlayerHandler playerHandler, boolean godMode) {
         playerHandler.setGodMode(godMode, null);
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GOD_MODE_OTHERS)
-    public HandleResponse onGodModeByOther(CommandSender commandSender, PlayerHandler targetPlayer) {
+    public boolean onGodModeByOther(CommandSender commandSender, PlayerHandler targetPlayer) {
         return onGodModeByOther(commandSender, targetPlayer, !targetPlayer.isGodMode()); // toggle
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GOD_MODE_OTHERS)
-    public HandleResponse onGodModeByOther(CommandSender commandSender, PlayerHandler targetPlayer, boolean godMode) {
+    public boolean onGodModeByOther(CommandSender commandSender, PlayerHandler targetPlayer, boolean godMode) {
         if(targetPlayer.setGodMode(!targetPlayer.isGodMode(), commandSender))
             commandSender.sendMessage("§6Jogador " + targetPlayer.getPlayer().getName() + " está em modo deus (god mode).");
         else
             commandSender.sendMessage("§cJogador " + targetPlayer.getPlayer().getName() + " saiu do modo deus (god mode).");
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 }

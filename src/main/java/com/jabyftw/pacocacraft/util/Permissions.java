@@ -29,6 +29,8 @@ public final class Permissions {
             JOIN_OTHER_ACCOUNT_REGISTRATION = "pacocacraft.join.other_account_registration",
             JOIN_OTHER_ACCOUNT_LOOKUP = "pacocacraft.join.other_account_lookup",
             JOIN_PREVENT_ACCOUNT_LOOKUP = "pacocacraft.join.no_account_lookup",
+            JOIN_CHANGE_USER = "pacocacraft.join.change_username",
+            JOIN_CHANGE_PASSWORD = "pacocacraft.join.change_password",
             JOIN_VANISHED = "vanish.silentjoin",
 
     PLAYER_GOD_MODE = "pacocacraft.player.god_mode",

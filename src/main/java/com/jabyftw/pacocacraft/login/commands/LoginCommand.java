@@ -40,7 +40,7 @@ public class LoginCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onDefaultLogin(PlayerHandler playerHandler, String password) {
+    public boolean onDefaultLogin(PlayerHandler playerHandler, String password) {
         BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
             try {
                 playerHandler.getProfile(UserProfile.class).attemptLogin(Util.encryptString(password));
@@ -50,11 +50,11 @@ public class LoginCommand extends CommandExecutor {
             }
         });
 
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
-    public HandleResponse onRegisterLogin(PlayerHandler playerHandler, String password1, String password2) {
+    public boolean onRegisterLogin(PlayerHandler playerHandler, String password1, String password2) {
         return UserLoginService.registerCommand.onDefaultRegister(playerHandler, password1, password2);
     }
 

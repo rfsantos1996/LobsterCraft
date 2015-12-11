@@ -364,7 +364,7 @@ public abstract class Util {
      * @return true if password passes
      */
     public static boolean checkStringLength(@NotNull String string, int minLength, int maxLength) {
-        return string.matches("{" + minLength + "," + maxLength + "}");
+        return string.length() >= minLength && string.length() <= maxLength;
     }
 
     /**

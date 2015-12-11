@@ -2,6 +2,8 @@ package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
+import com.jabyftw.pacocacraft.login.commands.ChangePasswordCommand;
+import com.jabyftw.pacocacraft.login.commands.ChangeUsernameCommand;
 import com.jabyftw.pacocacraft.login.commands.LoginCommand;
 import com.jabyftw.pacocacraft.login.commands.RegisterCommand;
 import com.jabyftw.pacocacraft.player.PlayerService;
@@ -50,8 +52,8 @@ public class UserLoginService implements ServerService {
     @Override
     public void onEnable() {
         Bukkit.getServer().getPluginCommand("login").setExecutor(new LoginCommand());
-        //Bukkit.getServer().getPluginCommand("changepass").setExecutor(new ChangePasswordCommand()); // TODO
-        //Bukkit.getServer().getPluginCommand("changeuser").setExecutor(new ChangeUsernameCommand());
+        Bukkit.getServer().getPluginCommand("changepass").setExecutor(new ChangePasswordCommand());
+        Bukkit.getServer().getPluginCommand("changeuser").setExecutor(new ChangeUsernameCommand());
         Bukkit.getServer().getPluginCommand("register").setExecutor((registerCommand = new RegisterCommand()));
 
         Bukkit.getServer().getPluginManager().registerEvents(new JoinListener(this), PacocaCraft.pacocaCraft);
@@ -156,6 +158,7 @@ public class UserLoginService implements ServerService {
     public void storeProfile(@NotNull UserProfile userProfile) {
         userProfile.setStoredSince(System.currentTimeMillis());
         userProfileMap.put(userProfile.getPlayerName().toLowerCase(), userProfile);
+        // TODO player name changes -> duplicates account? (no, but player can log in with the old player name still and on database it'll create unexpected results)
     }
 
     protected class UserProfileSavingTask implements Runnable {

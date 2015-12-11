@@ -2,7 +2,6 @@ package com.jabyftw.pacocacraft.location.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
@@ -37,26 +36,26 @@ public class SpawnCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onSpawn(PlayerHandler playerHandler) {
+    public boolean onSpawn(PlayerHandler playerHandler) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(playerHandler.getPlayer().getWorld().getSpawnLocation()).registerLastLocation(true).warnTeleportingPlayer(true)
                 .waitBeforeListenerTriggers(true).execute();
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.TELEPORT_WORLD)
-    public HandleResponse onSpawnAtWorld(PlayerHandler playerHandler, World world) {
+    public boolean onSpawnAtWorld(PlayerHandler playerHandler, World world) {
         return TeleportService.worldCommand.onWorldTeleport(playerHandler, world);
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_SPAWN_OTHERS)
-    public HandleResponse onSpawnOther(CommandSender commandSender, PlayerHandler playerHandler) {
+    public boolean onSpawnOther(CommandSender commandSender, PlayerHandler playerHandler) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(playerHandler.getPlayer().getWorld().getSpawnLocation()).registerLastLocation(true).setInstantaneousTeleport(true).execute();
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     // Hope I don't have to {""} on every additional permissions
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = {Permissions.TELEPORT_SPAWN_OTHERS, Permissions.TELEPORT_WORLD, Permissions.TELEPORT_WORLD_OTHERS})
-    public HandleResponse onSpawnOtherAtWorld(CommandSender commandSender, PlayerHandler playerHandler, World world) {
+    public boolean onSpawnOtherAtWorld(CommandSender commandSender, PlayerHandler playerHandler, World world) {
         return TeleportService.worldCommand.onWorldTeleportOther(commandSender, playerHandler, world);
     }
 }

@@ -11,6 +11,7 @@ import com.jabyftw.pacocacraft.login.UserLoginService;
 import com.jabyftw.pacocacraft.login.ban.BanService;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.player.PlayerService;
+import com.jabyftw.pacocacraft.player.chat.ChatService;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.sun.istack.internal.NotNull;
@@ -59,6 +60,7 @@ public class PacocaCraft extends JavaPlugin {
     public static PlayerService playerService;
     public static TeleportService teleportService;
     public static InvisibilityService invisibilityService;
+    public static ChatService chatService;
     public static BanService banService;
     public static XrayProtectionService xrayProtectionService;
 
@@ -163,6 +165,7 @@ public class PacocaCraft extends JavaPlugin {
         (playerService = new PlayerService()).onEnable();
         (teleportService = new TeleportService()).onEnable();
         (invisibilityService = new InvisibilityService()).onEnable();
+        (chatService = new ChatService()).onEnable();
         (banService = new BanService()).onEnable();
         (xrayProtectionService = new XrayProtectionService()).onEnable();
 
@@ -188,6 +191,7 @@ public class PacocaCraft extends JavaPlugin {
         if(playerService != null) playerService.onDisable();
         if(teleportService != null) teleportService.onDisable();
         if(invisibilityService != null) invisibilityService.onDisable();
+        if(chatService != null) chatService.onDisable();
         if(banService != null) banService.onDisable();
         if(xrayProtectionService != null) xrayProtectionService.onDisable();
 

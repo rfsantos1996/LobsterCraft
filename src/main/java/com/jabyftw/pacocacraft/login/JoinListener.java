@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.login;
 
+import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.login.ban.BanRecord;
@@ -68,6 +69,19 @@ public class JoinListener implements Listener {
     public void onAsyncPreLoginHighest(AsyncPlayerPreLoginEvent preLoginEvent) {
         String playerName = preLoginEvent.getName().toLowerCase(); // Lower case everything
 
+        // Check player name characters and length
+        if(!isValidPlayerName(playerName)) {
+            preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§cSeu nome contém caracteres inválidos\n§cou é muito longo/curto.");
+            return;
+        }
+
+        // Check for number of joins if set to a number > 0 and if distance (in ticks) since last join is shorter than the required ticks
+        if(playersPerTick > 0 && (PacocaCraft.getCurrentTick() - lastJoinTick) < ticksPerJoin) {
+            preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_FULL, "§4Muitos usuários entrando!\n§cAguarde alguns segundos e tente novamente");
+            return;
+        }
+        lastJoinTick = PacocaCraft.getCurrentTick();
+
         // Check if server is full
         Server server = Bukkit.getServer();
         @SuppressWarnings("deprecation") OfflinePlayer offlinePlayer = server.getOfflinePlayer(playerName);
@@ -79,20 +93,7 @@ public class JoinListener implements Listener {
             return;
         }
 
-        // Check for number of joins if set to a number > 0 and if distance (in ticks) since last join is shorter than the required ticks
-        if(playersPerTick > 0 && (PacocaCraft.getCurrentTick() - lastJoinTick) < ticksPerJoin) {
-            preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_FULL, "§4Muitos usuários entrando!\n§cAguarde alguns segundos e tente novamente");
-            return;
-        }
-        lastJoinTick = PacocaCraft.getCurrentTick();
-
-        // Check player's name (today the minimum length is 4, but there may be players using 3 letters still)
-        if(!com.jabyftw.Util.checkStringCharactersAndLength(playerName, 3, 16)) {
-            preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§cSeu nome contém caracteres inválidos\n§cou é muito longo/curto.");
-            return;
-        }
-
-        // Check if it wasn't already denied -- Why here? Because I want to overwrite messages
+        // Check if it wasn't already denied -- Why here? Because I want to overwrite messages before
         if(preLoginEvent.getLoginResult() != AsyncPlayerPreLoginEvent.Result.ALLOWED)
             return;
 
@@ -163,5 +164,8 @@ public class JoinListener implements Listener {
         quitEvent.setQuitMessage(PacocaCraft.getPlayerHandler(quitEvent.getPlayer()).isInvisible() ? "" : "§4- §c" + quitEvent.getPlayer().getName());
     }
 
-
+    public static boolean isValidPlayerName(String playerName) {
+        // Check player's name (today the minimum length is 4, but there may be players using 3 letters still)
+        return Util.checkStringCharactersAndLength(playerName, 3, 16);
+    }
 }

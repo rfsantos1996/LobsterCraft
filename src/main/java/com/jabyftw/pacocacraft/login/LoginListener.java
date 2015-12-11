@@ -47,8 +47,10 @@ public class LoginListener implements Listener {
      * NOTE: all priorities are set to Lowest so the events are removed already
      */
 
+    private final static boolean FAST_MOVE_CHECK = PacocaCraft.config.getBoolean(ConfigValue.LOGIN_FAST_MOVEMENT_CHECK.getPath());
+
     // Allowed commands before log in
-    private final List<String> allowedCommands = PacocaCraft.config.getStringList(ConfigValue.LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS.getPath());
+    private final static List<String> allowedCommands = PacocaCraft.config.getStringList(ConfigValue.LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS.getPath());
 
     @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onBlockBreak(BlockBreakEvent breakEvent) {
@@ -277,13 +279,11 @@ public class LoginListener implements Listener {
     @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPlayerMove(PlayerMoveEvent playerMoveEvent) {
         PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(playerMoveEvent.getPlayer());
-        Location from, to;
+        Location from = playerMoveEvent.getFrom(), to = playerMoveEvent.getTo();
 
         // If player isn't logged in and he changed block, cancel event and teleport player from 'to' location to 'from'
-        if(!playerHandler.getProfile(UserProfile.class).isLoggedIn() &&
-                ((from = playerMoveEvent.getFrom()).getBlockX() != (to = playerMoveEvent.getTo()).getBlockX()
-                        || from.getBlockY() != to.getBlockY()
-                        || from.getBlockZ() != to.getBlockZ())) {
+        if(!playerHandler.getProfile(UserProfile.class).isLoggedIn() && (!FAST_MOVE_CHECK || // If fast move check is false, it'll already teleport to from location
+                (from.getBlockX() != to.getBlockX() || from.getBlockY() != to.getBlockY() || from.getBlockZ() != to.getBlockZ()))) {
             playerMoveEvent.setCancelled(true);
             playerMoveEvent.getPlayer().teleport(from); // Do not use teleport profile as it may not be loaded
         }

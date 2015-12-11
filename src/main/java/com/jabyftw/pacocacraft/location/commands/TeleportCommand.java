@@ -1,10 +1,7 @@
 package com.jabyftw.pacocacraft.location.commands;
 
-
-import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.block.StorableLocation;
@@ -41,30 +38,30 @@ public class TeleportCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportToLocation(PlayerHandler playerHandler, Location location) {
+    public boolean onTeleportToLocation(PlayerHandler playerHandler, Location location) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(location).registerLastLocation(true).warnTargetPlayer(true).warnTeleportingPlayer(true)
                 .waitBeforeListenerTriggers(true).execute();
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onTeleportToPlayer(PlayerHandler playerHandler, PlayerHandler target) {
+    public boolean onTeleportToPlayer(PlayerHandler playerHandler, PlayerHandler target) {
         TeleportBuilder.getBuilder(playerHandler).setPlayerLocation(target).registerLastLocation(true).warnTargetPlayer(true).warnTeleportingPlayer(true)
                 .waitBeforeListenerTriggers(true).execute();
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_TELEPORT_TO_OTHERS)
-    public HandleResponse onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, Location location) {
+    public boolean onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, Location location) {
         TeleportBuilder.getBuilder(teleporting).setLocation(location).registerLastLocation(true).warnTargetPlayer(true).setInstantaneousTeleport(true).execute();
         commandSender.sendMessage(teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + new StorableLocation(location).toString());
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_TELEPORT_TO_OTHERS)
-    public HandleResponse onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, PlayerHandler target) {
+    public boolean onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, PlayerHandler target) {
         TeleportBuilder.getBuilder(teleporting).setPlayerLocation(target).registerLastLocation(true).warnTargetPlayer(true).setInstantaneousTeleport(true).execute();
         commandSender.sendMessage(teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para " + target.getPlayer().getDisplayName());
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 }

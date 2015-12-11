@@ -2,7 +2,6 @@ package com.jabyftw.pacocacraft.player.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.player.PlayerHandler;
@@ -34,26 +33,26 @@ public class FlyCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onFly(PlayerHandler playerHandler, boolean fly) {
+    public boolean onFly(PlayerHandler playerHandler, boolean fly) {
         playerHandler.getPlayer().setAllowFlight(fly);
         playerHandler.getPlayer().sendMessage(fly ? "§6Vôo ativado." : "§cVôo desativado.");
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onFly(PlayerHandler playerHandler) {
+    public boolean onFly(PlayerHandler playerHandler) {
         return onFly(playerHandler, !playerHandler.getPlayer().getAllowFlight());
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FLY_OTHERS)
-    public HandleResponse onFlyOthers(CommandSender commandSender, PlayerHandler target, boolean fly) {
+    public boolean onFlyOthers(CommandSender commandSender, PlayerHandler target, boolean fly) {
         onFly(target, fly);
         commandSender.sendMessage((fly ? "§6" : "§c") + target.getPlayer().getDisplayName() + (fly ? "§6 está voando" : "§c não está voando."));
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FLY_OTHERS)
-    public HandleResponse onFlyOthers(CommandSender commandSender, PlayerHandler target) {
+    public boolean onFlyOthers(CommandSender commandSender, PlayerHandler target) {
         return onFlyOthers(commandSender, target, !target.getPlayer().getAllowFlight());
     }
 }

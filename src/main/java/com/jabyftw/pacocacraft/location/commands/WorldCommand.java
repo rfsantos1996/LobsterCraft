@@ -2,7 +2,6 @@ package com.jabyftw.pacocacraft.location.commands;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
-import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
@@ -12,7 +11,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -41,7 +39,7 @@ public class WorldCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public HandleResponse onWorldList(CommandSender commandSender) {
+    public boolean onWorldList(CommandSender commandSender) {
         List<World> worlds = Bukkit.getWorlds();
         String[] worldNames = new String[worlds.size()];
 
@@ -51,19 +49,19 @@ public class WorldCommand extends CommandExecutor {
         }
 
         commandSender.sendMessage("§6Mundos: " + Arrays.asList(worldNames));
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse onWorldTeleport(PlayerHandler playerHandler, World world) {
+    public boolean onWorldTeleport(PlayerHandler playerHandler, World world) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(world.getSpawnLocation()).registerLastLocation(true).warnTeleportingPlayer(true).waitBeforeListenerTriggers(true).execute();
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_WORLD_OTHERS)
-    public HandleResponse onWorldTeleportOther(CommandSender commandSender, PlayerHandler playerHandler, World world) {
+    public boolean onWorldTeleportOther(CommandSender commandSender, PlayerHandler playerHandler, World world) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(world.getSpawnLocation()).registerLastLocation(true).setInstantaneousTeleport(true).execute();
         commandSender.sendMessage(playerHandler.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + world.getName());
-        return HandleResponse.RETURN_TRUE;
+        return true;
     }
 }

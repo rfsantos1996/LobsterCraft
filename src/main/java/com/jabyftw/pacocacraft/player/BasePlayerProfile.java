@@ -29,7 +29,7 @@ public abstract class BasePlayerProfile {
     private PlayerHandler playerHandler = null;
 
     // protected so its subclasses have access
-    protected boolean modified = false;
+    protected volatile boolean modified = false; // Volatile because it is used asynchronously on UserProfile, and I don't want to synchronize every method
     protected long storedSince = -1;
 
     public BasePlayerProfile(ProfileType profileType) {

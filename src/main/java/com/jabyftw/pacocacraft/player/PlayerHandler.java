@@ -84,6 +84,8 @@ public class PlayerHandler {
 
     public void destroy() {
         Iterator<BasePlayerProfile> iterator = playerProfiles.values().iterator();
+
+        // Iterate through profiles
         while(iterator.hasNext()) {
             BasePlayerProfile profile = iterator.next();
 
