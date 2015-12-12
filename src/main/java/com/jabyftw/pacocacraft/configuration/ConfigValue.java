@@ -34,7 +34,8 @@ public enum ConfigValue {
     LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS("login.allowed_commands_before_login", new String[]{"login", "register", "l", "entrar", "registrar"}),
     LOGIN_TIME_BETWEEN_PROFILE_SAVES("login.time_between_profile_saves_seconds", 30L),
     LOGIN_PROFILE_WAITING_TIME("login.profile_waiting_on_queue_seconds", 60 * 4L),
-    LOGIN_REQUIRED_TIME_CHANGE_USERNAME("login.required_time_to_change_username_days", 15),
+    LOGIN_REQUIRED_TIME_CHANGE_USERNAME("login.required_time_to_change_username_days", 10),
+    LOGIN_REQUIRED_TIME_USERNAME_AVAILABLE("login.required_time_to_username_be_available_days", 20),
     LOGIN_FAST_MOVEMENT_CHECK("login.fast_movement_check", false),
 
     XRAY_TIME_TO_CONSIDER_SAME_MINE("xray.time_to_consider_same_mining_session_seconds", 60 * 4L),
@@ -48,7 +49,10 @@ public enum ConfigValue {
     PLAYER_TIME_SUICIDE_CONFIRMATION("player.time_to_confirm_suicide_seconds", 45L),
     PLAYER_TIME_UNSAFE_ENCHANTMENT_CONFIRMATION("player.time_to_confirm_unsafe_enchantment_seconds", 30L),
     PLAYER_SPEED_MINIMUM_MULTIPLIER("player.speed.minimum_speed_multiplier", 0.05d),
-    PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),;
+    PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
+    PLAYER_CHAT_EXCLUDED_COMMANDS("player.excluded_chat_commands_on_server_log", new String[]{
+            "login", "l", "entrar", "register", "registrar", "reg", "changepass", "changepassword", "passwordchange", "mudarsenha", "passchange"
+    }),;
 
     private final String path;
     private final Object defaultValue;

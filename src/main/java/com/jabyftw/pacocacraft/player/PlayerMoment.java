@@ -1,9 +1,7 @@
 package com.jabyftw.pacocacraft.player;
 
-import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
-import com.jabyftw.pacocacraft.location.TeleportProfile;
-import com.jabyftw.pacocacraft.location.TeleportService;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;

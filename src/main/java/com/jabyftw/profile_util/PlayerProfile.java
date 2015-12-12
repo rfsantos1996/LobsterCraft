@@ -1,4 +1,4 @@
-package com.jabyftw.pacocacraft.player;
+package com.jabyftw.profile_util;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin

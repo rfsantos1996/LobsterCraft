@@ -2,13 +2,11 @@ package com.jabyftw.pacocacraft.login;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.player.custom_events.PlayerDamageEntityEvent;
-import com.jabyftw.pacocacraft.player.custom_events.PlayerDamagePlayerEvent;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -19,8 +17,6 @@ import org.bukkit.event.inventory.InventoryInteractEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**

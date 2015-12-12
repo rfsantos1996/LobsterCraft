@@ -1,7 +1,6 @@
 package com.jabyftw.pacocacraft.player.invisibility;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.jabyftw.pacocacraft.util.ServerService;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;

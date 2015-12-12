@@ -7,6 +7,8 @@ import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.player.commands.*;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.ServerService;
+import com.jabyftw.profile_util.PlayerProfile;
+import com.jabyftw.profile_util.ProfileType;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.scheduler.BukkitTask;
@@ -115,7 +117,7 @@ public class PlayerService implements ServerService {
 
         // Insert it on the table synchronously
         synchronized(storedProfileLock) {
-            storedProfiles.put(playerProfile.playerId, playerProfile.getProfileType(), playerProfile);
+            storedProfiles.put(playerProfile.getPlayerId(), playerProfile.getProfileType(), playerProfile);
         }
     }
 

@@ -5,7 +5,7 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.login.ban.BanRecord;
 import com.jabyftw.pacocacraft.login.ban.BanService;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
@@ -19,7 +19,13 @@ import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -43,6 +49,10 @@ public class JoinListener implements Listener {
 
     private final UserLoginService userLoginService;
 
+    // Changed player names cache
+    public final static long TIME_REQUIRED_TO_USERNAME_BE_AVAILABLE = TimeUnit.DAYS.toMillis(PacocaCraft.config.getLong(ConfigValue.LOGIN_REQUIRED_TIME_USERNAME_AVAILABLE.getPath()));
+    public final static HashMap<String, Long> cachedChangedNames = new HashMap<>();
+
     // Player join limit
     private static int playersPerTick = (int) Math.ceil(PacocaCraft.config.getInt(ConfigValue.LOGIN_JOIN_LIMITER_PLAYERS_ALLOWED.getPath()) /
             (PacocaCraft.config.getDouble(ConfigValue.LOGIN_JOIN_LIMITER_PERIOD_OF_TIME.getPath()) * 20d));
@@ -51,6 +61,12 @@ public class JoinListener implements Listener {
 
     public JoinListener(@NotNull UserLoginService userLoginService) {
         this.userLoginService = userLoginService;
+        try {
+            cacheChangedNames();
+        } catch(SQLException e) {
+            e.printStackTrace();
+            PacocaCraft.logger.severe("§cFailed to cache recent changed names!");
+        }
     }
 
     /**
@@ -68,6 +84,19 @@ public class JoinListener implements Listener {
     // the first thing to do on AsyncPlayerPreLoginEvent
     public void onAsyncPreLoginHighest(AsyncPlayerPreLoginEvent preLoginEvent) {
         String playerName = preLoginEvent.getName().toLowerCase(); // Lower case everything
+
+        Long changedDate = cachedChangedNames.get(playerName);
+        // Check if there is a date
+        if(changedDate != null) {
+            long releaseDate = changedDate + TIME_REQUIRED_TO_USERNAME_BE_AVAILABLE;
+
+            // Check if release time will be on a future time
+            if(releaseDate >= System.currentTimeMillis()) {
+                preLoginEvent.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§cNome de usuário não disponível.\n" +
+                        "§cTente daqui: §4" + Util.parseTimeInMillis(Math.abs(releaseDate - System.currentTimeMillis())));
+                return;
+            }
+        }
 
         // Check player name characters and length
         if(!isValidPlayerName(playerName)) {
@@ -167,5 +196,32 @@ public class JoinListener implements Listener {
     public static boolean isValidPlayerName(String playerName) {
         // Check player's name (today the minimum length is 4, but there may be players using 3 letters still)
         return Util.checkStringCharactersAndLength(playerName, 3, 16);
+    }
+
+    public static void cacheChangedNames() throws SQLException {
+        Connection connection = PacocaCraft.dataSource.getConnection();
+        {
+            // Prepare statement
+            PreparedStatement preparedStatement = connection.prepareStatement("SELECT `oldPlayerName`, `changeDate` " +
+                    "FROM minecraft.recent_username_changes WHERE `recent_username_changes`.`changeDate` > ?;");
+
+            // Cache just those who can't log in (less than the required time)
+            preparedStatement.setLong(1, System.currentTimeMillis() - TIME_REQUIRED_TO_USERNAME_BE_AVAILABLE); // now - required time will filter the cached ones to be available
+
+            // Execute query
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            // Iterate through rows
+            while(resultSet.next()) {
+                cachedChangedNames.put(resultSet.getString("oldPlayerName").toLowerCase(), resultSet.getLong("changeDate"));
+            }
+            PacocaCraft.logger.info("Cached " + cachedChangedNames.size() + " recent changed usernames.");
+
+            // Close everything
+            resultSet.close();
+            preparedStatement.close();
+        }
+        // Close connection
+        connection.close();
     }
 }

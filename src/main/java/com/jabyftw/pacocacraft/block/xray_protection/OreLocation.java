@@ -1,6 +1,5 @@
 package com.jabyftw.pacocacraft.block.xray_protection;
 
-import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Location;
 

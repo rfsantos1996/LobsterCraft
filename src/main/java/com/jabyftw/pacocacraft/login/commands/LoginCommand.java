@@ -8,7 +8,7 @@ import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.login.UserLoginService;
 import com.jabyftw.pacocacraft.login.UserProfile;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.command.CommandSender;

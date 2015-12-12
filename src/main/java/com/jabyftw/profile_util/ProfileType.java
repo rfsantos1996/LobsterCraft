@@ -1,4 +1,4 @@
-package com.jabyftw.pacocacraft.player;
+package com.jabyftw.profile_util;
 
 import com.jabyftw.pacocacraft.location.TeleportProfile;
 import com.jabyftw.pacocacraft.login.UserProfile;

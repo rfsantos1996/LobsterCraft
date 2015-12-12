@@ -1,6 +1,5 @@
 package com.jabyftw.pacocacraft.player.invisibility;
 
-import com.jabyftw.pacocacraft.player.PlayerHandler;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

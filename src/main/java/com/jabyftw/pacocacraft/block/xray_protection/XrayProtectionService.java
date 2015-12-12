@@ -2,7 +2,7 @@ package com.jabyftw.pacocacraft.block.xray_protection;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.ServerService;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;

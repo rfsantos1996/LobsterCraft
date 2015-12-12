@@ -9,7 +9,7 @@ import com.jabyftw.pacocacraft.configuration.ConfigurationFile;
 import com.jabyftw.pacocacraft.location.TeleportService;
 import com.jabyftw.pacocacraft.login.UserLoginService;
 import com.jabyftw.pacocacraft.login.ban.BanService;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.player.PlayerService;
 import com.jabyftw.pacocacraft.player.chat.ChatService;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
@@ -108,20 +108,22 @@ public class PacocaCraft extends JavaPlugin {
         try {
             config = new ConfigurationFile(this, "config");
         } catch(IOException | InvalidConfigurationException e) {
-            logger.warning("Failed to load configuration! Using default values.");
+            logger.severe("Failed to load configuration!");
+            setEnabled(false);
+            return;
         }
 
         // Check up for Vault
         if(getServer().getPluginManager().getPlugin("Vault") == null) {
             logger.severe("Failed to start Vault! Go get it before!");
-            getServer().getPluginManager().disablePlugin(this);
+            setEnabled(false);
             return;
         }
 
         // Check up for ProtocolLib
         if(getServer().getPluginManager().getPlugin("ProtocolLib") == null) {
             logger.severe("Failed to start ProtocolLib! Go get it before!");
-            getServer().getPluginManager().disablePlugin(this);
+            setEnabled(false);
             return;
         }
 
@@ -153,7 +155,7 @@ public class PacocaCraft extends JavaPlugin {
         } catch(HikariPool.PoolInitializationException e) {
             logger.severe("Failed to start MySQL: " + e.getMessage());
             e.printStackTrace();
-            getServer().getPluginManager().disablePlugin(this);
+            setEnabled(false);
             return;
         }
 

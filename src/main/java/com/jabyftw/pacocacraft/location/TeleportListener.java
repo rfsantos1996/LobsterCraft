@@ -1,7 +1,5 @@
 package com.jabyftw.pacocacraft.location;
 
-import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -16,7 +14,6 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
 

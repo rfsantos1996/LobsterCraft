@@ -1,13 +1,13 @@
-package com.jabyftw.pacocacraft.player;
+package com.jabyftw.profile_util;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.block.xray_protection.OreLocation;
 import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.PlayerService;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang.builder.HashCodeBuilder;
-import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;

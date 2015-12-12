@@ -1,8 +1,7 @@
 package com.jabyftw;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.login.UserProfile;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang.math.NumberUtils;
@@ -10,11 +9,8 @@ import org.bukkit.*;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.potion.PotionType;
-import sun.misc.BASE64Encoder;
 
-import javax.crypto.Cipher;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;

@@ -10,7 +10,7 @@ commands:
   login:
     aliases: [l, entrar]
   register:
-    aliases: registrar
+    aliases: [registrar, reg]
   godmode:
     aliases: god
   gamemode:

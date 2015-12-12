@@ -2,9 +2,10 @@ package com.jabyftw.pacocacraft.location;
 
 import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
-import com.jabyftw.pacocacraft.player.PlayerProfile;
-import com.jabyftw.pacocacraft.player.ProfileType;
+import com.jabyftw.profile_util.DatabaseState;
+import com.jabyftw.profile_util.PlayerHandler;
+import com.jabyftw.profile_util.PlayerProfile;
+import com.jabyftw.profile_util.ProfileType;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.Location;
@@ -38,9 +39,10 @@ public class TeleportProfile extends PlayerProfile {
         super(ProfileType.TELEPORT_PROFILE, playerId);
     }
 
-    public TeleportProfile(long playerId, @Nullable Location lastLocation) {
+    public TeleportProfile(long playerId, @NotNull Location lastLocation) {
         super(ProfileType.TELEPORT_PROFILE, playerId);
         this.lastLocation = lastLocation;
+        this.databaseState = DatabaseState.ON_DATABASE;
     }
 
     @Override
@@ -57,7 +59,7 @@ public class TeleportProfile extends PlayerProfile {
 
     protected void setLastLocation(@Nullable Location lastLocation) {
         this.lastLocation = lastLocation;
-        modified = true;
+        setModified();
     }
 
     public static TeleportProfile fetchTeleportProfile(long playerId) throws SQLException {
@@ -75,7 +77,6 @@ public class TeleportProfile extends PlayerProfile {
             // Execute statement
             ResultSet resultSet = preparedStatement.executeQuery();
             if(!resultSet.next()) {
-
                 // Returning before, close everything
                 resultSet.close();
                 preparedStatement.close();
@@ -85,14 +86,14 @@ public class TeleportProfile extends PlayerProfile {
                 return null;
             }
 
-            Location lastLocation;
-            String worldName = resultSet.getString("worldName");
+            // Check if lastLocation is null on database; if so, set teleport profile
+            if(resultSet.wasNull()) {
+                teleportProfile = new TeleportProfile(playerId, null);
+            } else {
+                String worldName = resultSet.getString("worldName");
 
-            // Check if lastLocation is null on database
-            if(resultSet.wasNull())
-                lastLocation = null; // Don't search for more values
-            else
-                lastLocation = new Location(
+                // Create last location
+                Location lastLocation = new Location(
                         Util.parseToWorld(worldName),
                         resultSet.getDouble("x"),
                         resultSet.getDouble("y"),
@@ -101,8 +102,9 @@ public class TeleportProfile extends PlayerProfile {
                         resultSet.getFloat("pitch")
                 );
 
-            // Apply information to profile on a "loaded profile" constructor
-            teleportProfile = new TeleportProfile(playerId, lastLocation);
+                // Apply information to profile on a "loaded profile" constructor
+                teleportProfile = new TeleportProfile(playerId, lastLocation);
+            }
 
             // Close ResultSet and PreparedStatement
             resultSet.close();
@@ -115,37 +117,37 @@ public class TeleportProfile extends PlayerProfile {
     }
 
     public static void saveTeleportProfile(@NotNull TeleportProfile teleportProfile) throws SQLException {
+        if(!teleportProfile.shouldBeSaved()) return;
+
         // Get connection from pool and execute query
         Connection connection = PacocaCraft.dataSource.getConnection();
         {
+            boolean isInserting = teleportProfile.databaseState == DatabaseState.INSERT_DATABASE;
+
             // Prepare statement arguments
             PreparedStatement preparedStatement = connection.prepareStatement(
-                    "INSERT INTO `minecraft`.`last_location_profile`(`user_playerId`,`worldName`,`x`,`y`,`z`,`yaw`,`pitch`) VALUES (?,?,?,?,?,?,?)\n" + // 1->7
-                            "ON DUPLICATE KEY UPDATE `worldName` = ?, `x` = ?, `y` = ?, `z` = ?, `yaw` = ?, `pitch` = ?;" // 7+1 -> 7+1+5
+                    isInserting ?
+                            "INSERT INTO `minecraft`.`last_location_profile` (`user_playerId`, `worldName`, `x`, `y`, `z`, `yaw`, `pitch`) VALUES (?, ?, ?, ?, ?, ?, ?);" :
+                            "UPDATE `minecraft`.`last_location_profile` SET `worldName` = ?, `x` = ?, `y` = ?, `z` = ?, `yaw` = ?, `pitch` = ? WHERE `user_playerId` = ?;"
             );
 
-            // Update statement where needed
-            preparedStatement.setLong(1, teleportProfile.getPlayerId());
-
-            // This table supports null values, so... (this looks ugly but I would need to store something to get if it is on database ); )
+            // Set variables
+            // This table supports null values
             Location lastLocation = teleportProfile.getLastLocation();
-            preparedStatement.setObject(2, lastLocation == null ? null : lastLocation.getWorld().getName().toLowerCase(), Types.VARCHAR);
-            preparedStatement.setObject(8, lastLocation == null ? null : lastLocation.getWorld().getName().toLowerCase(), Types.VARCHAR);
+            boolean isNUll = lastLocation == null;
 
-            preparedStatement.setObject(3, lastLocation == null ? null : lastLocation.getX(), Types.DOUBLE);
-            preparedStatement.setObject(9, lastLocation == null ? null : lastLocation.getX(), Types.DOUBLE);
-
-            preparedStatement.setObject(4, lastLocation == null ? null : lastLocation.getY(), Types.DOUBLE);
-            preparedStatement.setObject(10, lastLocation == null ? null : lastLocation.getY(), Types.DOUBLE);
-
-            preparedStatement.setObject(5, lastLocation == null ? null : lastLocation.getZ(), Types.DOUBLE);
-            preparedStatement.setObject(11, lastLocation == null ? null : lastLocation.getZ(), Types.DOUBLE);
-
-            preparedStatement.setObject(6, lastLocation == null ? null : lastLocation.getYaw(), Types.FLOAT);
-            preparedStatement.setObject(12, lastLocation == null ? null : lastLocation.getYaw(), Types.FLOAT);
-
-            preparedStatement.setObject(7, lastLocation == null ? null : lastLocation.getPitch(), Types.FLOAT);
-            preparedStatement.setObject(13, lastLocation == null ? null : lastLocation.getPitch(), Types.FLOAT);
+            // If it is inserting, starts at 1; else, starts at 2
+            int index = isInserting ? 1 : 2;
+            // Set world
+            preparedStatement.setObject(index++, isNUll ? null : lastLocation.getWorld().getName().toLowerCase(), Types.VARCHAR);
+            // Set x, y and z axis
+            preparedStatement.setObject(index++, isNUll ? null : lastLocation.getX(), Types.DOUBLE);
+            preparedStatement.setObject(index++, isNUll ? null : lastLocation.getY(), Types.DOUBLE);
+            preparedStatement.setObject(index++, isNUll ? null : lastLocation.getZ(), Types.DOUBLE);
+            // Set direction
+            preparedStatement.setObject(index++, isNUll ? null : lastLocation.getYaw(), Types.FLOAT);
+            preparedStatement.setObject(index++, isNUll ? null : lastLocation.getPitch(), Types.FLOAT);
+            preparedStatement.setLong(isInserting ? 1 : index, teleportProfile.getPlayerId());
 
             // Execute statement
             preparedStatement.execute();
@@ -155,5 +157,8 @@ public class TeleportProfile extends PlayerProfile {
         }
         // Close connection and return true (it worked or it'll throw exceptions)
         connection.close();
+
+        // Update its state
+        teleportProfile.databaseState = DatabaseState.ON_DATABASE;
     }
 }

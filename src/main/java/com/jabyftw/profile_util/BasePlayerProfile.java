@@ -1,6 +1,6 @@
-package com.jabyftw.pacocacraft.player;
+package com.jabyftw.profile_util;
 
-import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.PlayerService;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 
@@ -29,7 +29,7 @@ public abstract class BasePlayerProfile {
     private PlayerHandler playerHandler = null;
 
     // protected so its subclasses have access
-    protected volatile boolean modified = false; // Volatile because it is used asynchronously on UserProfile, and I don't want to synchronize every method
+    protected volatile DatabaseState databaseState = DatabaseState.NOT_ON_DATABASE; // Volatile because it is used asynchronously on UserProfile and I don't want to synchronize every method
     protected long storedSince = -1;
 
     public BasePlayerProfile(ProfileType profileType) {
@@ -52,7 +52,11 @@ public abstract class BasePlayerProfile {
      * @return true if profile was modified
      */
     public boolean shouldBeSaved() {
-        return modified;
+        return databaseState == DatabaseState.UPDATE_DATABASE || databaseState == DatabaseState.INSERT_DATABASE;
+    }
+
+    protected void setModified() {
+        this.databaseState = this.databaseState == DatabaseState.ON_DATABASE ? DatabaseState.UPDATE_DATABASE : DatabaseState.INSERT_DATABASE;
     }
 
     public PlayerHandler getPlayerHandler() {
@@ -93,5 +97,9 @@ public abstract class BasePlayerProfile {
      */
     public void setStoredSince(long storedSince) {
         this.storedSince = storedSince;
+    }
+
+    public static DatabaseState setModified(DatabaseState currentState) {
+        return currentState == DatabaseState.ON_DATABASE ? DatabaseState.UPDATE_DATABASE : DatabaseState.INSERT_DATABASE;
     }
 }

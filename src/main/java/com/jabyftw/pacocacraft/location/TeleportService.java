@@ -1,15 +1,9 @@
 package com.jabyftw.pacocacraft.location;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.location.commands.*;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
-import com.jabyftw.pacocacraft.util.BukkitScheduler;
-import com.jabyftw.pacocacraft.util.Permissions;
 import com.jabyftw.pacocacraft.util.ServerService;
-import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin

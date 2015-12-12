@@ -3,12 +3,11 @@ package com.jabyftw.pacocacraft.login;
 import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
-import com.jabyftw.pacocacraft.location.TeleportProfile;
-import com.jabyftw.pacocacraft.location.TeleportService;
 import com.jabyftw.pacocacraft.player.*;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import com.jabyftw.profile_util.*;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.Bukkit;
@@ -17,7 +16,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import java.sql.*;
-import java.text.SimpleDateFormat;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -50,12 +48,12 @@ public class UserProfile extends BasePlayerProfile {
     // Last username change stuff
     private String lastUsername;
     private long lastUsernameChange;
-    private UsernameChangeState usernameChangedState = UsernameChangeState.NOT_ON_DATABASE;
+    private volatile DatabaseState usernameChangedState = DatabaseState.NOT_ON_DATABASE;
 
     // Variables (not database related)
     private final Object passwordLock = new Object(), playerIdLock = new Object(); // synchronized because I don't want the password to change middle execution of some methods
     private long loginTime;
-    private volatile boolean loggedIn = false;
+    private boolean loggedIn = false; // All these usages are sync
     private PlayerMoment preLoginMoment = null; // Lock not needed, even though it is used on login command (async), it requires Bukkit's API and so it is synchronized for this
 
     /**
@@ -94,7 +92,8 @@ public class UserProfile extends BasePlayerProfile {
 
         this.lastUsername = lastUsername;
         this.lastUsernameChange = lastUsernameChange;
-        if(lastUsername != null) usernameChangedState = UsernameChangeState.ON_DATABASE; // Set its state
+        if(lastUsername != null) usernameChangedState = DatabaseState.ON_DATABASE; // Set its state
+        this.databaseState = DatabaseState.ON_DATABASE;
     }
 
     @Override
@@ -112,9 +111,9 @@ public class UserProfile extends BasePlayerProfile {
         }*/
 
         // Need Bukkit API, but we're on PlayerJoinEvent
-        // Store last Ip
+        // Store last Ip and set as modified
         lastIp = player.getAddress().getAddress().getAddress();
-        modified = true;
+        setModified();
 
         // Store before login information
         preLoginMoment = new PlayerMoment(playerHandler);
@@ -136,9 +135,10 @@ public class UserProfile extends BasePlayerProfile {
         if(isLoggedIn()) {
             // Add playTime from login time
             playTime += Math.abs(System.currentTimeMillis() - loginTime); // abs, just in case
+
             // Update last time online
             lastTimeOnline = System.currentTimeMillis();
-            modified = true;
+            setModified();
         }
 
         // Restore login moment if player isn't logged in still
@@ -243,13 +243,16 @@ public class UserProfile extends BasePlayerProfile {
                 return false;
             }
 
-            // Register player password (it'll be saved)
+            // Register player password and mark as modified
             this.password = encryptedPassword;
-            this.modified = true;
+            setModified();
         }
 
         try {
+            // Save profile retrieving returned playerId
             long retrievedPlayerId = UserProfile.saveUserProfile(this);
+
+            // Save player Id if player wasn't registered
             synchronized(playerIdLock) {
                 if(playerId < 0) playerId = retrievedPlayerId; // Update player id if registered
             }
@@ -258,6 +261,7 @@ public class UserProfile extends BasePlayerProfile {
             return false;
         }
 
+        // Login player
         attemptLogin(encryptedPassword);
         return true;
     }
@@ -289,9 +293,9 @@ public class UserProfile extends BasePlayerProfile {
      *
      * @param playerName the new player name (don't need to be lower cased)
      *
-     * @see com.jabyftw.pacocacraft.login.commands.ChangeUsernameCommand#onChangeUsername(PlayerHandler, String, String)
+     * @see com.jabyftw.pacocacraft.login.commands.ChangeUsernameCommand#onChangeUsername(PlayerHandler, String, String) so this is ran asynchronously
      */
-    public synchronized void setPlayerName(@NotNull String playerName) {
+    public synchronized boolean setPlayerName(@NotNull String playerName) {
         // Update last username
         this.lastUsername = this.playerName.toLowerCase();
         this.playerName = playerName.toLowerCase();
@@ -299,9 +303,29 @@ public class UserProfile extends BasePlayerProfile {
         // Update change date
         this.lastUsernameChange = System.currentTimeMillis();
 
-        // Set as modified
-        this.modified = true;
-        this.usernameChangedState = usernameChangedState == UsernameChangeState.ON_DATABASE ? UsernameChangeState.UPDATE_DATABASE : UsernameChangeState.INSERT_DATABASE;
+        // Update join listener
+        JoinListener.cachedChangedNames.remove(playerName.toLowerCase());
+        JoinListener.cachedChangedNames.put(lastUsername.toLowerCase(), lastUsernameChange);
+
+        // Save changes
+        try {
+            // Require it to save
+            this.databaseState = DatabaseState.UPDATE_DATABASE;
+            this.usernameChangedState = setModified(usernameChangedState);
+
+            // Save profile
+            saveUserProfile(this);
+
+            // Synchronously kick player and prevent it from saving
+            BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> {
+                this.loggedIn = false; // Prevent saving
+                getPlayerHandler().getPlayer().kickPlayer("§6Nome alterado com sucesso!");
+            });
+            return true;
+        } catch(SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public synchronized String getLastUsername() {
@@ -342,11 +366,11 @@ public class UserProfile extends BasePlayerProfile {
         synchronized(passwordLock) {
             this.password = password;
         }
-        this.modified = true;
+        setModified();
     }
 
     /**
-     * Save user profile to MySQL
+     * Save user profile to MySQL without checking profile's changed state
      * <b>NOTE:</b> should be on async since it'll change the database
      *
      * @param userProfile the desired user profile
@@ -406,9 +430,9 @@ public class UserProfile extends BasePlayerProfile {
             PreparedStatement preparedStatement = null;
 
             // Prepare statement
-            if((isInserting = userProfile.usernameChangedState == UsernameChangeState.INSERT_DATABASE))
+            if((isInserting = userProfile.usernameChangedState == DatabaseState.INSERT_DATABASE))
                 preparedStatement = connection.prepareStatement("INSERT INTO `minecraft`.`recent_username_changes`(`user_playerId`, `oldPlayerName`, `changeDate`) VALUES (?, ?, ?);");
-            else if(userProfile.usernameChangedState == UsernameChangeState.UPDATE_DATABASE)
+            else if(userProfile.usernameChangedState == DatabaseState.UPDATE_DATABASE)
                 preparedStatement = connection.prepareStatement("UPDATE `minecraft`.`recent_username_changes` SET `oldPlayerName` = ?, `changeDate` = ? WHERE `user_playerId` = ?;");
 
             // If is using database (changes were made to the username), set everything and execute
@@ -420,13 +444,19 @@ public class UserProfile extends BasePlayerProfile {
                 preparedStatement.setString(2 + offset, userProfile.getLastUsername());
                 preparedStatement.setLong(3 + offset, userProfile.getUsernameChangeDate());
 
-                // Execute and close statement
+                // Execute
                 preparedStatement.execute();
+                userProfile.usernameChangedState = DatabaseState.ON_DATABASE;
+
+                // Close statement
                 preparedStatement.close();
             }
         }
         // Close connection and return true (it worked or it'll throw exceptions)
         connection.close();
+
+        // Set as in database // TODO check to do this on other profiles
+        userProfile.databaseState = DatabaseState.ON_DATABASE;
 
         return playerId;
     }
@@ -451,9 +481,11 @@ public class UserProfile extends BasePlayerProfile {
             // Prepare statement arguments
             PreparedStatement preparedStatement = connection.prepareStatement(
                     "SELECT * FROM `minecraft`.`user_profiles` " +
-                            "LEFT JOIN `minecraft`.`recent_username_changes` ON `recent_username_changes`.`user_playerId`=`playerId` " +
+                            "LEFT JOIN `minecraft`.`recent_username_changes` ON `recent_username_changes`.`user_playerId` = `playerId` " + // Note: do not filter by changeDate (DUPLICATE)
                             "WHERE `user_profiles`.`playerName` = ?;" // Since player name is unique, it'll work just fine
             );
+
+            // Set variables
             preparedStatement.setString(1, playerName);
 
             // Execute statement
@@ -503,10 +535,11 @@ public class UserProfile extends BasePlayerProfile {
         {
             // Prepare statement
             PreparedStatement preparedStatement = connection.prepareStatement(
-                    "SELECT `playerId`, `user_playerId` FROM `minecraft`.`user_profiles`, `minecraft`.`recent_username_changes` WHERE `oldPlayerName` = ? OR `playerName` = ? LIMIT 1;"
+                    "SELECT `playerId`, `user_playerId` FROM `minecraft`.`user_profiles`, `minecraft`.`recent_username_changes` WHERE (`oldPlayerName` = ? AND `changeDate` > ?) OR `playerName` = ? LIMIT 1;"
             );
             preparedStatement.setString(1, playerName);
-            preparedStatement.setString(2, playerName);
+            preparedStatement.setLong(2, System.currentTimeMillis() - JoinListener.TIME_REQUIRED_TO_USERNAME_BE_AVAILABLE); // Lets filter those usernames that already expired
+            preparedStatement.setString(3, playerName);
 
             // Execute query and check if there's an entry
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -521,10 +554,4 @@ public class UserProfile extends BasePlayerProfile {
         return !exists;
     }
 
-    private enum UsernameChangeState {
-        INSERT_DATABASE, // Changed and wasn't on database
-        UPDATE_DATABASE, // Changed and already was on database
-        NOT_ON_DATABASE, // Isn't on database
-        ON_DATABASE // Is on database
-    }
 }

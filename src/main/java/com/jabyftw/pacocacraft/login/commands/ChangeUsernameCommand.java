@@ -8,7 +8,7 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.pacocacraft.login.JoinListener;
 import com.jabyftw.pacocacraft.login.UserProfile;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.entity.Player;
@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class ChangeUsernameCommand extends CommandExecutor {
 
-    private final static long REQUIRED_TIME_CHANGE_NAME = TimeUnit.DAYS.toMillis(PacocaCraft.config.getInt(ConfigValue.LOGIN_PROFILE_WAITING_TIME.getPath()));
+    private final static long REQUIRED_TIME_CHANGE_NAME = TimeUnit.DAYS.toMillis(PacocaCraft.config.getInt(ConfigValue.LOGIN_REQUIRED_TIME_CHANGE_USERNAME.getPath()));
 
     public ChangeUsernameCommand() {
         super(PacocaCraft.pacocaCraft, "changeuser", Permissions.JOIN_CHANGE_USER, "§6Permite ao jogador alterar seu nome de usuário", "§c/changeuser (§4novo nome§c) (§4novo nome§c)");
@@ -60,11 +60,11 @@ public class ChangeUsernameCommand extends CommandExecutor {
         }
 
         UserProfile profile = playerHandler.getProfile(UserProfile.class);
-        long timeSinceLastChange = Math.abs(System.currentTimeMillis() - profile.getUsernameChangeDate());
+        long timeSinceLastChange = Math.abs(System.currentTimeMillis() - profile.getUsernameChangeDate()); // Actual time - change date
 
         // If player isn't changing to its past username AND its username change date is less than the required time
-        if(profile.getLastUsername() != null && !profile.getLastUsername().equalsIgnoreCase(username1)
-                && timeSinceLastChange <= REQUIRED_TIME_CHANGE_NAME) {
+        if(profile.getLastUsername() != null && timeSinceLastChange <= REQUIRED_TIME_CHANGE_NAME) {
+            // NOTE: do not allow non-stopping changes (not even to the last username)
             player.sendMessage("§cVocê só pode alterar seu nome novamente daqui §4" + Util.parseTimeInMillis(Math.abs(REQUIRED_TIME_CHANGE_NAME - timeSinceLastChange)));
             return true;
         }
@@ -75,8 +75,8 @@ public class ChangeUsernameCommand extends CommandExecutor {
                 // Check if username is available
                 if(UserProfile.isUsernameAvailable(username1)) {
                     // Set player name (it'll be marked as changed and be saved on database upon log out)
-                    profile.setPlayerName(username1);
-                    player.sendMessage("§6Nome alterado! Reentre com o novo usuário (;");
+                    if(!profile.setPlayerName(username1))
+                        player.sendMessage("§cOcorreu um erro!");
                 } else {
                     player.sendMessage("§cUsuário já existente!");
                 }

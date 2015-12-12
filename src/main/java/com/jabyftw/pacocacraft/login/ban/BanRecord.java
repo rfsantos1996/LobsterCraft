@@ -2,7 +2,7 @@ package com.jabyftw.pacocacraft.login.ban;
 
 import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.login.UserProfile;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 
 /**

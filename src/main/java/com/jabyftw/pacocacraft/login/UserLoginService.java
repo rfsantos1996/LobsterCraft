@@ -151,14 +151,13 @@ public class UserLoginService implements ServerService {
 
     /**
      * Store profile until player needs it or it's lifetime passes waiting
-     * <b>NOTE:</b> it'll be saved if needed asynchronously
+     * <b>NOTE:</b> it'll be saved (if needed) asynchronously
      *
      * @param userProfile desired user profile to be stored
      */
     public void storeProfile(@NotNull UserProfile userProfile) {
         userProfile.setStoredSince(System.currentTimeMillis());
         userProfileMap.put(userProfile.getPlayerName().toLowerCase(), userProfile);
-        // TODO player name changes -> duplicates account? (no, but player can log in with the old player name still and on database it'll create unexpected results)
     }
 
     protected class UserProfileSavingTask implements Runnable {

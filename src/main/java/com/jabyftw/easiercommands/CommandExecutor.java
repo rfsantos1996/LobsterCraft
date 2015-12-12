@@ -1,7 +1,7 @@
 package com.jabyftw.easiercommands;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.player.PlayerHandler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
