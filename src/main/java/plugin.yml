@@ -46,7 +46,7 @@ commands:
   whisper:
     aliases: [m, msg]
   r:
-    description: dont know if I can remove every command attribute
+    aliases: reply
   broadcast:
     description: dont know if I can remove every command attribute
   clear:
@@ -60,6 +60,8 @@ commands:
   spawnmob:
     aliases: spawnmobs
   mute:
+    description: dont know if I can remove every command attribute
+  unmute:
     description: dont know if I can remove every command attribute
   ptime:
     aliases: tempo

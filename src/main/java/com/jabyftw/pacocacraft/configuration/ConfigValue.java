@@ -50,9 +50,9 @@ public enum ConfigValue {
     PLAYER_TIME_UNSAFE_ENCHANTMENT_CONFIRMATION("player.time_to_confirm_unsafe_enchantment_seconds", 30L),
     PLAYER_SPEED_MINIMUM_MULTIPLIER("player.speed.minimum_speed_multiplier", 0.05d),
     PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
-    PLAYER_CHAT_EXCLUDED_COMMANDS("player.excluded_chat_commands_on_server_log", new String[]{
-            "login", "l", "entrar", "register", "registrar", "reg", "changepass", "changepassword", "passwordchange", "mudarsenha", "passchange"
-    }),;
+    PLAYER_FIXED_CHAT_REFRESH_DELAY("player.fixed_chat_refresh_delay_seconds", 7L),
+    PLAYER_MAXIMUM_MUTED_PLAYERS("player.maximum_number_of_muted_players", 15),
+    ;
 
     private final String path;
     private final Object defaultValue;

@@ -59,7 +59,7 @@ public class TeleportProfile extends PlayerProfile {
 
     protected void setLastLocation(@Nullable Location lastLocation) {
         this.lastLocation = lastLocation;
-        setModified();
+        setDatabaseState();
     }
 
     public static TeleportProfile fetchTeleportProfile(long playerId) throws SQLException {

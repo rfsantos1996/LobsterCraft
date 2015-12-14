@@ -55,7 +55,7 @@ public abstract class BasePlayerProfile {
         return databaseState == DatabaseState.UPDATE_DATABASE || databaseState == DatabaseState.INSERT_DATABASE;
     }
 
-    protected void setModified() {
+    protected void setDatabaseState() {
         this.databaseState = this.databaseState == DatabaseState.ON_DATABASE ? DatabaseState.UPDATE_DATABASE : DatabaseState.INSERT_DATABASE;
     }
 
@@ -99,7 +99,7 @@ public abstract class BasePlayerProfile {
         this.storedSince = storedSince;
     }
 
-    public static DatabaseState setModified(DatabaseState currentState) {
+    public static DatabaseState setDatabaseState(DatabaseState currentState) {
         return currentState == DatabaseState.ON_DATABASE ? DatabaseState.UPDATE_DATABASE : DatabaseState.INSERT_DATABASE;
     }
 }

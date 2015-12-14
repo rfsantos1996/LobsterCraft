@@ -27,6 +27,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -228,6 +229,13 @@ public class PacocaCraft extends JavaPlugin {
      */
     public static PlayerHandler getPlayerHandler(@NotNull Player player) {
         return playerMap.get(player);
+    }
+
+    /**
+     * @return a collection with every online player handler
+     */
+    public static Collection<PlayerHandler> getOnlinePlayers() {
+        return playerMap.values();
     }
 
     /**

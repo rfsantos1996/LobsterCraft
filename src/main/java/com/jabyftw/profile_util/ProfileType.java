@@ -2,6 +2,7 @@ package com.jabyftw.profile_util;
 
 import com.jabyftw.pacocacraft.location.TeleportProfile;
 import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.chat.ChatProfile;
 import com.sun.istack.internal.NotNull;
 
 import java.sql.SQLException;
@@ -24,6 +25,7 @@ import java.sql.SQLException;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
+@SuppressWarnings("unchecked")
 public enum ProfileType {
 
     USER_PROFILE(UserProfile.class) {
@@ -44,13 +46,25 @@ public enum ProfileType {
             TeleportProfile.saveTeleportProfile((TeleportProfile) basePlayerProfile);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public <T extends PlayerProfile> T retrieveProfile(long playerId) throws SQLException {
             T fetchTeleportProfile = (T) TeleportProfile.fetchTeleportProfile(playerId);
             return fetchTeleportProfile == null ? (T) new TeleportProfile(playerId) : fetchTeleportProfile;
         }
-    },;
+    },
+
+    CHAT_PROFILE(ChatProfile.class) {
+        @Override
+        public <T extends BasePlayerProfile> void saveProfile(@NotNull T basePlayerProfile) throws SQLException {
+            ChatProfile.saveProfile((ChatProfile) basePlayerProfile);
+        }
+
+        @Override
+        public <T extends PlayerProfile> T retrieveProfile(long playerId) throws SQLException {
+            T fetchChatProfile = (T) ChatProfile.fetchChatProfile(playerId);
+            return fetchChatProfile == null ? (T) new ChatProfile(playerId) : fetchChatProfile;
+        }
+    };
 
     private final Class<? extends BasePlayerProfile> profileClass;
 

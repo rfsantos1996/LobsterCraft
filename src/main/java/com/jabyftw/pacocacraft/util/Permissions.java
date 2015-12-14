@@ -73,6 +73,12 @@ public final class Permissions {
             PLAYER_INVENTORY_SPY_MODIFY = "pacocacraft.player.inventory_spy.modify",
             PLAYER_INDIVIDUAL_TIME_CHANGE = "pacocacraft.player.ptime_change",
             PLAYER_INDIVIDUAL_WEATHER_CHANGE = "pacocacraft.player.pweather_change",
+            PLAYER_TALK_HIDDEN = "pacocacraft.player.chat_while_hidden",
+            PLAYER_WHISPER = "pacocacraft.player.whisper",
+            PLAYER_WHISPER_REPLY_AUTOMATICALLY = "pacocacraft.player.whisper.reply_automatically",
+            PLAYER_MUTE = "pacocacraft.player.mute",
+            PLAYER_MUTE_EXCEPTION = "pacocacraft.player.mute.exception",
+            PLAYER_MUTE_ALL = "pacocacraft.player.mute.admin_mute",
 
     TELEPORT_INSTANTANEOUSLY = "pacocacraft.teleport.instantaneously",
             TELEPORT_WORLD = "pacocacraft.teleport.world",

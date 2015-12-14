@@ -4,6 +4,7 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.block.xray_protection.OreLocation;
 import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.PlayerService;
+import com.jabyftw.pacocacraft.player.chat.ChatProfile;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;

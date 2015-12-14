@@ -59,9 +59,6 @@ public class PlayerService implements ServerService {
         Bukkit.getServer().getPluginCommand("clearenchantment").setExecutor(new ClearEnchantmentCommand());
         Bukkit.getServer().getPluginCommand("workbench").setExecutor(new WorkbenchCommand());
         Bukkit.getServer().getPluginCommand("list").setExecutor(new ListCommand());
-        //Bukkit.getServer().getPluginCommand("whisper").setExecutor(new WhisperCommand()); // TODO after my chat idea
-        //Bukkit.getServer().getPluginCommand("r").setExecutor(new ReplyCommand());
-        //Bukkit.getServer().getPluginCommand("mute").setExecutor(new MuteCommand());
         Bukkit.getServer().getPluginCommand("clear").setExecutor(new ClearInventoryCommand());
         Bukkit.getServer().getPluginCommand("suicide").setExecutor(new SuicideCommand());
         Bukkit.getServer().getPluginCommand("kill").setExecutor(new KillPlayersCommand());

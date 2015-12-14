@@ -1,7 +1,10 @@
 package com.jabyftw.pacocacraft.player.chat;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
+import com.jabyftw.pacocacraft.util.Permissions;
+import com.jabyftw.profile_util.PlayerHandler;
 import org.bukkit.Sound;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -33,16 +36,23 @@ public class ChatListener implements Listener {
         // Cancel all events that got here (cancelled before are just ignored)
         chatEvent.setCancelled(true);
 
+        // Return if player is hidden and don't have permission to talk
+        if(InvisibilityService.isPlayerHidden(chatEvent.getPlayer()) && !PacocaCraft.permission.has(chatEvent.getPlayer(), Permissions.PLAYER_TALK_HIDDEN))
+            return;
+
         // Send player a "chat sound" (this volume is actually louder than the normal exp, should be fine)
         BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> chatEvent.getPlayer().playSound(chatEvent.getPlayer().getLocation(), Sound.ORB_PICKUP, 10, 1));
 
-        /*
-         * TODO:
-         * - check those players who can receive chat before sending the message
-         * - check on the msg/r command if the player can receive, warn sender (better) or store the message until he can receives it
-         * - if the chat is fixed for player:
-         *      * check the time that takes the client to fade away the last message (repeat in less time than that)
-          *     * on the number of fixed lines, make so the player will receive, from top to the bottom, corresponding text
-         */
+        PlayerHandler sender = PacocaCraft.getPlayerHandler(chatEvent.getPlayer());
+        boolean heard = false;
+
+        // Send messages to every player
+        for(PlayerHandler playerHandler : PacocaCraft.getOnlinePlayers()) {
+            if(playerHandler.equals(sender)) continue;
+            if(playerHandler.getProfile(ChatProfile.class).sendChatMessage(sender, chatEvent.getMessage())) heard = true;
+        }
+
+        // If any player heard him, allow message
+        if(heard) sender.getProfile(ChatProfile.class).sendChatMessage(sender, chatEvent.getMessage());
     }
 }

@@ -113,7 +113,7 @@ public class UserProfile extends BasePlayerProfile {
         // Need Bukkit API, but we're on PlayerJoinEvent
         // Store last Ip and set as modified
         lastIp = player.getAddress().getAddress().getAddress();
-        setModified();
+        setDatabaseState();
 
         // Store before login information
         preLoginMoment = new PlayerMoment(playerHandler);
@@ -138,7 +138,7 @@ public class UserProfile extends BasePlayerProfile {
 
             // Update last time online
             lastTimeOnline = System.currentTimeMillis();
-            setModified();
+            setDatabaseState();
         }
 
         // Restore login moment if player isn't logged in still
@@ -171,58 +171,64 @@ public class UserProfile extends BasePlayerProfile {
     public boolean attemptLogin(@NotNull String encryptedPassword) {
         Player player = getPlayerHandler().getPlayer();
 
-        synchronized(passwordLock) {
-            // Check if password is the same or if the password even exists
-            if(this.password != null && !this.password.equals(encryptedPassword)) {
-                player.sendMessage("§4Senha incorreta! §cTente novamente...");
-                return false;
-            } else if(this.password == null) {
-                player.sendMessage("§4Você não está registrado! §cUse o comando §6/register");
-                return false;
+        try {
+            synchronized(passwordLock) {
+                // Check if password is the same or if the password even exists
+                if(this.password != null && !this.password.equals(encryptedPassword)) {
+                    player.sendMessage("§4Senha incorreta! §cTente novamente...");
+                    return false;
+                } else if(this.password == null) {
+                    player.sendMessage("§4Você não está registrado! §cUse o comando §6/register");
+                    return false;
+                }
             }
-        }
 
-        // Retrieve stored profiles
-        synchronized(playerIdLock) {
-            for(PlayerProfile playerProfile : PacocaCraft.playerService.getProfiles(playerId).values())
-                getPlayerHandler().applyProfile(playerProfile);
+            // Retrieve stored profiles
+            synchronized(playerIdLock) {
+                for(PlayerProfile playerProfile : PacocaCraft.playerService.getProfiles(playerId).values())
+                    getPlayerHandler().applyProfile(playerProfile);
 
-            // Check if all profiles are ready
-            for(ProfileType profileType : ProfileType.values()) {
-                if(getPlayerHandler().getProfile(profileType) == null)
-                    try {
-                        // Apply missing profile
-                        getPlayerHandler().applyProfile(profileType.retrieveProfile(playerId));
-                    } catch(SQLException e) {
-                        e.printStackTrace();
-                        player.sendMessage("§4Ocorreu um erro! §cBanco de dados não encontrou " + profileType.name());
-                        return false;
-                    }
+                // Check if all profiles are ready
+                for(ProfileType profileType : ProfileType.values()) {
+                    if(getPlayerHandler().getProfile(profileType) == null)
+                        try {
+                            // Apply missing profile
+                            getPlayerHandler().applyProfile(profileType.retrieveProfile(playerId));
+                        } catch(SQLException e) {
+                            e.printStackTrace();
+                            player.sendMessage("§4Ocorreu um erro! §cBanco de dados não encontrou " + profileType.name());
+                            return false;
+                        }
+                }
             }
+
+            // Everything went fine, log player in and restore everything
+            BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> {
+                // Restore player pre-login
+                preLoginMoment.restorePlayerMoment(); // Needs Bukkit API, run sync
+                preLoginMoment = null;
+
+                // Show player to everyone and vice-versa (uses Bukkit API)
+                InvisibilityService.showEveryoneToPlayer(player);
+                InvisibilityService.showPlayerToEveryone(player);
+
+                // Successful login, set variable to true
+                this.loggedIn = true;
+
+                // Store login time so we can calculate playTime
+                loginTime = System.currentTimeMillis();
+
+                // Broadcast messages
+                player.sendMessage("§6Login bem sucedido!");
+                if(!PacocaCraft.permission.playerHas(player, Permissions.JOIN_VANISHED))
+                    Bukkit.getServer().broadcastMessage("§b+ §3" + player.getName());
+            });
+            return true;
+        } catch(Exception e) {
+            e.printStackTrace();
+            player.kickPlayer("§cFalha ao logar!\n§cTente novamente mais tarde.");
+            return false;
         }
-
-        // Everything went fine, log player in and restore everything
-        BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> {
-            // Restore player pre-login
-            preLoginMoment.restorePlayerMoment(); // Needs Bukkit API, run sync
-            preLoginMoment = null;
-
-            // Show player to everyone and vice-versa (uses Bukkit API)
-            InvisibilityService.showEveryoneToPlayer(player);
-            InvisibilityService.showPlayerToEveryone(player);
-
-            // Successful login, set variable to true
-            this.loggedIn = true;
-
-            // Store login time so we can calculate playTime
-            loginTime = System.currentTimeMillis();
-
-            // Broadcast messages
-            player.sendMessage("§6Login bem sucedido!");
-            if(!PacocaCraft.permission.playerHas(player, Permissions.JOIN_VANISHED))
-                Bukkit.getServer().broadcastMessage("§b+ §3" + player.getName());
-        });
-        return true;
     }
 
     /**
@@ -245,7 +251,7 @@ public class UserProfile extends BasePlayerProfile {
 
             // Register player password and mark as modified
             this.password = encryptedPassword;
-            setModified();
+            setDatabaseState();
         }
 
         try {
@@ -311,7 +317,7 @@ public class UserProfile extends BasePlayerProfile {
         try {
             // Require it to save
             this.databaseState = DatabaseState.UPDATE_DATABASE;
-            this.usernameChangedState = setModified(usernameChangedState);
+            this.usernameChangedState = setDatabaseState(usernameChangedState);
 
             // Save profile
             saveUserProfile(this);
@@ -366,7 +372,7 @@ public class UserProfile extends BasePlayerProfile {
         synchronized(passwordLock) {
             this.password = password;
         }
-        setModified();
+        setDatabaseState();
     }
 
     /**

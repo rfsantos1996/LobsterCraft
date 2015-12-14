@@ -158,22 +158,20 @@ public class JoinListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST) // the first one
     public void onPlayerJoinMonitor(PlayerJoinEvent joinEvent) {
         Player player = joinEvent.getPlayer();
-
-        // Retrieve user profile
-        UserProfile userProfile;
         try {
+            // Retrieve user profile
+            UserProfile userProfile;
             userProfile = userLoginService.getUserProfile(player.getName());
-        } catch(ExecutionException | InterruptedException e) {
+
+            // Remove login message
+            joinEvent.setJoinMessage("");
+
+            // Create PlayerHandler (it'll add itself to the player list automatically)
+            new PlayerHandler(player, userProfile);
+        } catch(Exception e) {
             player.kickPlayer("§cOcorreu um erro com seu perfil de usuário!\n§cTente novamente mais tarde.");
             e.printStackTrace();
-            return;
         }
-
-        // Remove login message
-        joinEvent.setJoinMessage("");
-
-        // Create PlayerHandler (it'll add itself to the player list automatically)
-        new PlayerHandler(player, userProfile);
     }
 
     /**

@@ -1,6 +1,10 @@
 package com.jabyftw.pacocacraft.player.chat;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.player.chat.commands.MuteCommand;
+import com.jabyftw.pacocacraft.player.chat.commands.ReplyCommand;
+import com.jabyftw.pacocacraft.player.chat.commands.UnmuteCommand;
+import com.jabyftw.pacocacraft.player.chat.commands.WhisperCommand;
 import com.jabyftw.pacocacraft.util.ServerService;
 import org.bukkit.Bukkit;
 
@@ -26,6 +30,11 @@ public class ChatService implements ServerService {
 
     @Override
     public void onEnable() {
+        Bukkit.getServer().getPluginCommand("whisper").setExecutor(new WhisperCommand());
+        Bukkit.getServer().getPluginCommand("r").setExecutor(new ReplyCommand());
+        Bukkit.getServer().getPluginCommand("mute").setExecutor(new MuteCommand());
+        Bukkit.getServer().getPluginCommand("unmute").setExecutor(new UnmuteCommand());
+
         Bukkit.getPluginManager().registerEvents(new ChatListener(), PacocaCraft.pacocaCraft);
         PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
