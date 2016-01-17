@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -40,8 +41,8 @@ public class KillPlayersCommand extends CommandExecutor {
         if(playerHandler.getPlayer().getHealth() > 0d)
             playerHandler.getPlayer().setHealth(0d);
 
-        playerHandler.getPlayer().sendMessage("§cVocê foi morto por §4" + commandSender.getName() + "§c através de comando.");
-        commandSender.sendMessage("§cVocê matou " + playerHandler.getPlayer().getDisplayName());
+        Util.sendPlayerMessage(playerHandler, "§cVocê foi morto por §4" + commandSender.getName() + "§c através de comando.");
+        Util.sendCommandSenderMessage(commandSender, "§cVocê matou " + playerHandler.getPlayer().getDisplayName());
         return true;
     }
 }

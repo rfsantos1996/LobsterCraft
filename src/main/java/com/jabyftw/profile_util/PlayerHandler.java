@@ -1,14 +1,14 @@
 package com.jabyftw.profile_util;
 
+import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.block.xray_protection.OreLocation;
 import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.PlayerService;
-import com.jabyftw.pacocacraft.player.chat.ChatProfile;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
-import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -58,11 +58,11 @@ public class PlayerHandler {
     public PlayerHandler(@NotNull Player player, @NotNull UserProfile userProfile) {
         this.player = player;
 
-        // Add player to list (player is set)
-        PacocaCraft.playerMap.put(player, this);
-
         // Add user profile (acquired at AsyncPreLogin - before PlayerJoin)
         applyProfile(userProfile);
+
+        // Add player to list (player is set)
+        PacocaCraft.playerMap.put(player, this); // TODO add to it only upon login
     }
 
     /**
@@ -124,7 +124,7 @@ public class PlayerHandler {
 
     /**
      * Get requested profile
-     * <b><i>NOTE:</i> caller must be sure to check existence conditions</b> (player must be logged in so the profile can be loaded)
+     * <b><i>NOTE:</i> caller must be sure to check existence conditions</b> (profiles are loaded upon log in)
      *
      * @param profileClass profile's class
      * @param <T>          class type of the requested profile (must be a BasePlayerProfile)
@@ -168,9 +168,9 @@ public class PlayerHandler {
     public boolean setGodMode(boolean godMode, @Nullable CommandSender otherPlayer) {
         // If he is and is set back to normal mode, warn player
         if(isGodMode() && !godMode)
-            player.sendMessage(otherPlayer != null ? "§c" + otherPlayer.getName() + "§c te tirou do modo deus (god mode)." : "§cVocê saiu do modo deus (god mode).");
+            Util.sendPlayerMessage(this, otherPlayer != null ? "§c" + otherPlayer.getName() + "§c te tirou do modo deus (god mode)." : "§cVocê saiu do modo deus (god mode).");
         else if(!isGodMode() && godMode)
-            player.sendMessage(otherPlayer != null ? "§6" + otherPlayer.getName() + "§6 te colocou em modo deus (god mode)." : "§6Você entrou no modo deus (god mode).");
+            Util.sendPlayerMessage(this, otherPlayer != null ? "§6" + otherPlayer.getName() + "§6 te colocou em modo deus (god mode)." : "§6Você entrou no modo deus (god mode).");
         else return isGodMode(); // Nothing changed
 
         this.godMode = godMode;
@@ -193,7 +193,7 @@ public class PlayerHandler {
             Collections.addAll(pendingItems, itemStacks);
 
             // Warn player if requested
-            if(warnPlayer) player.sendMessage("§cVocês tem itens pendentes. Use §6/itens§c para obtê-los.");
+            if(warnPlayer) Util.sendPlayerMessage(this, "§cVocês tem itens pendentes. Use §6/itens§c para obtê-los.");
         }
         return values.isEmpty();
     }

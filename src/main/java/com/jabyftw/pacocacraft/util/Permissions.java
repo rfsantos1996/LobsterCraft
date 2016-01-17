@@ -78,7 +78,8 @@ public final class Permissions {
             PLAYER_WHISPER_REPLY_AUTOMATICALLY = "pacocacraft.player.whisper.reply_automatically",
             PLAYER_MUTE = "pacocacraft.player.mute",
             PLAYER_MUTE_EXCEPTION = "pacocacraft.player.mute.exception",
-            PLAYER_MUTE_ALL = "pacocacraft.player.mute.admin_mute",
+            PLAYER_MUTE_UNLIMITED = "pacocacraft.player.mute.no_limit",
+            PLAYER_MUTE_ADMIN = "pacocacraft.player.mute.admin_mute",
 
     TELEPORT_INSTANTANEOUSLY = "pacocacraft.teleport.instantaneously",
             TELEPORT_WORLD = "pacocacraft.teleport.world",

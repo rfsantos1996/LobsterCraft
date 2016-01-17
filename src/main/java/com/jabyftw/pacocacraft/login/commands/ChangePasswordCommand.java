@@ -36,7 +36,7 @@ public class ChangePasswordCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onChangePassword(PlayerHandler playerHandler, String oldPassword, String password1, String password2) {
+    public boolean onChangePassword(final PlayerHandler playerHandler, final String oldPassword, final String password1, final String password2) {
         // Check if password is valid (this method already warns the player)
         if(!RegisterCommand.isPasswordValid(playerHandler.getPlayer(), password1, password2))
             return true;
@@ -46,16 +46,16 @@ public class ChangePasswordCommand extends CommandExecutor {
 
             // Check if old password match
             if(!userProfile.getEncryptedPassword().equals(Util.encryptString(oldPassword))) {
-                playerHandler.getPlayer().sendMessage("§cSenha antiga não coincide!");
+                Util.sendPlayerMessage(playerHandler, "§cSenha antiga não coincide!");
                 return true;
             }
 
             // Change player's password and warn player
             userProfile.setPassword(Util.encryptString(password1));
-            playerHandler.getPlayer().sendMessage("§6Senha alterada com sucesso!");
+            Util.sendPlayerMessage(playerHandler, "§6Senha alterada com sucesso!");
         } catch(NoSuchAlgorithmException e) {
             e.printStackTrace();
-            playerHandler.getPlayer().sendMessage("§cFalha ao tentar alterar sua senha.");
+            Util.sendPlayerMessage(playerHandler, "§cFalha ao tentar alterar sua senha.");
             return true;
         }
 

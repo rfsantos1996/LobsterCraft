@@ -1,5 +1,6 @@
 package com.jabyftw.easiercommands;
 
+import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.profile_util.PlayerHandler;
 import com.sun.istack.internal.NotNull;
@@ -85,7 +86,8 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
     public boolean onCommand(@NotNull CommandSender commandSender, Command command, String label, String[] stringArguments) {
         // If player don't have permission to the command (base one, not variables), return true with a message
         if(command.getPermission() != null && command.getPermission().length() > 0 && !commandSender.hasPermission(command.getPermission())) {
-            commandSender.sendMessage(getColoredMessage(command.getPermissionMessage()));
+            // TODO custom handle for our server
+            Util.sendCommandSenderMessage(commandSender, command.getPermissionMessage());
             return true;
         }
 
@@ -204,7 +206,8 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
         // After loop: if there isn't a matchable method, return command usage
         if(mostNearMethod == null) {
             // Return command usage
-            commandSender.sendMessage(getColoredMessage(command.getUsage()));
+            // TODO custom handle for our server
+            Util.sendCommandSenderMessage(commandSender, getColoredMessage(command.getUsage()));
             if(debug) logger.info("§4[DEBUG]§r §cNo method is available");
             return true;
         } else {
@@ -224,10 +227,12 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
                     // Send player response based on command's HandleResponse
                     switch(handleResponse) {
                         case RETURN_HELP:
-                            commandSender.sendMessage(getColoredMessage(command.getUsage()));
+                            // TODO custom handle for our server
+                            Util.sendCommandSenderMessage(commandSender, getColoredMessage(command.getUsage()));
                             return true;
                         case RETURN_NO_PERMISSION:
-                            commandSender.sendMessage(getColoredMessage(command.getPermissionMessage()));
+                            // TODO custom handle for our server
+                            Util.sendCommandSenderMessage(commandSender, getColoredMessage(command.getPermissionMessage()));
                             return true;
                         case RETURN_TRUE:
                             return true;

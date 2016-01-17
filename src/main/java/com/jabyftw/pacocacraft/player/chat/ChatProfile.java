@@ -39,7 +39,7 @@ import java.util.*;
  */
 public class ChatProfile extends PlayerProfile {
 
-    private final static long FIXED_CHAT_REFRESH_DELAY = PacocaCraft.config.getLong(ConfigValue.PLAYER_MAXIMUM_MUTED_PLAYERS.getPath()) * 20L; // Seconds to ticks
+    private final static long FIXED_CHAT_REFRESH_DELAY = PacocaCraft.config.getLong(ConfigValue.PLAYER_FIXED_CHAT_REFRESH_DELAY.getPath()) * 20L; // Seconds to ticks
     public final static int MAXIMUM_NUMBER_MUTED_PLAYERS = PacocaCraft.config.getInt(ConfigValue.PLAYER_MAXIMUM_MUTED_PLAYERS.getPath());
 
     private final List<MuteEntry>
@@ -87,7 +87,9 @@ public class ChatProfile extends PlayerProfile {
 
     public MuteResponse mutePlayer(long playerId) {
         // Check muted players amount
-        if(pendingMute.size() + mutedPlayers.size() > MAXIMUM_NUMBER_MUTED_PLAYERS) return MuteResponse.FULL_MUTE_LIST;
+        if(pendingMute.size() + mutedPlayers.size() > MAXIMUM_NUMBER_MUTED_PLAYERS &&
+                !PacocaCraft.permission.has(getPlayerHandler().getPlayer(), Permissions.PLAYER_MUTE_UNLIMITED))
+            return MuteResponse.FULL_MUTE_LIST;
 
         MuteEntry muteEntry = new MuteEntry(getPlayerId(), playerId);
 
@@ -144,6 +146,7 @@ public class ChatProfile extends PlayerProfile {
         // TODO format
         sendMessage(message);
         // TODO format
+        // TODO if(sender instanceof Player) is always false -- why?
         sender.sendMessage(message);
         return true;
     }
@@ -224,7 +227,7 @@ public class ChatProfile extends PlayerProfile {
      * Getters and setters
      */
 
-    public void setChatState(ChatState chatState) {
+    public void setChatState(@NotNull ChatState chatState) {
         this.chatState = chatState;
     }
 
@@ -232,7 +235,7 @@ public class ChatProfile extends PlayerProfile {
         this.usingFixedChat = usingFixedChat;
 
         if(usingFixedChat && fixedChatTask == null) {
-            fixedChatTask = BukkitScheduler.runTaskTimerAsynchronously(PacocaCraft.pacocaCraft, new FixedChatTask(), 0L, FIXED_CHAT_REFRESH_DELAY);
+            fixedChatTask = BukkitScheduler.runTaskTimerAsynchronously(new FixedChatTask(), 0L, FIXED_CHAT_REFRESH_DELAY);
         } else if(!usingFixedChat && fixedChatTask != null) {
             fixedChatTask.cancel();
             fixedChatTask = null;
@@ -245,6 +248,65 @@ public class ChatProfile extends PlayerProfile {
 
     public void setLastPrivateSender(CommandSender lastPrivateSender) {
         this.lastPrivateSender = lastPrivateSender;
+    }
+
+    /**
+     * Must run asynchronously as it'll search through database (on low priority)
+     *
+     * @return player's names
+     *
+     * @deprecated uses MySQL, run async
+     */
+    @SuppressWarnings("Convert2streamapi")
+    @Deprecated
+    public List<String> getMutedPlayers() throws SQLException {
+        // Variables needed
+        int numberOfPlayers = pendingMute.size() + mutedPlayers.size();
+        LinkedList<Long> idsToSearch = new LinkedList<>();
+        ArrayList<String> playerNames = new ArrayList<>(numberOfPlayers);
+
+        // Add all ids to the list
+        for(MuteEntry muteEntry : pendingMute)
+            idsToSearch.add(muteEntry.getModeratorPlayerId());
+        for(MuteEntry mutedPlayer : mutedPlayers)
+            idsToSearch.add(mutedPlayer.getModeratorPlayerId());
+
+        { // MySQL start
+            // Get a new connection from the pool
+            Connection connection = PacocaCraft.dataSource.getConnection();
+            {
+                // Make query SQL
+                StringBuilder queryBuilder = new StringBuilder("SELECT `playerName` FROM minecraft.user_profiles WHERE `playerId` IN (");
+
+                // Add all ids to the query
+                for(int i = 0; i < idsToSearch.size(); i++) {
+                    // Append "id" and ", " if not the last one
+                    queryBuilder.append(idsToSearch.get(i));
+                    if(i != idsToSearch.size() - 1) queryBuilder.append(", ");
+                }
+
+                // Close query
+                queryBuilder.append(");");
+
+                // Prepare and execute statement
+                PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString());
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                // Iterate through all entries
+                while(resultSet.next()) {
+                    // Add player name to list
+                    playerNames.add(resultSet.getString("playerName"));
+                }
+
+                // Close ResultSet and Statement
+                resultSet.close();
+                preparedStatement.close();
+            }
+            // Close connection
+            connection.close();
+        }
+
+        return playerNames;
     }
 
     /*
@@ -281,7 +343,7 @@ public class ChatProfile extends PlayerProfile {
                             new MuteEntry(
                                     resultSet.getLong("mute_index"),
                                     resultSet.getLong("user_playerId"),
-                                    resultSet.getLong("user_muted_playerId"),
+                                    resultSet.getLong("user_moderatorId"),
                                     resultSet.getLong("muteDate")
                             )
                     );
@@ -312,7 +374,7 @@ public class ChatProfile extends PlayerProfile {
 
                 // Build the string
                 StringBuilder sqlQuery = new StringBuilder();
-                sqlQuery.append("INSERT INTO `minecraft`.`muted_players` (`user_playerId`, `user_muted_playerId`, `muteDate`) VALUES ");
+                sqlQuery.append("INSERT INTO `minecraft`.`muted_players` (`user_playerId`, `user_moderatorId`, `muteDate`) VALUES ");
 
                 for(int i = 0; i < pendingMute.size(); i++) {
                     sqlQuery.append("(?, ?, ?)");
@@ -331,7 +393,7 @@ public class ChatProfile extends PlayerProfile {
                     MuteEntry muteEntry = pendingMute.get(index);
 
                     preparedStatement.setLong(1 + (index * 3), muteEntry.getPlayerId());
-                    preparedStatement.setLong(2 + (index * 3), muteEntry.getMutedPlayerId());
+                    preparedStatement.setLong(2 + (index * 3), muteEntry.getModeratorPlayerId());
                     preparedStatement.setLong(3 + (index * 3), muteEntry.getMuteDate());
                 }
 
@@ -402,7 +464,7 @@ public class ChatProfile extends PlayerProfile {
 
         @Override
         public void run() {
-            // TODO maybe packets? is it faster? need testing on a high amount of players
+            // TODO maybe packets? is it faster? Need testing on a high amount of players
             synchronized(chatMessagesLock) {
                 for(int i = 0; i < chatMessages.size(); i++)
                     getPlayerHandler().getPlayer().sendMessage(chatMessages.get(i));
@@ -414,7 +476,7 @@ public class ChatProfile extends PlayerProfile {
         ALREADY_MUTED, FULL_MUTE_LIST, SUCCESSFULLY_MUTED
     }
 
-    private enum UnmuteResponse {
+    public enum UnmuteResponse {
         SUCCESSFULLY_UNMUTED, ALREADY_UNMUTED, NEVER_WAS_MUTED
     }
 }

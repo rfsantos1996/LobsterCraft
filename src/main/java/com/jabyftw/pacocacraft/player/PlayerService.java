@@ -78,7 +78,6 @@ public class PlayerService implements ServerService {
         Bukkit.getServer().getPluginManager().registerEvents(inventorySpyCommand, PacocaCraft.pacocaCraft);
 
         storedProfilesTask = BukkitScheduler.runTaskTimerAsynchronously(
-                PacocaCraft.pacocaCraft,
                 (profilesSavingTask = new StoredProfilesSavingTask()),
                 TIME_BETWEEN_PROFILE_SAVES_TICKS,
                 TIME_BETWEEN_PROFILE_SAVES_TICKS

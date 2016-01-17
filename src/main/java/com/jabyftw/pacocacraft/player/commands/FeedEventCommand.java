@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -7,6 +8,7 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -35,15 +37,15 @@ public class FeedEventCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onFeed(PlayerHandler playerHandler) {
         playerHandler.getPlayer().setFoodLevel(20);
-        playerHandler.getPlayer().sendMessage("§6Hunger restaurada!");
+        Util.sendPlayerMessage(playerHandler, "§6Hunger restaurada!");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FEED_OTHERS)
     public boolean onFeedOthers(CommandSender commandSender, PlayerHandler playerHandler) {
         playerHandler.getPlayer().setFoodLevel(20);
-        playerHandler.getPlayer().sendMessage("§6Hunger restaurada por " + commandSender.getName() + "!");
-        commandSender.sendMessage("§6Hunger de " + playerHandler.getPlayer().getDisplayName() + "§6 foi restaurada.");
+        Util.sendPlayerMessage(playerHandler, "§6Hunger restaurada por " + commandSender.getName() + "!");
+        Util.sendCommandSenderMessage(commandSender, "§6Hunger de " + playerHandler.getPlayer().getDisplayName() + "§6 foi restaurada.");
         return true;
     }
 }

@@ -1,13 +1,16 @@
 package com.jabyftw;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.player.chat.ChatProfile;
 import com.jabyftw.profile_util.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.bukkit.*;
+import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionType;
 
 import java.math.BigInteger;
@@ -432,5 +435,23 @@ public abstract class Util {
      */
     public static long getMinecraftTime(long earthTimeInSeconds) {
         return (long) (earthTimeInSeconds * minecraftTime_x) + minecraftTime_y;
+    }
+
+    public static void sendPlayerMessage(@NotNull PlayerHandler playerHandler, @NotNull final String message) {
+        playerHandler.getProfile(ChatProfile.class).sendServerMessage(message);
+    }
+
+    /**
+     * Send an message to a command sender. If it is a player, it'll send it through the ChatProfile; normal message, otherwise
+     *
+     * @param commandSender given player
+     *
+     * @return player's chat profile
+     */
+    public static void sendCommandSenderMessage(@NotNull final CommandSender commandSender, @NotNull final String message) {
+        if(commandSender instanceof Player)
+            sendPlayerMessage(PacocaCraft.getPlayerHandler((Player) commandSender), message);
+        else
+            commandSender.sendMessage(message);
     }
 }

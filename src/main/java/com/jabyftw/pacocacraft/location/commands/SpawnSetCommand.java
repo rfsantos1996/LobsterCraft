@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.location.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -36,7 +37,7 @@ public class SpawnSetCommand extends CommandExecutor {
     public boolean onSpawnSet(PlayerHandler playerHandler) {
         Location location = playerHandler.getPlayer().getLocation();
         location.getWorld().setSpawnLocation(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-        playerHandler.getPlayer().sendMessage("§6Spawn alterado para este mundo!");
+        Util.sendPlayerMessage(playerHandler, "§6Spawn alterado para este mundo!");
         return true;
     }
 }

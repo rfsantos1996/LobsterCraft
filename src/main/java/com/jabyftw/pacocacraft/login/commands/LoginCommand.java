@@ -41,7 +41,7 @@ public class LoginCommand extends CommandExecutor {
 
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onDefaultLogin(PlayerHandler playerHandler, String password) {
-        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+        BukkitScheduler.runTaskAsynchronously(() -> {
             try {
                 playerHandler.getProfile(UserProfile.class).attemptLogin(Util.encryptString(password));
             } catch(NoSuchAlgorithmException e) {
@@ -67,12 +67,12 @@ public class LoginCommand extends CommandExecutor {
      * @return a possible HandleResponse
      */
     @CommandHandler(senderType = SenderType.CONSOLE, additionalPermissions = Permissions.JOIN_OTHER_ACCOUNT_LOOKUP)
-    public HandleResponse onConsoleLogin(CommandSender commandSender, final PlayerHandler playerHandler) {
+    public HandleResponse onConsoleLogin(final CommandSender commandSender, final PlayerHandler playerHandler) {
         // Check if playerHandler can be looked up
         if(PacocaCraft.permission.playerHas(playerHandler.getPlayer(), Permissions.JOIN_PREVENT_ACCOUNT_LOOKUP))
             return HandleResponse.RETURN_NO_PERMISSION;
 
-        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+        BukkitScheduler.runTaskAsynchronously(() -> {
             UserProfile profile = playerHandler.getProfile(UserProfile.class);
             if(profile.attemptLogin(profile.getEncryptedPassword()))
                 commandSender.sendMessage("§aLogin de §6" + playerHandler.getPlayer().getName() + "§a foi bem sucedido");

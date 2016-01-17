@@ -1,6 +1,8 @@
 package com.jabyftw.pacocacraft.player.chat;
 
+import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
@@ -40,19 +42,39 @@ public class ChatListener implements Listener {
         if(InvisibilityService.isPlayerHidden(chatEvent.getPlayer()) && !PacocaCraft.permission.has(chatEvent.getPlayer(), Permissions.PLAYER_TALK_HIDDEN))
             return;
 
-        // Send player a "chat sound" (this volume is actually louder than the normal exp, should be fine)
-        BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> chatEvent.getPlayer().playSound(chatEvent.getPlayer().getLocation(), Sound.ORB_PICKUP, 10, 1));
+        PlayerHandler playerHandler = PacocaCraft.getPlayerHandler(chatEvent.getPlayer());
 
-        PlayerHandler sender = PacocaCraft.getPlayerHandler(chatEvent.getPlayer());
-        boolean heard = false;
+        // Check if player is muted by moderator
+        ModeratorMuteEntry muteEntry;
+        if((muteEntry = ChatService.getActiveModeratorMuteEntry(playerHandler)) != null) {
+            // Warn player for the reason
+            Util.sendPlayerMessage(playerHandler, "§6Você não pode falar pois foi silenciado. §cMotivo: §4" + muteEntry.getMuteReason());
 
-        // Send messages to every player
-        for(PlayerHandler playerHandler : PacocaCraft.getOnlinePlayers()) {
-            if(playerHandler.equals(sender)) continue;
-            if(playerHandler.getProfile(ChatProfile.class).sendChatMessage(sender, chatEvent.getMessage())) heard = true;
+            // Send its down time if not permanent
+            if(muteEntry.getUnmuteDate() > 0)
+                Util.sendPlayerMessage(playerHandler, "§cVocê poderá falar em §4" + Util.parseTimeInMillis(muteEntry.getUnmuteDate() - System.currentTimeMillis()));
+            return;
         }
 
-        // If any player heard him, allow message
-        if(heard) sender.getProfile(ChatProfile.class).sendChatMessage(sender, chatEvent.getMessage());
+        boolean heard = false;
+        // Send messages to every player
+        for(PlayerHandler onlinePlayers : PacocaCraft.getOnlinePlayers()) {
+            // Ignore the player itself
+            if(onlinePlayers.equals(playerHandler)) continue;
+
+            // If player received message, set as heard
+            if(onlinePlayers.getProfile(UserProfile.class).isLoggedIn() && onlinePlayers.getProfile(ChatProfile.class).sendChatMessage(playerHandler, chatEvent.getMessage()))
+                heard = true;
+        }
+
+        // If any player heard him, allow message and send sound
+        if(heard) {
+            // Send to the player
+            playerHandler.getProfile(ChatProfile.class).sendChatMessage(playerHandler, chatEvent.getMessage());
+
+            // Send player a "chat sound" (this volume is actually louder than the normal exp, should be fine)
+            BukkitScheduler.runTask(() -> chatEvent.getPlayer().playSound(chatEvent.getPlayer().getLocation(), Sound.ORB_PICKUP, 10, 1));
+
+        }
     }
 }

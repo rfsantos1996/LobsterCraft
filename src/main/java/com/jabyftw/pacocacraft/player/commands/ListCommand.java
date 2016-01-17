@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -48,7 +49,7 @@ public class ListCommand extends CommandExecutor {
                 playerNames.add(player.getDisplayName() + "§r");
         }
 
-        commandSender.sendMessage("§6Jogadores: §r" + playerNames);
+        Util.sendCommandSenderMessage(commandSender, "§6Jogadores: §r" + playerNames);
         return true;
     }
 }

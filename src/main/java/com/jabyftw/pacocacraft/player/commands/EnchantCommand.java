@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -56,7 +57,7 @@ public class EnchantCommand extends CommandExecutor {
         }
 
         // Send to player
-        commandSender.sendMessage(stringBuilder.toString());
+        Util.sendCommandSenderMessage(commandSender, stringBuilder.toString());
         return true;
     }
 
@@ -77,13 +78,13 @@ public class EnchantCommand extends CommandExecutor {
 
         // Check item (there must be one)
         if(itemInHand == null || itemInHand.getType() == Material.AIR) {
-            player.sendMessage("§cVocê não tem item nas mãos!");
+            Util.sendPlayerMessage(playerHandler, "§cVocê não tem item nas mãos!");
             return true;
         }
 
         // Check amount (must be a lonely item if not unsafe)
         if(itemInHand.getAmount() > 1 && !unsafeEnchantment) {
-            player.sendMessage("§cVocê deve ter apenas UM item na mão!");
+            Util.sendPlayerMessage(playerHandler, "§cVocê deve ter apenas UM item na mão!");
             return true;
         }
 
@@ -93,15 +94,15 @@ public class EnchantCommand extends CommandExecutor {
 
         // Check if its not possible to enchant it AND (player don't want unsafe OR player doesn't have permission to do so)
         if(!canEnchantItem && (!unsafeEnchantment || !PacocaCraft.permission.has(player, Permissions.PLAYER_UNSAFE_ENCHANTMENT))) {
-            player.sendMessage("§cO item em suas mãos não é válido para este encantamento!");
+            Util.sendPlayerMessage(playerHandler, "§cO item em suas mãos não é válido para este encantamento!");
             return true;
         }
 
         // Ask player's confirmation if enchantment need to be unsafe
         if(unsafeEnchantment && !canEnchantItem && !usedCommand.contains(playerName)) {
-            player.sendMessage("§4AVISO:§c se pretende encantar um item no§l modo inseguro§r§c, digite o comando novamente.");
+            Util.sendPlayerMessage(playerHandler, "§4AVISO:§c se pretende encantar um item no§l modo inseguro§r§c, digite o comando novamente.");
             usedCommand.add(playerName);
-            BukkitScheduler.runTaskLater(PacocaCraft.pacocaCraft, () -> usedCommand.remove(playerName), UNSAFE_ENCHANTMENT_CONFIRMATION);
+            BukkitScheduler.runTaskLater(() -> usedCommand.remove(playerName), UNSAFE_ENCHANTMENT_CONFIRMATION);
             return true;
         }
 
@@ -114,7 +115,10 @@ public class EnchantCommand extends CommandExecutor {
         }
 
         // Send response to player
-        player.sendMessage("§6Encantamento realizado: §c" + enchantment.getName().toLowerCase().replaceAll("_", " ") + "§6 level §c" + level + (unsafeEnchantment ? " §6(§4INSEGURO§6)" : ""));
+        Util.sendPlayerMessage(
+                playerHandler,
+                "§6Encantamento realizado: §c" + enchantment.getName().toLowerCase().replaceAll("_", " ") + "§6 level §c" + level + (unsafeEnchantment ? " §6(§4INSEGURO§6)" : "")
+        );
         return true;
     }
 }

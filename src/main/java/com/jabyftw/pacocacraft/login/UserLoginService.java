@@ -60,7 +60,6 @@ public class UserLoginService implements ServerService {
         Bukkit.getServer().getPluginManager().registerEvents(new LoginListener(), PacocaCraft.pacocaCraft);
 
         storedProfilesTask = BukkitScheduler.runTaskTimerAsynchronously(
-                PacocaCraft.pacocaCraft,
                 (profilesSavingTask = new UserProfileSavingTask()),
                 PlayerService.TIME_BETWEEN_PROFILE_SAVES_TICKS,
                 PlayerService.TIME_BETWEEN_PROFILE_SAVES_TICKS

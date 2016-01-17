@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -35,14 +36,14 @@ public class PlayerWeatherCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onChangeWeather(PlayerHandler playerHandler) {
         playerHandler.getPlayer().resetPlayerWeather();
-        playerHandler.getPlayer().sendMessage("§cClima restaurado!");
+        Util.sendPlayerMessage(playerHandler, "§cClima restaurado!");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onChangeWeather(PlayerHandler playerHandler, WeatherType weatherType) {
         playerHandler.getPlayer().setPlayerWeather(weatherType);
-        playerHandler.getPlayer().sendMessage("§6Clima atualizado! Use §c/pweather§6 para restaurar.");
+        Util.sendPlayerMessage(playerHandler, "§6Clima atualizado! Use §c/pweather§6 para restaurar.");
         return true;
     }
 }

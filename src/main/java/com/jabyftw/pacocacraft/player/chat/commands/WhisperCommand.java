@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.chat.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -37,23 +38,23 @@ public class WhisperCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean sendPrivateMessage(PlayerHandler sender, PlayerHandler receiver, String... strings) {
+    public boolean sendPrivateMessage(PlayerHandler playerSender, PlayerHandler receiver, String... strings) {
         String message = retrieveMessage(strings);
 
         // Send private message to player
-        if(!receiver.getProfile(ChatProfile.class).sendPrivateMessage(sender, message))
-            sender.getPlayer().sendMessage("§cFalha ao mandar mensagem para " + receiver.getPlayer().getDisplayName());
+        if(!receiver.getProfile(ChatProfile.class).sendPrivateMessage(playerSender, message))
+            Util.sendPlayerMessage(playerSender, "§cFalha ao mandar mensagem para " + receiver.getPlayer().getDisplayName());
 
         return true;
     }
 
     @CommandHandler(senderType = SenderType.CONSOLE)
-    public boolean sendPrivateMessage(CommandSender sender, PlayerHandler receiver, String... strings) {
+    public boolean sendPrivateMessage(CommandSender commandSender, PlayerHandler receiver, String... strings) {
         String message = retrieveMessage(strings);
 
         // Send private message to player
-        if(!receiver.getProfile(ChatProfile.class).sendPrivateMessage(sender, message))
-            sender.sendMessage("§cFalha ao mandar mensagem para " + receiver.getPlayer().getDisplayName());
+        if(!receiver.getProfile(ChatProfile.class).sendPrivateMessage(commandSender, message))
+            commandSender.sendMessage("§cFalha ao mandar mensagem para " + receiver.getPlayer().getDisplayName());
 
         synchronized(playerHandlerLock) {
             lastPlayerHandler = receiver;
@@ -67,7 +68,7 @@ public class WhisperCommand extends CommandExecutor {
 
         // Append all words
         for(String string : strings)
-            stringBuilder.append(string).append(" ");
+            stringBuilder.append(string).append(' ');
 
         // Return final string
         return stringBuilder.toString();

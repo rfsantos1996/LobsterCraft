@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -42,8 +43,8 @@ public class WorkbenchCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_WORKBENCH_OTHERS)
     public boolean onWorkbenchOthers(CommandSender commandSender, PlayerHandler playerHandler) {
         onWorkbench(playerHandler);
-        commandSender.sendMessage("§6Você abriu um workbench para " + playerHandler.getPlayer().getDisplayName());
-        playerHandler.getPlayer().sendMessage("§6" + commandSender.getName() + " abriu um workbench para você");
+        Util.sendCommandSenderMessage(commandSender, "§6Você abriu um workbench para " + playerHandler.getPlayer().getDisplayName());
+        Util.sendPlayerMessage(playerHandler, "§6" + commandSender.getName() + " abriu um workbench para você");
         return true;
     }
 }

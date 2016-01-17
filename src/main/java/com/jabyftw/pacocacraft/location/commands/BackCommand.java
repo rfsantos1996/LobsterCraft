@@ -1,6 +1,7 @@
 package com.jabyftw.pacocacraft.location.commands;
 
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -41,7 +42,7 @@ public class BackCommand extends CommandExecutor {
 
         // Check if location is null and teleport player if not
         if(lastLocation == null)
-            playerHandler.getPlayer().sendMessage("§cSua ultima localização não está definida!");
+            Util.sendPlayerMessage(playerHandler, "§cSua ultima localização não está definida!");
         else
             TeleportBuilder.getBuilder(playerHandler).setLocation(lastLocation).registerLastLocation(true).warnTeleportingPlayer(true).waitBeforeListenerTriggers(true).execute();
         return true;

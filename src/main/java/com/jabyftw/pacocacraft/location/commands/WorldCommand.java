@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.location.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -10,6 +11,7 @@ import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.Arrays;
 import java.util.List;
@@ -48,7 +50,7 @@ public class WorldCommand extends CommandExecutor {
             worldNames[i] = "§c" + worlds.get(i).getName() + "§r";
         }
 
-        commandSender.sendMessage("§6Mundos: " + Arrays.asList(worldNames));
+        Util.sendCommandSenderMessage(commandSender, "§6Mundos: " + Arrays.asList(worldNames));
         return true;
     }
 
@@ -61,7 +63,8 @@ public class WorldCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_WORLD_OTHERS)
     public boolean onWorldTeleportOther(CommandSender commandSender, PlayerHandler playerHandler, World world) {
         TeleportBuilder.getBuilder(playerHandler).setLocation(world.getSpawnLocation()).registerLastLocation(true).setInstantaneousTeleport(true).execute();
-        commandSender.sendMessage(playerHandler.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + world.getName());
+
+        Util.sendCommandSenderMessage(commandSender, playerHandler.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + world.getName());
         return true;
     }
 }

@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.location.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -10,6 +11,7 @@ import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -54,14 +56,14 @@ public class TeleportCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_TELEPORT_TO_OTHERS)
     public boolean onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, Location location) {
         TeleportBuilder.getBuilder(teleporting).setLocation(location).registerLastLocation(true).warnTargetPlayer(true).setInstantaneousTeleport(true).execute();
-        commandSender.sendMessage(teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + new StorableLocation(location).toString());
+        Util.sendCommandSenderMessage(commandSender, teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + new StorableLocation(location).toString());
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.TELEPORT_TELEPORT_TO_OTHERS)
     public boolean onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, PlayerHandler target) {
         TeleportBuilder.getBuilder(teleporting).setPlayerLocation(target).registerLastLocation(true).warnTargetPlayer(true).setInstantaneousTeleport(true).execute();
-        commandSender.sendMessage(teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para " + target.getPlayer().getDisplayName());
+        Util.sendCommandSenderMessage(commandSender, teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para " + target.getPlayer().getDisplayName());
         return true;
     }
 }

@@ -37,7 +37,7 @@ public class PlayerTimeCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onPlayerTime(PlayerHandler playerHandler) {
         playerHandler.getPlayer().resetPlayerTime();
-        playerHandler.getPlayer().sendMessage("§cTempo restaurado!");
+        Util.sendPlayerMessage(playerHandler, "§cTempo restaurado!");
         return true;
     }
 
@@ -45,7 +45,7 @@ public class PlayerTimeCommand extends CommandExecutor {
     public boolean onPlayerTime(PlayerHandler playerHandler, Long timeDifference) {
         long timeDifferenceSeconds = timeDifference / TimeUnit.SECONDS.toMillis(1); // Millis / (millis / second) => seconds
         playerHandler.getPlayer().setPlayerTime(Math.abs(playerHandler.getPlayer().getWorld().getTime() - Util.getMinecraftTime(timeDifferenceSeconds)), true);
-        playerHandler.getPlayer().sendMessage("§6Tempo atualizado! Use §c/ptime§6 para restaurar.");
+        Util.sendPlayerMessage(playerHandler, "§6Tempo atualizado! Use §c/ptime§6 para restaurar.");
         return true;
     }
 }

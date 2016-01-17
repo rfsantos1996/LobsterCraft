@@ -1,9 +1,12 @@
 package com.jabyftw.pacocacraft.player.chat.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.chat.ChatProfile;
 import com.jabyftw.pacocacraft.util.Permissions;
 import com.jabyftw.profile_util.PlayerHandler;
 
@@ -33,6 +36,26 @@ public class UnmuteCommand extends CommandExecutor {
 
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onUnmute(PlayerHandler playerHandler, PlayerHandler unmuted) {
-        return false; // unmute player
+        String messageSent = unmuted.getPlayer().getDisplayName();
+
+        // Switch between responses to player unmute; if none handled, throw exception
+        switch(playerHandler.getProfile(ChatProfile.class).unmutePlayer(unmuted.getProfile(UserProfile.class).getPlayerId())) {
+            case ALREADY_UNMUTED:
+                messageSent += "§c já deixou de ser silenciado.";
+                break;
+            case SUCCESSFULLY_UNMUTED:
+                messageSent += "§6 deixou de ser silenciado";
+                break;
+            case NEVER_WAS_MUTED:
+                messageSent += "§c nunca foi silenciado.";
+                break;
+            default:
+                throw new IllegalStateException("Failed to unmute player (default response @ UnmuteCommand#onUnmute)");
+        }
+
+        // Send response to player
+        Util.sendPlayerMessage(playerHandler, messageSent);
+
+        return true;
     }
 }

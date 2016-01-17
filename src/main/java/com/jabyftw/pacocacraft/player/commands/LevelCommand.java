@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -36,21 +37,21 @@ public class LevelCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onLevel(PlayerHandler playerHandler, int amount) {
         if(amount <= 0) {
-            playerHandler.getPlayer().sendMessage("§cA quantidade deve ser maior que zero.");
+            Util.sendPlayerMessage(playerHandler, "§cA quantidade deve ser maior que zero.");
             return true;
         }
 
         // Store values, update level and warn players
         int level = playerHandler.getPlayer().getLevel();
         playerHandler.getPlayer().setLevel(amount);
-        playerHandler.getPlayer().sendMessage("§6Você tem agora §c" + amount + "§6 leveis (§c" + level + " §6-> §c" + playerHandler.getPlayer().getLevel() + ")");
+        Util.sendPlayerMessage(playerHandler, "§6Você tem agora §c" + amount + "§6 leveis (§c" + level + " §6-> §c" + playerHandler.getPlayer().getLevel() + ")");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_SET_LEVEL_OTHERS)
     public boolean onExpOthers(CommandSender commandSender, PlayerHandler playerHandler, int amount) {
         if(amount <= 0) {
-            commandSender.sendMessage("§cA quantidade deve ser maior que zero.");
+            Util.sendCommandSenderMessage(commandSender, "§cA quantidade deve ser maior que zero.");
             return true;
         }
         Player player = playerHandler.getPlayer();
@@ -60,8 +61,8 @@ public class LevelCommand extends CommandExecutor {
         player.setLevel(level + amount);
 
         // Warn players
-        player.sendMessage("§c" + commandSender.getName() + "§6 mudou seus leveis para §c" + amount + "§6 (§c" + level + " §6-> §c" + player.getLevel() + ")");
-        commandSender.sendMessage(player.getDisplayName() + "§6 tem agora §c" + amount + "§6 leveis (§c" + level + " §6-> §c" + player.getLevel() + ")");
+        Util.sendPlayerMessage(playerHandler, "§c" + commandSender.getName() + "§6 mudou seus leveis para §c" + amount + "§6 (§c" + level + " §6-> §c" + player.getLevel() + ")");
+        Util.sendCommandSenderMessage(commandSender, player.getDisplayName() + "§6 tem agora §c" + amount + "§6 leveis (§c" + level + " §6-> §c" + player.getLevel() + ")");
         return true;
     }
 }

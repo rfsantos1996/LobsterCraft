@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -48,7 +49,7 @@ public class PendingItemsCommand extends CommandExecutor {
             else
                 break;
         }
-        playerHandler.getPlayer().sendMessage(playerHandler.getPendingItems().isEmpty() ? "§6Todos os itens foram entregues!" : "§cAinda restam itens a serem entregues!");
+        Util.sendPlayerMessage(playerHandler, playerHandler.getPendingItems().isEmpty() ? "§6Todos os itens foram entregues!" : "§cAinda restam itens a serem entregues!");
         return true;
     }
 }

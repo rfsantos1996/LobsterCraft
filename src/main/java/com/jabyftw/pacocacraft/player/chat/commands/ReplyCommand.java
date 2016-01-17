@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.chat.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -35,14 +36,14 @@ public class ReplyCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onPlayerReply(PlayerHandler sender, String... strings) {
-        ChatProfile chatProfile = sender.getProfile(ChatProfile.class);
+    public boolean onPlayerReply(PlayerHandler playerHandler, String... strings) {
+        ChatProfile chatProfile = playerHandler.getProfile(ChatProfile.class);
         CommandSender lastPrivateSender = chatProfile.getLastPrivateSender();
 
         // Check if there is someone online to reply
         if(lastPrivateSender == null || (lastPrivateSender instanceof Player && !((Player) lastPrivateSender).isOnline())) {
             chatProfile.setLastPrivateSender(null);
-            sender.getPlayer().sendMessage("§cNão há outro jogador para mandar a resposta.");
+            Util.sendPlayerMessage(playerHandler, "§cNão há outro jogador para mandar a resposta.");
             return true;
         }
 
@@ -54,10 +55,10 @@ public class ReplyCommand extends CommandExecutor {
 
             // Update lastPrivateSender for Console
             synchronized(WhisperCommand.playerHandlerLock) {
-                WhisperCommand.lastPlayerHandler = sender;
+                WhisperCommand.lastPlayerHandler = playerHandler;
             }
         } else {
-            PacocaCraft.getPlayerHandler((Player) lastPrivateSender).getProfile(ChatProfile.class).sendPrivateMessage(sender, message);
+            PacocaCraft.getPlayerHandler((Player) lastPrivateSender).getProfile(ChatProfile.class).sendPrivateMessage(playerHandler, message);
         }
         return true;
     }

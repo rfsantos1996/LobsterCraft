@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -35,22 +36,21 @@ public class RepairCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onRepair(PlayerHandler playerHandler) {
-        Player player = playerHandler.getPlayer();
-        ItemStack itemInHand = player.getItemInHand();
+    public boolean onRepair(final PlayerHandler playerHandler) {
+        ItemStack itemInHand = playerHandler.getPlayer().getItemInHand();
 
         // Check if item exists
         if(itemInHand == null || itemInHand.getType() == Material.AIR) {
-            player.sendMessage("§cVocê não tem item na sua mão!");
+            Util.sendPlayerMessage(playerHandler, "§cVocê não tem item na sua mão!");
             return true;
         }
 
         // Check if it is possible to be repaired
         if(itemInHand.getType().isBlock() || itemInHand.getType().getMaxDurability() == 0) {
-            player.sendMessage("§cEste item não pode ser reparado!");
+            Util.sendPlayerMessage(playerHandler, "§cEste item não pode ser reparado!");
         } else {
             itemInHand.setDurability((short) 0);
-            player.sendMessage("§6Item reparado! <3");
+            Util.sendPlayerMessage(playerHandler, "§6Item reparado! <3");
         }
         return true;
     }

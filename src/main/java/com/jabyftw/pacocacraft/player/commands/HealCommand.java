@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -43,8 +44,8 @@ public class HealCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_HEAL_OTHERS)
     public boolean onHealOthers(CommandSender commandSender, PlayerHandler playerHandler) {
         onHealOthers(playerHandler);
-        commandSender.sendMessage(playerHandler.getPlayer().getDisplayName() + "§6 foi curado.");
-        playerHandler.getPlayer().sendMessage("§c" + commandSender.getName() + "§6 te curou.");
+        Util.sendCommandSenderMessage(commandSender, playerHandler.getPlayer().getDisplayName() + "§6 foi curado.");
+        Util.sendPlayerMessage(playerHandler, "§c" + commandSender.getName() + "§6 te curou.");
         return true;
     }
 }

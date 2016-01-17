@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -48,7 +49,7 @@ public class SpawnEntitiesCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onSpawnEntities(PlayerHandler playerHandler, EntityType entityType, int amount) {
         if(amount <= 0) {
-            playerHandler.getPlayer().sendMessage("§cQuantidade inadequada!");
+            Util.sendPlayerMessage(playerHandler, "§cQuantidade inadequada!");
             return true;
         }
 
@@ -83,11 +84,11 @@ public class SpawnEntitiesCommand extends CommandExecutor {
 
             // Spawn mobs and warn player
             if(spawnMob(spawnLocation, entityType, amount))
-                playerHandler.getPlayer().sendMessage("§c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", " ") + (amount > 1 ? "§6 foi criado." : "§6 foram criados"));
+                Util.sendPlayerMessage(playerHandler, "§c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", " ") + (amount > 1 ? "§6 foi criado." : "§6 foram criados"));
             else
-                playerHandler.getPlayer().sendMessage("§cNão foi possível criar.");
+                Util.sendPlayerMessage(playerHandler, "§cNão foi possível criar.");
         } else {
-            playerHandler.getPlayer().sendMessage("§cNão foi encontrado nenhum bloco!");
+            Util.sendPlayerMessage(playerHandler, "§cNão foi encontrado nenhum bloco!");
         }
         return true;
     }
@@ -99,15 +100,18 @@ public class SpawnEntitiesCommand extends CommandExecutor {
 
     public boolean onSpawnEntitiesOnOthers(CommandSender commandSender, PlayerHandler playerHandler, EntityType entityType, int amount) {
         if(amount <= 0) {
-            commandSender.sendMessage("§cQuantidade inadequada!");
+            Util.sendCommandSenderMessage(commandSender, "§cQuantidade inadequada!");
             return true;
         }
 
         if(spawnMob(playerHandler.getPlayer().getLocation().add(0, 1, 0), entityType, amount)) {
-            playerHandler.getPlayer().sendMessage("§6" + commandSender.getName() + " criou §c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", "") + "§6 na sua localização");
-            commandSender.sendMessage("§6Foi criado §c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", "") + "§6 na localização de " + playerHandler.getPlayer().getDisplayName());
+            Util.sendPlayerMessage(playerHandler, "§6" + commandSender.getName() + " criou §c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", "") + "§6 na sua localização");
+            Util.sendCommandSenderMessage(
+                    commandSender,
+                    "§6Foi criado §c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", "") + "§6 na localização de " + playerHandler.getPlayer().getDisplayName()
+            );
         } else {
-            commandSender.sendMessage("§cNão foi possível criar.");
+            Util.sendCommandSenderMessage(commandSender, "§cNão foi possível criar.");
         }
         return true;
     }

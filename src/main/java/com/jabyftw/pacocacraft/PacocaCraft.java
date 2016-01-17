@@ -9,11 +9,11 @@ import com.jabyftw.pacocacraft.configuration.ConfigurationFile;
 import com.jabyftw.pacocacraft.location.TeleportService;
 import com.jabyftw.pacocacraft.login.UserLoginService;
 import com.jabyftw.pacocacraft.login.ban.BanService;
-import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.player.PlayerService;
 import com.jabyftw.pacocacraft.player.chat.ChatService;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
+import com.jabyftw.profile_util.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -74,7 +74,7 @@ public class PacocaCraft extends JavaPlugin {
     public static Chat chat;
     public static Permission permission;
 
-    // MySQL (HikariCP is thread safe - I read on stackoverflow)
+    // MySQL (HikariCP is thread safe - I read on StackOverflow)
     public static HikariDataSource dataSource;
 
     // ProtocolLib
@@ -99,7 +99,7 @@ public class PacocaCraft extends JavaPlugin {
         }
 
         // Start ticking
-        tickTimingTask = BukkitScheduler.runTaskTimer(this, () -> {
+        tickTimingTask = BukkitScheduler.runTaskTimer(() -> {
             synchronized(currentTickLock) {
                 currentTick++; // not atomic, need to synchronize
             }
@@ -227,7 +227,7 @@ public class PacocaCraft extends JavaPlugin {
      *
      * @return correspondent PlayerHandler or null if none found
      */
-    public static PlayerHandler getPlayerHandler(@NotNull Player player) {
+    public static PlayerHandler getPlayerHandler(@NotNull final Player player) {
         return playerMap.get(player);
     }
 
@@ -235,6 +235,7 @@ public class PacocaCraft extends JavaPlugin {
      * @return a collection with every online player handler
      */
     public static Collection<PlayerHandler> getOnlinePlayers() {
+        // TODO don't get player if he isn't online
         return playerMap.values();
     }
 

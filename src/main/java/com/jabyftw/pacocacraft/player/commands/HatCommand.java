@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -43,7 +44,7 @@ public class HatCommand extends CommandExecutor {
 
         // Check if item in hand isn't air; if is, return
         if(itemInHand == null || itemInHand.getType() == Material.AIR) {
-            player.sendMessage("§cVocê não tem item na sua mão!");
+            Util.sendPlayerMessage(playerHandler, "§cVocê não tem item na sua mão!");
             return true;
         }
 
@@ -55,7 +56,7 @@ public class HatCommand extends CommandExecutor {
         itemInHand.setAmount(1);
         player.getInventory().remove(itemInHand);
         player.getInventory().setHelmet(itemInHand);
-        player.sendMessage("§6Aproveite seu novo chapéu!");
+        Util.sendPlayerMessage(playerHandler, "§6Aproveite seu novo chapéu!");
         return true;
     }
 
@@ -70,7 +71,7 @@ public class HatCommand extends CommandExecutor {
 
         // Check if item in hand isn't air; if is, return
         if(itemInHand == null || itemInHand.getType() == Material.AIR) {
-            senderPlayer.sendMessage("§cVocê não tem item na sua mão!");
+            Util.sendPlayerMessage(sender, "§cVocê não tem item na sua mão!");
             return true;
         }
 
@@ -82,8 +83,8 @@ public class HatCommand extends CommandExecutor {
         itemInHand.setAmount(1);
         senderPlayer.getInventory().remove(itemInHand);
         targetPlayer.getInventory().setHelmet(itemInHand);
-        targetPlayer.sendMessage("§6Aproveite seu novo chapéu dado por " + senderPlayer.getDisplayName() + "§6!");
-        senderPlayer.sendMessage("§6O novo chapéu de " + targetPlayer.getDisplayName() + "§6 é um §c" + itemInHand.getType().name().toLowerCase().replaceAll("_", " "));
+        Util.sendPlayerMessage(target, "§6Aproveite seu novo chapéu dado por " + senderPlayer.getDisplayName() + "§6!");
+        Util.sendPlayerMessage(sender, "§6O novo chapéu de " + targetPlayer.getDisplayName() + "§6 é um §c" + itemInHand.getType().name().toLowerCase().replaceAll("_", " "));
         return true;
     }
 }

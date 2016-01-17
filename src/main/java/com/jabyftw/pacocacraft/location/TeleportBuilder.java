@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.location;
 
+import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.configuration.ConfigValue;
 import com.jabyftw.profile_util.PlayerHandler;
@@ -119,16 +120,15 @@ public class TeleportBuilder {
 
             // Warn teleporting player not to move if not instantaneous
             if(warnTeleportingBefore && !isInstantaneous())
-                teleportingPlayer.sendMessage("§4NÃO SE MOVA! §cTeleporte irá começar...");
+                Util.sendPlayerMessage(teleportingPlayerHandler, "§4NÃO SE MOVA! §cTeleporte irá começar...");
 
             // Warn target player that player is teleporting to you if teleporting player doesn't have quietly permission
             if(warnTargetBefore && targetPlayer != null && targetPlayer.getPlayer().isOnline() &&
                     !PacocaCraft.permission.has(teleportingPlayer, Permissions.TELEPORT_TELEPORT_QUIETLY))
-                targetPlayer.getPlayer().sendMessage(teleportingPlayer.getDisplayName() + "§c está teleportando até você.");
+                Util.sendPlayerMessage(targetPlayer, teleportingPlayer.getDisplayName() + "§c está teleportando até você.");
 
             // Execute teleport task
             bukkitTask = BukkitScheduler.runTaskLater(
-                    PacocaCraft.pacocaCraft,
                     teleport,
                     teleport.isInstantaneous() ? 0L :
                             ((teleport.timeWaitingInTicks >= 0 ? teleport.timeWaitingInTicks : TIME_TO_TELEPORT_TICKS) + // Waiting ticks + time between listener trigger and tp
@@ -138,7 +138,6 @@ public class TeleportBuilder {
             // Add player on listener if it isn't instantaneous (this should be here because of bukkitTask variable)
             if(!isInstantaneous())
                 BukkitScheduler.runTaskLater(
-                        PacocaCraft.pacocaCraft,
                         () -> TeleportListener.waitingTeleportPlayers.put(teleportingPlayer, this),
                         waitBeforeListener ? TIME_BEFORE_LISTENER_TRIGGERS : 0L
                 );

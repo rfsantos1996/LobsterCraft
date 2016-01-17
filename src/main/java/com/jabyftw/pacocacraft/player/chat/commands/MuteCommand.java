@@ -1,12 +1,18 @@
 package com.jabyftw.pacocacraft.player.chat.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
+import com.jabyftw.pacocacraft.login.UserProfile;
+import com.jabyftw.pacocacraft.player.chat.ChatProfile;
+import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import com.jabyftw.profile_util.PlayerHandler;
-import org.bukkit.command.CommandSender;
+
+import java.sql.SQLException;
+import java.util.List;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -32,19 +38,61 @@ public class MuteCommand extends CommandExecutor {
         super(PacocaCraft.pacocaCraft, "mute", Permissions.PLAYER_MUTE, "§6Permite ao jogador silenciar alguém que não gosta", "§c/mute (§4jogador§c)");
     }
 
+    @SuppressWarnings("deprecation")
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onMute(PlayerHandler playerHandler) {
-        return false; // Return a list of muted
+    public boolean onMute(final PlayerHandler playerHandler) {
+        BukkitScheduler.runTaskAsynchronously(() -> {
+            List<String> mutedPlayers = null;
+
+            // Try to fetch
+            try {
+                mutedPlayers = playerHandler.getProfile(ChatProfile.class).getMutedPlayers();
+            } catch(SQLException e) {
+                e.printStackTrace();
+                Util.sendPlayerMessage(playerHandler, "§4Falha ao procurar jogadores silenciados.");
+                return;
+            }
+
+            // Build string builder
+            StringBuilder stringBuilder = new StringBuilder("§6Jogadores silenciados: ");
+
+            // Iterate through all names
+            for(int i = 0; i < mutedPlayers.size(); i++) {
+                // Append a red player name
+                stringBuilder.append("§c").append(mutedPlayers.get(i));
+                // If not the last, append a default yellow comma
+                if(i != mutedPlayers.size() - 1) stringBuilder.append("§6, ");
+            }
+
+            // Finish string builder and send player message
+            Util.sendPlayerMessage(playerHandler, stringBuilder.toString());
+        });
+        return true;
     }
 
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onMute(PlayerHandler playerHandler, PlayerHandler muted) {
-        return false; // mute player
-    }
+    public boolean onMute(final PlayerHandler playerHandler, final PlayerHandler muted) {
+        String messageSent = muted.getPlayer().getDisplayName();
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_MUTE_ALL)
-    public boolean onAdminMute(CommandSender commandSender, PlayerHandler muted) {
-        return false; // prepare admin mute base
+        // Switch for each mute responses; if none handled, throw exception
+        switch(playerHandler.getProfile(ChatProfile.class).mutePlayer(playerHandler.getProfile(UserProfile.class).getPlayerId())) {
+            case ALREADY_MUTED:
+                messageSent += "§c já está silenciado.";
+                break;
+            case FULL_MUTE_LIST:
+                messageSent = "§4A lista de silenciados está cheia.";
+                break;
+            case SUCCESSFULLY_MUTED:
+                messageSent += "§6 foi silenciado.";
+                break;
+            default:
+                throw new IllegalStateException("Failed to mute player (default response @ MuteCommand#onmute)");
+        }
+
+        // Send message to sender
+        Util.sendPlayerMessage(playerHandler, messageSent);
+
+        return true;
     }
 }

@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -69,7 +70,11 @@ public class GiveCommand extends CommandExecutor {
     public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, int amount, boolean warnPlayer, short damage) {
         ItemStack itemStack = new ItemStack(material, amount, damage);
         playerHandler.addItem(warnPlayer, itemStack);
-        commandSender.sendMessage("§c" + amount + "§6 de §c" + material.name().toLowerCase().replaceAll("_", " ") + ":" + damage + "§6 entregue a " + playerHandler.getPlayer().getDisplayName());
+
+        Util.sendCommandSenderMessage(
+                commandSender,
+                "§c" + amount + "§6 de §c" + material.name().toLowerCase().replaceAll("_", " ") + ":" + damage + "§6 entregue a " + playerHandler.getPlayer().getDisplayName()
+        );
         return true;
     }
 }

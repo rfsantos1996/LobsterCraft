@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -9,6 +10,7 @@ import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 
@@ -46,12 +48,12 @@ public class ClearInventoryCommand extends CommandExecutor {
 
         if(usedCommand.contains(playerName)) {
             playerHandler.getPlayer().getInventory().clear();
-            playerHandler.getPlayer().sendMessage("§6Inventário limpo!");
+            Util.sendPlayerMessage(playerHandler, "§6Inventário limpo!");
             usedCommand.remove(playerName);
         } else {
-            playerHandler.getPlayer().sendMessage("§cVocê tem certeza que quer limpar seu inventário? §6Se sim, use o comando novamente.");
+            Util.sendPlayerMessage(playerHandler, "§cVocê tem certeza que quer limpar seu inventário? §6Se sim, use o comando novamente.");
             usedCommand.add(playerName);
-            BukkitScheduler.runTaskLater(PacocaCraft.pacocaCraft, () -> usedCommand.remove(playerName), CLEAR_INVENTORY_CONFIRMATION_TICKS);
+            BukkitScheduler.runTaskLater(() -> usedCommand.remove(playerName), CLEAR_INVENTORY_CONFIRMATION_TICKS);
         }
         return true;
     }
@@ -62,13 +64,15 @@ public class ClearInventoryCommand extends CommandExecutor {
 
         if(usedCommand.contains(commandSenderName)) {
             playerHandler.getPlayer().getInventory().clear();
-            playerHandler.getPlayer().sendMessage("§6Inventário limpo por " + commandSender.getName() + "!");
-            commandSender.sendMessage("§6Inventário de " + playerHandler.getPlayer().getDisplayName() + "§6 foi limpo.");
+            Util.sendPlayerMessage(playerHandler, "§6Inventário limpo por " + commandSender.getName() + "!");
+            Util.sendCommandSenderMessage(commandSender, "§6Inventário de " + playerHandler.getPlayer().getDisplayName() + "§6 foi limpo.");
+
             usedCommand.remove(commandSenderName);
         } else {
-            commandSender.sendMessage("§cVocê tem certeza que quer limpar o inventário de " + playerHandler.getPlayer().getDisplayName() + "§c? §6Se sim, use o comando novamente.");
+            Util.sendCommandSenderMessage(commandSender, "§cVocê tem certeza que quer limpar o inventário de " + playerHandler.getPlayer().getDisplayName() + "§c? §6Se sim, use o comando novamente.");
+
             usedCommand.add(commandSenderName);
-            BukkitScheduler.runTaskLater(PacocaCraft.pacocaCraft, () -> usedCommand.remove(commandSenderName), CLEAR_INVENTORY_CONFIRMATION_TICKS);
+            BukkitScheduler.runTaskLater(() -> usedCommand.remove(commandSenderName), CLEAR_INVENTORY_CONFIRMATION_TICKS);
         }
         return true;
     }

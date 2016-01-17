@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -42,7 +43,7 @@ public class KillEntitiesCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH)
     public boolean onKillAll(CommandSender commandSender, EntityType entityType) {
         if(entityType == EntityType.PLAYER || !entityType.isAlive()) {
-            commandSender.sendMessage("§cVocê não pode matar este tipo de entidade.");
+            Util.sendCommandSenderMessage(commandSender, "§cVocê não pode matar este tipo de entidade.");
         }
 
         ArrayList<LivingEntity> killedEntities = new ArrayList<>();
@@ -64,7 +65,7 @@ public class KillEntitiesCommand extends CommandExecutor {
             iterator.remove();
         }
 
-        commandSender.sendMessage("§cVocê matou §4" + entities + "§c de §4" + entityType.name().toLowerCase().replaceAll("_", " "));
+        Util.sendCommandSenderMessage(commandSender, "§cVocê matou §4" + entities + "§c de §4" + entityType.name().toLowerCase().replaceAll("_", " "));
         return true;
     }
 }

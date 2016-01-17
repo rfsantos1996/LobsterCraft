@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -7,6 +8,7 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -35,7 +37,7 @@ public class FlyCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onFly(PlayerHandler playerHandler, boolean fly) {
         playerHandler.getPlayer().setAllowFlight(fly);
-        playerHandler.getPlayer().sendMessage(fly ? "§6Vôo ativado." : "§cVôo desativado.");
+        Util.sendPlayerMessage(playerHandler, fly ? "§6Vôo ativado." : "§cVôo desativado.");
         return true;
     }
 
@@ -47,7 +49,7 @@ public class FlyCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FLY_OTHERS)
     public boolean onFlyOthers(CommandSender commandSender, PlayerHandler target, boolean fly) {
         onFly(target, fly);
-        commandSender.sendMessage((fly ? "§6" : "§c") + target.getPlayer().getDisplayName() + (fly ? "§6 está voando" : "§c não está voando."));
+        Util.sendCommandSenderMessage(commandSender, (fly ? "§6" : "§c") + target.getPlayer().getDisplayName() + (fly ? "§6 está voando" : "§c não está voando."));
         return true;
     }
 

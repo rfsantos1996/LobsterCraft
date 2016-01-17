@@ -9,6 +9,7 @@ import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
+import com.sun.istack.internal.NotNull;
 import org.bukkit.command.CommandSender;
 
 import java.security.NoSuchAlgorithmException;
@@ -38,12 +39,12 @@ public class RegisterCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onDefaultRegister(final PlayerHandler playerHandler, final String password1, String password2) {
+    public boolean onDefaultRegister(final PlayerHandler playerHandler, final String password1, final String password2) {
         // Check if password is valid
         if(!isPasswordValid(playerHandler.getPlayer(), password1, password2))
             return true;
 
-        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+        BukkitScheduler.runTaskAsynchronously(() -> {
             try {
                 // Register player (he will be already warned)
                 playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1));
@@ -56,12 +57,12 @@ public class RegisterCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.CONSOLE, additionalPermissions = Permissions.JOIN_OTHER_ACCOUNT_REGISTRATION)
-    public boolean onConsoleRegister(CommandSender commandSender, PlayerHandler playerHandler, String password1, String password2) {
+    public boolean onConsoleRegister(final CommandSender commandSender, final PlayerHandler playerHandler, final String password1, final String password2) {
         // Check if password is valid
         if(!isPasswordValid(commandSender, password1, password2))
             return true;
 
-        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+        BukkitScheduler.runTaskAsynchronously(() -> {
             try {
                 // Register player and warn sender if succeeded
                 if(playerHandler.getProfile(UserProfile.class).registerPlayer(Util.encryptString(password1)))
@@ -76,7 +77,7 @@ public class RegisterCommand extends CommandExecutor {
         return true;
     }
 
-    public static boolean isPasswordValid(CommandSender commandSender, String password1, String password2) {
+    public static boolean isPasswordValid(@NotNull final CommandSender commandSender, final String password1, final String password2) {
         // Check if passwords match
         if(!password1.equals(password2)) {
             commandSender.sendMessage("§4As senhas não coincidem!");

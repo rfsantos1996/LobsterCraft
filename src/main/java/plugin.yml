@@ -61,8 +61,12 @@ commands:
     aliases: spawnmobs
   mute:
     description: dont know if I can remove every command attribute
+  adminmute:
+    aliases: [amute, admmute]
   unmute:
     description: dont know if I can remove every command attribute
+  adminunmute:
+    aliases: [aunmute, admunmute]
   ptime:
     aliases: tempo
   pweather:

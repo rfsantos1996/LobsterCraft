@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -39,18 +40,17 @@ public class ClearEnchantmentCommand extends CommandExecutor {
 
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onClearEnchantment(PlayerHandler playerHandler) {
-        Player player = playerHandler.getPlayer();
-        ItemStack itemInHand = player.getItemInHand();
+        ItemStack itemInHand = playerHandler.getPlayer().getItemInHand();
 
         // Check if item exists
         if(itemInHand == null || itemInHand.getType() == Material.AIR) {
-            player.sendMessage("§cNão tem itens na sua mão!");
+            Util.sendPlayerMessage(playerHandler, "§cNão tem itens na sua mão!");
             return true;
         }
 
         // Check if item contains any enchantments
         if(itemInHand.getEnchantments().isEmpty()) {
-            player.sendMessage("§cO item na sua mão não está encantado!");
+            Util.sendPlayerMessage(playerHandler, "§cO item na sua mão não está encantado!");
             return true;
         }
 
@@ -58,7 +58,7 @@ public class ClearEnchantmentCommand extends CommandExecutor {
         ArrayList<Enchantment> enchantments = new ArrayList<>(itemInHand.getEnchantments().keySet());
         enchantments.forEach(itemInHand::removeEnchantment);
 
-        player.sendMessage("§6Encantamentos removidos com sucesso!");
+        Util.sendPlayerMessage(playerHandler, "§6Encantamentos removidos com sucesso!");
         return true;
     }
 }

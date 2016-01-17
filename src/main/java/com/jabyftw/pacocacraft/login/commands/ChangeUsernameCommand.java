@@ -44,17 +44,15 @@ public class ChangeUsernameCommand extends CommandExecutor {
 
     @CommandHandler(senderType = SenderType.PLAYER)
     public boolean onChangeUsername(PlayerHandler playerHandler, String username1, String username2) {
-        Player player = playerHandler.getPlayer();
-
         // Check if username are equal (upper case will be ignored anyways)
         if(!username1.equalsIgnoreCase(username2)) {
-            player.sendMessage("§cAs contas não coincidem!");
+            Util.sendPlayerMessage(playerHandler, "§cAs contas não coincidem!");
             return true;
         }
 
         // Check for special characters and length
         if(!JoinListener.isValidPlayerName(username1)) {
-            player.sendMessage("§cNome de usuário com caracteres especiais, muito longo ou muito curto!\n" +
+            Util.sendPlayerMessage(playerHandler, "§cNome de usuário com caracteres especiais, muito longo ou muito curto!\n" +
                     "§cDeve estar entre 3 e 16 caracteres, contendo §4A-Z§c,§4 a-z§c incluindo §4_");
             return true;
         }
@@ -65,24 +63,24 @@ public class ChangeUsernameCommand extends CommandExecutor {
         // If player isn't changing to its past username AND its username change date is less than the required time
         if(profile.getLastUsername() != null && timeSinceLastChange <= REQUIRED_TIME_CHANGE_NAME) {
             // NOTE: do not allow non-stopping changes (not even to the last username)
-            player.sendMessage("§cVocê só pode alterar seu nome novamente daqui §4" + Util.parseTimeInMillis(Math.abs(REQUIRED_TIME_CHANGE_NAME - timeSinceLastChange)));
+            Util.sendPlayerMessage(playerHandler, "§cVocê só pode alterar seu nome novamente daqui §4" + Util.parseTimeInMillis(Math.abs(REQUIRED_TIME_CHANGE_NAME - timeSinceLastChange)));
             return true;
         }
 
         // Asynchronously check if username is available
-        BukkitScheduler.runTaskAsynchronously(PacocaCraft.pacocaCraft, () -> {
+        BukkitScheduler.runTaskAsynchronously(() -> {
             try {
                 // Check if username is available
                 if(UserProfile.isUsernameAvailable(username1)) {
                     // Set player name (it'll be marked as changed and be saved on database upon log out)
                     if(!profile.setPlayerName(username1))
-                        player.sendMessage("§cOcorreu um erro!");
+                        Util.sendPlayerMessage(playerHandler, "§cOcorreu um erro!");
                 } else {
-                    player.sendMessage("§cUsuário já existente!");
+                    Util.sendPlayerMessage(playerHandler, "§cUsuário já existente!");
                 }
             } catch(SQLException e) {
                 e.printStackTrace();
-                player.sendMessage("§4Falha ao procurar usuário no banco de dados!");
+                Util.sendPlayerMessage(playerHandler, "§4Falha ao procurar usuário no banco de dados!");
             }
         });
 

@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -8,6 +9,7 @@ import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -37,9 +39,9 @@ public class GameModeCommand extends CommandExecutor {
     public boolean onGameMode(PlayerHandler playerHandler, GameMode gameMode) {
         if(playerHandler.getPlayer().getGameMode() != gameMode) {
             playerHandler.getPlayer().setGameMode(gameMode);
-            playerHandler.getPlayer().sendMessage("§6Seu modo de jogo foi alterado para " + gameMode.name());
+            Util.sendPlayerMessage(playerHandler, "§6Seu modo de jogo foi alterado para " + gameMode.name());
         } else {
-            playerHandler.getPlayer().sendMessage("§cSeu modo de jogo já é este!");
+            Util.sendPlayerMessage(playerHandler, "§cSeu modo de jogo já é este!");
         }
         return true;
     }
@@ -48,10 +50,10 @@ public class GameModeCommand extends CommandExecutor {
     public boolean onGameModeOther(CommandSender commandSender, PlayerHandler target, GameMode gameMode) {
         if(target.getPlayer().getGameMode() != gameMode) {
             target.getPlayer().setGameMode(gameMode);
-            target.getPlayer().sendMessage("§6Seu modo de jogo foi alterado para " + gameMode.name());
-            commandSender.sendMessage("§6O modo de jogo de §c" + target.getPlayer().getName() + "§6 foi alterado para " + gameMode.name());
+            Util.sendPlayerMessage(target, "§6Seu modo de jogo foi alterado para " + gameMode.name());
+            Util.sendCommandSenderMessage(commandSender, "§6O modo de jogo de §c" + target.getPlayer().getName() + "§6 foi alterado para " + gameMode.name());
         } else {
-            commandSender.sendMessage("§cO modo de jogo de " + target.getPlayer().getName() + " já é este!");
+            Util.sendCommandSenderMessage(commandSender, "§cO modo de jogo de " + target.getPlayer().getName() + " já é este!");
         }
         return true;
     }

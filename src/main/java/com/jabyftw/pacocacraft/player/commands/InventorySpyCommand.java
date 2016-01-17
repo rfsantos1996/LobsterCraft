@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -63,7 +64,8 @@ public class InventorySpyCommand extends CommandExecutor implements Listener {
             // If player doesn't have the permission to modify, cancel event; otherwise update inventory for the holder
             if(!PacocaCraft.permission.has(event.getWhoClicked(), Permissions.PLAYER_INVENTORY_SPY_MODIFY)) {
                 event.setResult(Event.Result.DENY);
-                event.getWhoClicked().sendMessage("§cVocê não tem permissão para alterar o inventário!");
+                if(event.getWhoClicked() instanceof Player)
+                    Util.sendPlayerMessage(PacocaCraft.getPlayerHandler((Player) event.getWhoClicked()), "§cVocê não tem permissão para alterar o inventário!");
             } else if(event.getInventory().getHolder() instanceof Player) {
                 ((Player) event.getInventory().getHolder()).updateInventory();
             }

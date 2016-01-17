@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -31,7 +32,7 @@ import java.util.ArrayList;
  */
 public class SuicideCommand extends CommandExecutor {
 
-    private final static long SUICIDE_CONFIRMATION_TICKS =  PacocaCraft.config.getLong(ConfigValue.PLAYER_TIME_SUICIDE_CONFIRMATION.getPath()) * 20L; // Seconds * 20 -> ticks
+    private final static long SUICIDE_CONFIRMATION_TICKS = PacocaCraft.config.getLong(ConfigValue.PLAYER_TIME_SUICIDE_CONFIRMATION.getPath()) * 20L; // Seconds * 20 -> ticks
     private final static ArrayList<String> usedCommand = new ArrayList<>();
 
     public SuicideCommand() {
@@ -49,12 +50,12 @@ public class SuicideCommand extends CommandExecutor {
             if(playerHandler.getPlayer().getHealth() > 0d)
                 playerHandler.getPlayer().setHealth(0d);
 
-            playerHandler.getPlayer().sendMessage("§4Morto!");
+            Util.sendPlayerMessage(playerHandler, "§4Você ingeriu 264mg de cianeto de hidrogênio!");
             usedCommand.remove(playerName);
         } else {
-            playerHandler.getPlayer().sendMessage("§cVocê tem certeza que quer se matar? §6Se sim, use o comando novamente; mas a vida é tão boa.");
+            Util.sendPlayerMessage(playerHandler, "§cVocê tem certeza que quer se matar? §6Se sim, use o comando novamente; mas a vida é tão boa.");
             usedCommand.add(playerName);
-            BukkitScheduler.runTaskLater(PacocaCraft.pacocaCraft, () -> usedCommand.remove(playerName), SUICIDE_CONFIRMATION_TICKS);
+            BukkitScheduler.runTaskLater(() -> usedCommand.remove(playerName), SUICIDE_CONFIRMATION_TICKS);
         }
         return true;
     }

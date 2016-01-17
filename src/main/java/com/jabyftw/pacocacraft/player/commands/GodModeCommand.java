@@ -1,5 +1,6 @@
 package com.jabyftw.pacocacraft.player.commands;
 
+import com.jabyftw.Util;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
@@ -50,10 +51,8 @@ public class GodModeCommand extends CommandExecutor {
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GOD_MODE_OTHERS)
     public boolean onGodModeByOther(CommandSender commandSender, PlayerHandler targetPlayer, boolean godMode) {
-        if(targetPlayer.setGodMode(!targetPlayer.isGodMode(), commandSender))
-            commandSender.sendMessage("§6Jogador " + targetPlayer.getPlayer().getName() + " está em modo deus (god mode).");
-        else
-            commandSender.sendMessage("§cJogador " + targetPlayer.getPlayer().getName() + " saiu do modo deus (god mode).");
+        Util.sendCommandSenderMessage(commandSender, "§6Jogador " + targetPlayer.getPlayer().getName() +
+                (targetPlayer.setGodMode(!targetPlayer.isGodMode(), commandSender) ? " está em modo deus (god mode)." : " saiu do modo deus (god mode)."));
         return true;
     }
 }

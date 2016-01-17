@@ -1,8 +1,5 @@
 package com.jabyftw.pacocacraft.player.chat;
 
-import com.jabyftw.profile_util.DatabaseState;
-import com.sun.istack.internal.NotNull;
-
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
  * <p>
@@ -23,22 +20,22 @@ import com.sun.istack.internal.NotNull;
  */
 public class MuteEntry {
 
-    private final long playerId; // Just playerId and mutedPlayerId are needed to check equality
-    private final long mutedPlayerId;
+    private final long playerId; // Just playerId and moderatorPlayerId are needed to check equality
+    private final long moderatorPlayerId;
     private final long muteDate;
 
-    private long muteIndex;
+    protected long muteIndex = -1;
 
-    public MuteEntry(long playerId, long mutedPlayerId) {
+    public MuteEntry(final long playerId, final long moderatorPlayerId) {
         this.playerId = playerId;
-        this.mutedPlayerId = mutedPlayerId;
+        this.moderatorPlayerId = moderatorPlayerId;
         this.muteDate = System.currentTimeMillis();
     }
 
-    public MuteEntry(long muteIndex, long playerId, long mutedPlayerId, long muteDate) {
+    public MuteEntry(final long muteIndex, final long playerId, final long moderatorPlayerId, final long muteDate) {
         this.muteIndex = muteIndex;
         this.playerId = playerId;
-        this.mutedPlayerId = mutedPlayerId;
+        this.moderatorPlayerId = moderatorPlayerId;
         this.muteDate = muteDate;
     }
 
@@ -46,7 +43,7 @@ public class MuteEntry {
         return muteIndex;
     }
 
-    public void setMuteIndex(long muteIndex) {
+    public void setMuteIndex(final long muteIndex) {
         this.muteIndex = muteIndex;
     }
 
@@ -54,8 +51,8 @@ public class MuteEntry {
         return muteDate;
     }
 
-    public long getMutedPlayerId() {
-        return mutedPlayerId;
+    public long getModeratorPlayerId() {
+        return moderatorPlayerId;
     }
 
     public long getPlayerId() {
@@ -63,7 +60,7 @@ public class MuteEntry {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        return obj != null && obj instanceof MuteEntry && ((MuteEntry) obj).mutedPlayerId == mutedPlayerId && ((MuteEntry) obj).playerId == playerId;
+    public boolean equals(final Object obj) {
+        return obj != null && obj instanceof MuteEntry && ((MuteEntry) obj).moderatorPlayerId == moderatorPlayerId && ((MuteEntry) obj).playerId == playerId;
     }
 }

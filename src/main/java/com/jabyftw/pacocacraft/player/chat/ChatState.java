@@ -19,8 +19,9 @@ package com.jabyftw.pacocacraft.player.chat;
  * Email address: rafael.sartori96@gmail.com
  */
 public enum ChatState {
+
     ONLY_SERVER_MESSAGES,
-    ONLY_CHAT_MESSAGES, // Server Messages included, just don't receive /msg
+    ONLY_CHAT_MESSAGES, // Server Messages included, just don't receive /msg (whispers)
     EVERY_MESSAGE;
 
     public boolean accepts(MessageType messageType) {

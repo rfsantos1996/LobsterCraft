@@ -26,13 +26,14 @@ import org.bukkit.scheduler.BukkitTask;
  */
 public abstract class BukkitScheduler {
 
+    private static Plugin plugin = PacocaCraft.pacocaCraft;
+
     /**
-     * @param plugin   the plugin that schedules the task
      * @param runnable the task to be ran
      *
      * @return a BukkitTask if server is not closing, null otherwise
      */
-    public static BukkitTask runTask(@NotNull Plugin plugin, @NotNull Runnable runnable) {
+    public static BukkitTask runTask(@NotNull Runnable runnable) {
         if(PacocaCraft.isServerClosing())
             runnable.run();
         else
@@ -41,12 +42,11 @@ public abstract class BukkitScheduler {
     }
 
     /**
-     * @param plugin   the plugin that schedules the task
      * @param runnable the task to be ran
      *
      * @return a BukkitTask if server is not closing, null otherwise
      */
-    public static BukkitTask runTaskAsynchronously(@NotNull Plugin plugin, @NotNull Runnable runnable) {
+    public static BukkitTask runTaskAsynchronously(@NotNull Runnable runnable) {
         if(PacocaCraft.isServerClosing())
             runnable.run();
         else
@@ -56,7 +56,6 @@ public abstract class BukkitScheduler {
     }
 
     /**
-     * @param plugin   the plugin that schedules the task
      * @param runnable the task to be ran
      * @param delay    task delay, ignored when server is closing
      *
@@ -64,7 +63,7 @@ public abstract class BukkitScheduler {
      *
      * @throws IllegalStateException if server is closing and tried to schedule a task for future
      */
-    public static BukkitTask runTaskLater(@NotNull Plugin plugin, @NotNull Runnable runnable, long delay) throws IllegalStateException {
+    public static BukkitTask runTaskLater(@NotNull Runnable runnable, long delay) throws IllegalStateException {
         if(PacocaCraft.isServerClosing())
             throw new IllegalStateException("Server is closing, can't schedule task to later!");
         else
@@ -72,7 +71,6 @@ public abstract class BukkitScheduler {
     }
 
     /**
-     * @param plugin   the plugin that schedules the task
      * @param runnable the task to be ran
      * @param delay    task delay, ignored when server is closing
      *
@@ -80,7 +78,7 @@ public abstract class BukkitScheduler {
      *
      * @throws IllegalStateException if server is closing and tried to schedule a task for future
      */
-    public static BukkitTask runTaskLaterAsynchronously(@NotNull Plugin plugin, @NotNull Runnable runnable, long delay) throws IllegalStateException {
+    public static BukkitTask runTaskLaterAsynchronously(@NotNull Runnable runnable, long delay) throws IllegalStateException {
         if(PacocaCraft.isServerClosing())
             throw new IllegalStateException("Server is closing, can't schedule task to later!");
         else
@@ -88,7 +86,6 @@ public abstract class BukkitScheduler {
     }
 
     /**
-     * @param plugin   the plugin that schedules the task
      * @param runnable the task to be ran
      * @param delay    task delay, ignored when server is closing
      * @param period   period between task ran
@@ -97,7 +94,7 @@ public abstract class BukkitScheduler {
      *
      * @throws IllegalStateException if server is closing and tried to schedule a task for future
      */
-    public static BukkitTask runTaskTimer(@NotNull Plugin plugin, @NotNull Runnable runnable, long delay, long period) throws IllegalStateException {
+    public static BukkitTask runTaskTimer(@NotNull Runnable runnable, long delay, long period) throws IllegalStateException {
         if(PacocaCraft.isServerClosing())
             throw new IllegalStateException("Server is closing, can't schedule task to later!");
         else
@@ -105,7 +102,6 @@ public abstract class BukkitScheduler {
     }
 
     /**
-     * @param plugin   the plugin that schedules the task
      * @param runnable the task to be ran
      * @param delay    task delay, ignored when server is closing
      * @param period   period between task ran
@@ -114,7 +110,7 @@ public abstract class BukkitScheduler {
      *
      * @throws IllegalStateException if server is closing and tried to schedule a task for future
      */
-    public static BukkitTask runTaskTimerAsynchronously(@NotNull Plugin plugin, @NotNull Runnable runnable, long delay, long period) throws IllegalStateException {
+    public static BukkitTask runTaskTimerAsynchronously(@NotNull Runnable runnable, long delay, long period) throws IllegalStateException {
         if(PacocaCraft.isServerClosing())
             throw new IllegalStateException("Server is closing, can't schedule task to later!");
         else

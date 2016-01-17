@@ -125,7 +125,7 @@ public class UserProfile extends BasePlayerProfile {
         InvisibilityService.hideEveryoneFromPlayer(player);
         InvisibilityService.hidePlayerFromEveryone(player);
 
-        // Teleport to spawn (without saving player's last location but saving server's before-login location)
+        // Teleport to spawn (without saving player's last location - as the profile wasn't loaded yet - but saving server's before-login location)
         TeleportBuilder.getBuilder(playerHandler).setLocation(player.getWorld().getSpawnLocation()).setInstantaneousTeleport(true).execute();
     }
 
@@ -203,7 +203,7 @@ public class UserProfile extends BasePlayerProfile {
             }
 
             // Everything went fine, log player in and restore everything
-            BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> {
+            BukkitScheduler.runTask(() -> {
                 // Restore player pre-login
                 preLoginMoment.restorePlayerMoment(); // Needs Bukkit API, run sync
                 preLoginMoment = null;
@@ -219,7 +219,7 @@ public class UserProfile extends BasePlayerProfile {
                 loginTime = System.currentTimeMillis();
 
                 // Broadcast messages
-                player.sendMessage("§6Login bem sucedido!");
+                Util.sendPlayerMessage(getPlayerHandler(), "§6Login bem sucedido!");
                 if(!PacocaCraft.permission.playerHas(player, Permissions.JOIN_VANISHED))
                     Bukkit.getServer().broadcastMessage("§b+ §3" + player.getName());
             });
@@ -323,7 +323,7 @@ public class UserProfile extends BasePlayerProfile {
             saveUserProfile(this);
 
             // Synchronously kick player and prevent it from saving
-            BukkitScheduler.runTask(PacocaCraft.pacocaCraft, () -> {
+            BukkitScheduler.runTask(() -> {
                 this.loggedIn = false; // Prevent saving
                 getPlayerHandler().getPlayer().kickPlayer("§6Nome alterado com sucesso!");
             });
