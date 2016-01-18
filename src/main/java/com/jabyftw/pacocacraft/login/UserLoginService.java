@@ -64,6 +64,7 @@ public class UserLoginService implements ServerService {
                 PlayerService.TIME_BETWEEN_PROFILE_SAVES_TICKS,
                 PlayerService.TIME_BETWEEN_PROFILE_SAVES_TICKS
         );
+
         PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 

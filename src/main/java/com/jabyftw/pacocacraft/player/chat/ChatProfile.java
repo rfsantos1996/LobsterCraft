@@ -313,9 +313,7 @@ public class ChatProfile extends PlayerProfile {
      * MySQL methods
      */
 
-    public static ChatProfile fetchChatProfile(long playerId) throws SQLException {
-        ChatProfile chatProfile;
-
+    public static void fetchChatProfile(@NotNull ChatProfile chatProfile) throws SQLException {
         // Retrieve connection
         Connection connection = PacocaCraft.dataSource.getConnection();
         {
@@ -326,7 +324,7 @@ public class ChatProfile extends PlayerProfile {
                     ResultSet.CONCUR_UPDATABLE
             );
 
-            preparedStatement.setLong(1, playerId);
+            preparedStatement.setLong(1, chatProfile.getPlayerId());
 
             // Execute statement
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -349,7 +347,9 @@ public class ChatProfile extends PlayerProfile {
                     );
             }
 
-            chatProfile = new ChatProfile(playerId, mutedPlayers);
+            // Set variables as same as the previous constructor
+            chatProfile.mutedPlayers.addAll(mutedPlayers);
+            chatProfile.databaseState = DatabaseState.ON_DATABASE;
 
             // Close statement and ResultSet
             resultSet.close();
@@ -357,8 +357,6 @@ public class ChatProfile extends PlayerProfile {
         }
         // Close connection
         connection.close();
-
-        return chatProfile;
     }
 
     public static void saveProfile(@NotNull ChatProfile chatProfile) throws SQLException {

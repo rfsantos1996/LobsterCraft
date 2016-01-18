@@ -4,6 +4,7 @@ import com.jabyftw.Util;
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.pacocacraft.player.*;
+import com.jabyftw.pacocacraft.player.chat.ChatProfile;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.jabyftw.pacocacraft.util.BukkitScheduler;
 import com.jabyftw.pacocacraft.util.Permissions;
@@ -102,13 +103,6 @@ public class UserProfile extends BasePlayerProfile {
 
         // Update display name and send greetings
         player.setDisplayName(ChatColor.translateAlternateColorCodes('&', PacocaCraft.chat.getPlayerPrefix(player) + player.getName() + PacocaCraft.chat.getPlayerSuffix(player)));
-        /*synchronized(passwordLock) { // TODO my idea of a static chat
-            player.sendMessage(
-                    (password == null ? "§6Bem vindo, " : "§6Bem vindo novamente, ") +
-                            player.getDisplayName() + "§6!" +
-                            (password == null ? "" : "\n§6Você entrou pela ultima vez em §c" + Util.parseTimeInMillis(lastTimeOnline, "dd/MM/yyyy HH:mm"))
-            );
-        }*/
 
         // Need Bukkit API, but we're on PlayerJoinEvent
         // Store last Ip and set as modified
@@ -190,7 +184,7 @@ public class UserProfile extends BasePlayerProfile {
 
                 // Check if all profiles are ready
                 for(ProfileType profileType : ProfileType.values()) {
-                    if(getPlayerHandler().getProfile(profileType) == null)
+                    if(getPlayerHandler().getProfile(profileType) == null) {
                         try {
                             // Apply missing profile
                             getPlayerHandler().applyProfile(profileType.retrieveProfile(playerId));
@@ -199,6 +193,10 @@ public class UserProfile extends BasePlayerProfile {
                             player.sendMessage("§4Ocorreu um erro! §cBanco de dados não encontrou " + profileType.name());
                             return false;
                         }
+                    } else if(profileType == ProfileType.CHAT_PROFILE) { // This is done here because the profile already exists on PlayerHandler
+                        // This should change chatProfile to load everything upon login
+                        ChatProfile.fetchChatProfile(getPlayerHandler().getProfile(ChatProfile.class));
+                    }
                 }
             }
 
@@ -207,6 +205,9 @@ public class UserProfile extends BasePlayerProfile {
                 // Restore player pre-login
                 preLoginMoment.restorePlayerMoment(); // Needs Bukkit API, run sync
                 preLoginMoment = null;
+
+                // Add player to list (player is logged in)
+                PacocaCraft.playerMap.put(player, getPlayerHandler());
 
                 // Show player to everyone and vice-versa (uses Bukkit API)
                 InvisibilityService.showEveryoneToPlayer(player);

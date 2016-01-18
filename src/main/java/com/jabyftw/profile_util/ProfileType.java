@@ -61,8 +61,7 @@ public enum ProfileType {
 
         @Override
         public <T extends PlayerProfile> T retrieveProfile(long playerId) throws SQLException {
-            T fetchChatProfile = (T) ChatProfile.fetchChatProfile(playerId);
-            return fetchChatProfile == null ? (T) new ChatProfile(playerId) : fetchChatProfile;
+            return null;
         }
     };
 

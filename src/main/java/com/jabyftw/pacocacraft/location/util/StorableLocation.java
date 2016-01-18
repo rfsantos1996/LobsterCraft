@@ -1,4 +1,4 @@
-package com.jabyftw.pacocacraft.block;
+package com.jabyftw.pacocacraft.location.util;
 
 import com.jabyftw.Util;
 import com.sun.istack.internal.NotNull;

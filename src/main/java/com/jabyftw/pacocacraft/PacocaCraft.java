@@ -235,7 +235,6 @@ public class PacocaCraft extends JavaPlugin {
      * @return a collection with every online player handler
      */
     public static Collection<PlayerHandler> getOnlinePlayers() {
-        // TODO don't get player if he isn't online
         return playerMap.values();
     }
 

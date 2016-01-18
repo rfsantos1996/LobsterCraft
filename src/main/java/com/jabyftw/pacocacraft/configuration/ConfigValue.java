@@ -52,6 +52,8 @@ public enum ConfigValue {
     PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
     PLAYER_FIXED_CHAT_REFRESH_DELAY("player.fixed_chat_refresh_delay_seconds", 7L),
     PLAYER_MAXIMUM_MUTED_PLAYERS("player.maximum_number_of_muted_players", 15),
+
+    BLOCK_IGNORED_WORLDS("block.ignored_worlds", new String[]{"world_the_end", "world_nether"}),
     ;
 
     private final String path;

@@ -5,13 +5,12 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.pacocacraft.PacocaCraft;
-import com.jabyftw.pacocacraft.block.StorableLocation;
+import com.jabyftw.pacocacraft.location.util.StorableLocation;
 import com.jabyftw.pacocacraft.location.TeleportBuilder;
 import com.jabyftw.profile_util.PlayerHandler;
 import com.jabyftw.pacocacraft.util.Permissions;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin

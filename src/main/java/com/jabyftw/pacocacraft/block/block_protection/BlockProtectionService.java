@@ -2,6 +2,7 @@ package com.jabyftw.pacocacraft.block.block_protection;
 
 import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.util.ServerService;
+import org.bukkit.Bukkit;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -21,10 +22,21 @@ import com.jabyftw.pacocacraft.util.ServerService;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
+@SuppressWarnings("Convert2streamapi")
 public class BlockProtectionService implements ServerService {
+
+    public static WorldController worldController;
+    public static ChunkController chunkController;
 
     @Override
     public void onEnable() {
+        Bukkit.getServer().getPluginManager().registerEvents(new WorldListener(), PacocaCraft.pacocaCraft);
+
+        worldController = new WorldController();
+        chunkController = new ChunkController();
+
+        worldController.updateWorldList();
+
         PacocaCraft.logger.info("Enabled " + getClass().getSimpleName());
     }
 

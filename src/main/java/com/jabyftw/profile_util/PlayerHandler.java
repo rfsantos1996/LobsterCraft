@@ -5,6 +5,7 @@ import com.jabyftw.pacocacraft.PacocaCraft;
 import com.jabyftw.pacocacraft.block.xray_protection.OreLocation;
 import com.jabyftw.pacocacraft.login.UserProfile;
 import com.jabyftw.pacocacraft.player.PlayerService;
+import com.jabyftw.pacocacraft.player.chat.ChatProfile;
 import com.jabyftw.pacocacraft.player.invisibility.InvisibilityService;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
@@ -60,9 +61,7 @@ public class PlayerHandler {
 
         // Add user profile (acquired at AsyncPreLogin - before PlayerJoin)
         applyProfile(userProfile);
-
-        // Add player to list (player is set)
-        PacocaCraft.playerMap.put(player, this); // TODO add to it only upon login
+        applyProfile(new ChatProfile(userProfile.getPlayerId()));
     }
 
     /**
