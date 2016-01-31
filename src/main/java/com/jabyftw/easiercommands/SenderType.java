@@ -5,7 +5,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
- * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
+ * Copyright (C) 2015  Rafael Sartori for LobsterCraft Plugin
  * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@ public enum SenderType {
      * Check if command sender can fit into the sender type
      *
      * @param commandSender given sender of the command
-     *
      * @return true if command sender fits into the requirement
      */
     public boolean canHandleCommandSender(@NotNull CommandSender commandSender) {

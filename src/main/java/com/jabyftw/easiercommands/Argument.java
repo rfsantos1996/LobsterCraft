@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 /**
- * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
+ * Copyright (C) 2015  Rafael Sartori for LobsterCraft Plugin
  * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,14 +45,13 @@ public class Argument {
      * Get argument object based on required type
      *
      * @param expectedClass required type
-     *
      * @return object of the expected type, or null if none find
      */
     @SuppressWarnings("unchecked")
     public <T> T getArgument(Class<T> expectedClass) {
-        for(ArgumentType argumentType : getArgumentTypes()) {
+        for (ArgumentType argumentType : getArgumentTypes()) {
             // Loop through available arguments until a fit
-            if(argumentType.getClazz().isAssignableFrom(expectedClass))
+            if (argumentType.getClazz().isAssignableFrom(expectedClass))
                 return (T) arguments.get(argumentType);
         }
         return null;

@@ -1,7 +1,7 @@
 package com.jabyftw.easiercommands;
 
 /**
- * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
+ * Copyright (C) 2015  Rafael Sartori for LobsterCraft Plugin
  * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

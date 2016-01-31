@@ -1,6 +1,5 @@
 package com.jabyftw.easiercommands;
 
-import com.jabyftw.Util;
 import org.bukkit.*;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
@@ -9,7 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionType;
 
 /**
- * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
+ * Copyright (C) 2015  Rafael Sartori for LobsterCraft Plugin
  * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -81,21 +80,18 @@ public enum ArgumentType {
         }
     },
 
-    PLAYER_NAME(CommandExecutor.PLAYER_CLASS) {
+    PLAYER_NAME(READ_ME.PLAYER_CLASS) {
         @Override
         protected Object isPossible(CommandSender commandSender, String string) {
-            // TODO change here your method
-            return Util.getPlayerThatMatches(string);
+            return READ_ME.getPlayerThatMatches(string);
         }
     },
     PLAYER_IP(String.class) {
         @Override
         protected Object isPossible(CommandSender commandSender, String string) {
-            for(Player player : Bukkit.getServer().getOnlinePlayers()) {
-                if(player.getAddress().getAddress().getHostName().equalsIgnoreCase(string)) {
+            for (Player player : Bukkit.getServer().getOnlinePlayers())
+                if (player.getAddress().getAddress().getHostName().equalsIgnoreCase(string))
                     return string;
-                }
-            }
             return null;
         }
     },
@@ -105,7 +101,7 @@ public enum ArgumentType {
         protected Object isPossible(CommandSender commandSender, String string) {
             try {
                 return Integer.valueOf(string);
-            } catch(NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
             }
             return null;
         }
@@ -115,7 +111,7 @@ public enum ArgumentType {
         protected Object isPossible(CommandSender commandSender, String string) {
             try {
                 return Long.valueOf(string);
-            } catch(NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
             }
             return null;
         }
@@ -125,7 +121,7 @@ public enum ArgumentType {
         protected Object isPossible(CommandSender commandSender, String string) {
             try {
                 return Short.valueOf(string);
-            } catch(NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
             }
             return null;
         }
@@ -135,7 +131,7 @@ public enum ArgumentType {
         protected Object isPossible(CommandSender commandSender, String string) {
             try {
                 return Byte.valueOf(string);
-            } catch(NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
             }
             return null;
         }
@@ -145,7 +141,7 @@ public enum ArgumentType {
         protected Object isPossible(CommandSender commandSender, String string) {
             try {
                 return Float.valueOf(string);
-            } catch(NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
             }
             return null;
         }
@@ -155,7 +151,7 @@ public enum ArgumentType {
         protected Object isPossible(CommandSender commandSender, String string) {
             try {
                 return Integer.valueOf(string);
-            } catch(NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
             }
             return null;
         }
@@ -186,28 +182,28 @@ public enum ArgumentType {
         this.clazz = clazz;
     }
 
-    public Class<?> getClazz() {
-        return clazz;
-    }
-
-    protected abstract Object isPossible(CommandSender commandSender, String string);
-
     public static Argument handleArgument(CommandSender commandSender, String string) {
         final Argument argument = new Argument();
 
-        for(ArgumentType argumentType : ArgumentType.values()) {
+        for (ArgumentType argumentType : ArgumentType.values()) {
             // Acquire argument type object for each type
             Object argumentTypeObject = null;
             try {
                 argumentTypeObject = argumentType.isPossible(commandSender, string);
-            } catch(Exception ignored) {
+            } catch (Exception ignored) {
             }
 
             // Check if argument isn't null and add to the possible arguments
-            if(argumentTypeObject != null)
+            if (argumentTypeObject != null)
                 argument.addArgumentType(argumentType, argumentTypeObject);
         }
 
         return argument;
     }
+
+    public Class<?> getClazz() {
+        return clazz;
+    }
+
+    protected abstract Object isPossible(CommandSender commandSender, String string);
 }

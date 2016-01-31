@@ -1,14 +1,14 @@
-name: PacocaCraft
+name: LobsterCraft
 version: 0.1
 description: Private plugin for server
 
-main: com.jabyftw.pacocacraft.PacocaCraft
+main: com.jabyftw.lobstercraft.LobsterCraft
 author: rfsantos1996
-depend: [Vault, ProtocolLib]
+depend: [Vault, ProtocolLib, VanishNoPacket]
 
 commands:
   login:
-    aliases: [l, entrar]
+    aliases: [l, entrar, signin, sign, entrar]
   register:
     aliases: [registrar, reg]
   godmode:
@@ -91,3 +91,5 @@ commands:
     aliases: [changeusername, mudarusuario, mudaruser, mudarnome]
   changepass:
     aliases: [changepassword, mudarsenha, passwordchange, passchange]
+  buildmode:
+    aliases: [bm, blockmode]
