@@ -2,20 +2,20 @@ package com.jabyftw.lobstercraft;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public enum ConfigValue {
@@ -36,14 +36,17 @@ public enum ConfigValue {
     LOGIN_LIMITER_NUMBER_OF_PLAYERS("login.limiter.number_of_players", 16),
     LOGIN_LIMITER_PERIOD_OF_TIME("login.limiter.period_of_time_seconds", 10),
 
+    PLAYER_SPEED_MINIMUM_MULTIPLIER("player.speed.minimum_speed_multiplier", 0.05d),
+    PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
+
     WORLD_IGNORED_WORLDS("world.ignored_worlds", new String[]{"world_the_end", "world_nether"}),
 
     WORLD_PLAYER_BLOCK_SEARCH_DISTANCE("world.protection.player_block_search_distance_xyz", 12.0D),
     WORLD_ADMINISTRATOR_BLOCK_SEARCH_DISTANCE("world.protection.administrator_block_search_distance_xz_only", 125.0D),
 
-    WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER("world.chunk_load.minimum_size_multiplier", 4.0d / 3.0d),
-    WORLD_CHUNK_LOAD_PERIOD("world.chunk_load.period_between_loads_ticks", 6L),
-    WORLD_CHUNK_LOAD_LIMIT("world.chunk_load.limit_of_chunks_per_load", 7 * 7),
+    WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER("world.chunk_load.minimum_size_multiplier", 1.15d),
+    WORLD_CHUNK_LOAD_PERIOD("world.chunk_load.period_between_loads_ticks", 4L), // as a first query, it took 30-90ms, so this will limit our scheduler to 200ms
+    WORLD_CHUNK_LOAD_LIMIT("world.chunk_load.limit_of_chunks_per_load", 500), // 441 is loaded for a full request
 
     LOCATION_TELEPORT_TIME_WAITING("location.teleport.time_waiting_to_start_teleporting_ticks", 4 * 20L),
     LOCATION_TELEPORT_TIME_BETWEEN_ACCEPT_TRIGGERS("location.teleport.time_waiting_between_accept_and_teleport_ticks", 12L),

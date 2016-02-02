@@ -1,8 +1,9 @@
 package com.jabyftw.lobstercraft.commands;
 
+import com.jabyftw.lobstercraft.commands.location.*;
 import com.jabyftw.lobstercraft.commands.login.LoginCommand;
 import com.jabyftw.lobstercraft.commands.login.RegisterCommand;
-import com.jabyftw.lobstercraft.commands.player.GamemodeCommand;
+import com.jabyftw.lobstercraft.commands.player.*;
 import com.jabyftw.lobstercraft.commands.protection.BuildModeCommand;
 import com.jabyftw.lobstercraft.util.Service;
 import org.bukkit.Bukkit;
@@ -28,15 +29,48 @@ import org.bukkit.Server;
  */
 public class CommandService extends Service {
 
+    public static WorldCommand worldCommand;
+
     @Override
     public boolean onEnable() {
         Server server = Bukkit.getServer();
         {
+            // location
+            server.getPluginCommand("teleport").setExecutor(new TeleportCommand());
+            server.getPluginCommand("teleporthere").setExecutor(new TeleportHereCommand());
+            server.getPluginCommand("spawnset").setExecutor(new SpawnSetCommand());
+            server.getPluginCommand("spawn").setExecutor(new SpawnCommand());
+            server.getPluginCommand("world").setExecutor(new WorldCommand());
+            server.getPluginCommand("back").setExecutor(new BackCommand());
+            server.getPluginCommand("top").setExecutor(new TopCommand());
             // login
             server.getPluginCommand("login").setExecutor(new LoginCommand());
             server.getPluginCommand("register").setExecutor(new RegisterCommand());
             // player
             server.getPluginCommand("gamemode").setExecutor(new GamemodeCommand());
+            server.getPluginCommand("godmode").setExecutor(new GodModeCommand());
+            server.getPluginCommand("fly").setExecutor(new FlyCommand());
+            server.getPluginCommand("item").setExecutor(new PendingItemsCommand());
+            server.getPluginCommand("give").setExecutor(new GiveCommand());
+            server.getPluginCommand("heal").setExecutor(new HealCommand());
+            server.getPluginCommand("enchant").setExecutor(new EnchantCommand());
+            server.getPluginCommand("clearenchantment").setExecutor(new ClearEnchantmentCommand());
+            server.getPluginCommand("workbench").setExecutor(new WorkbenchCommand());
+            server.getPluginCommand("list").setExecutor(new ListCommand());
+            server.getPluginCommand("clear").setExecutor(new ClearInventoryCommand());
+            server.getPluginCommand("suicide").setExecutor(new SuicideCommand());
+            server.getPluginCommand("kill").setExecutor(new KillPlayersCommand());
+            server.getPluginCommand("killall").setExecutor(new KillEntitiesCommand());
+            server.getPluginCommand("spawnmob").setExecutor(new SpawnEntitiesCommand());
+            server.getPluginCommand("pweather").setExecutor(new PlayerWeatherCommand());
+            server.getPluginCommand("ptime").setExecutor(new PlayerTimeCommand());
+            server.getPluginCommand("speed").setExecutor(new SpeedCommand());
+            server.getPluginCommand("repair").setExecutor(new RepairCommand());
+            server.getPluginCommand("spyinv").setExecutor(new InventorySpyCommand());
+            server.getPluginCommand("exp").setExecutor(new ExpCommand());
+            server.getPluginCommand("level").setExecutor(new LevelCommand());
+            server.getPluginCommand("feed").setExecutor(new FeedEventCommand());
+            server.getPluginCommand("hat").setExecutor(new HatCommand());
             // protection
             server.getPluginCommand("buildmode").setExecutor(new BuildModeCommand());
         }

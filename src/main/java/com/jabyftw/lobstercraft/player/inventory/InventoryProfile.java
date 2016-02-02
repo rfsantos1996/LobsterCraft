@@ -196,6 +196,10 @@ public class InventoryProfile extends Profile {
         setAsModified();
     }
 
+    public ArrayList<ItemStack> getRemainingContents() {
+        return remainingContents;
+    }
+
     /**
      * Give items to a player, storing them in case of full inventory
      *

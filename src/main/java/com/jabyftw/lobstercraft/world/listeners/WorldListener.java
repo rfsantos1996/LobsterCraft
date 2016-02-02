@@ -1,31 +1,35 @@
 package com.jabyftw.lobstercraft.world.listeners;
 
 import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.world.util.location_util.ChunkLocation;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityCreatePortalEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
+import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 
 import java.sql.SQLException;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class WorldListener implements Listener {
@@ -43,14 +47,17 @@ public class WorldListener implements Listener {
             }
     }
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
-    public void onChunkUnload(ChunkUnloadEvent event) {
-        // Check if world is ignored
-        if (!LobsterCraft.worldService.isWorldIgnored(event.getWorld())) {
-            // Get our ChunkLocation
-            ChunkLocation chunkLocation = new ChunkLocation(event.getChunk());
+    /*@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    public void onPortalCreation(PortalCreateEvent event) {
+        if (event.getReason() == PortalCreateEvent.CreateReason.FIRE) event.setCancelled(true);
+    }*/
 
-            // TODO add to unload lists on common block protection
-        }
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
+    public void onPortalCreationByEntity(EntityCreatePortalEvent event) {
+        if (event.getEntity() instanceof Player && LobsterCraft.permission.has((Player) event.getEntity(), Permissions.WORLD_CREATE_PORTALS))
+            return;
+
+        // Cancel every other possibility
+        event.setCancelled(true);
     }
 }

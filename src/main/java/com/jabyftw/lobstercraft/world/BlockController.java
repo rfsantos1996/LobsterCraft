@@ -2,6 +2,7 @@ package com.jabyftw.lobstercraft.world;
 
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Service;
@@ -10,7 +11,9 @@ import com.jabyftw.lobstercraft.world.util.ProtectionType;
 import com.jabyftw.lobstercraft.world.util.location_util.*;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -25,24 +28,25 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for PacocaCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class BlockController extends Service {
@@ -62,12 +66,13 @@ public class BlockController extends Service {
         DEFAULT_LOAD_SIZE = NumberConversions.ceil(minimumLoadSize * LobsterCraft.config.getDouble(ConfigValue.WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER.getPath()));
     }
 
-    private final Set<ChunkLocation>
-            pendingLoading = Collections.synchronizedSet(new LinkedHashSet<>()),
-            pendingUnloading = Collections.synchronizedSet(new LinkedHashSet<>());
+    private final ConcurrentLinkedDeque<ChunkLocation>
+            pendingLoading = new ConcurrentLinkedDeque<>(), // TODO more than one thread loading => I removed (maybe) unnecessary synchronized blocks
+            pendingUnloading = new ConcurrentLinkedDeque<>();
     private final ConcurrentHashMap<ChunkLocation, HashMap<BlockLocation, ProtectedBlockLocation>> blockStorage = new ConcurrentHashMap<>();
 
     private Connection connection;
+    private ChunkUnloader chunkUnloader;
 
     @Override
     public boolean onEnable() {
@@ -86,38 +91,50 @@ public class BlockController extends Service {
         }
 
         BukkitScheduler.runTaskTimerAsynchronously(new ChunkLoader(), 20L, CHUNK_LOAD_PERIOD);
-        BukkitScheduler.runTaskTimerAsynchronously(new ChunkUnloader(), 20L, CHUNK_LOAD_PERIOD);
+        BukkitScheduler.runTaskTimerAsynchronously(chunkUnloader = new ChunkUnloader(), 20L, CHUNK_LOAD_PERIOD);
 
         return true;
     }
 
     @Override
     public void onDisable() {
-    }
+        // Fill it up with all loaded chunks
+        for (World world : Bukkit.getWorlds())
+            if (!LobsterCraft.worldService.isWorldIgnored(world))
+                for (Chunk chunk : world.getLoadedChunks())
+                    pendingUnloading.add(new ChunkLocation(chunk));
 
-    @SuppressWarnings("unchecked")
-    public <T extends ProtectedBlockLocation> T addBlock(@NotNull final Location location, @NotNull final Class<T> protectionTypeClass) {
+        while (!pendingUnloading.isEmpty())
+            chunkUnloader.run();
+
         try {
-            T protectedBlockLocation = (T) protectionTypeClass.getDeclaredConstructor(location.getClass()).newInstance(location);
-
-            T currentValue = (T) blockStorage.get(protectedBlockLocation.getChunkLocation())
-                    .putIfAbsent(protectedBlockLocation, protectedBlockLocation);
-
-            // Return, safely, a protected block of given class
-            return currentValue == null ? protectedBlockLocation : currentValue;
-        } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            if (connection != null && !connection.isClosed())
+                connection.close();
+        } catch (SQLException e) {
             e.printStackTrace();
-            throw new IllegalStateException("Couldn't create new instance for " + protectionTypeClass.getSimpleName());
         }
     }
 
-    public <T extends ProtectedBlockLocation> T getBlock(@NotNull final Location location) {
+    public ProtectedBlockLocation addBlock(@NotNull final Location location, @NotNull ProtectionType type) {
+        ProtectedBlockLocation protectedBlockLocation = new ProtectedBlockLocation(location, type);
+        ProtectedBlockLocation currentValue = blockStorage.get(protectedBlockLocation.getChunkLocation()).putIfAbsent(protectedBlockLocation, protectedBlockLocation);
+
+        if (currentValue == null)
+            return protectedBlockLocation;
+        else if (currentValue.getType() != protectedBlockLocation.getType())
+            // Reset block state for new type
+            return currentValue.setProtectionType(type).setCurrentId(PlayerHandler.UNDEFINED_PLAYER);
+        else
+            return currentValue;
+    }
+
+    public ProtectedBlockLocation getBlock(@NotNull final Location location) {
+        // TODO Maybe return null if currentId is UNDEFINED_PLAYER?
         return getBlock(new BlockLocation(location));
     }
 
-    @SuppressWarnings("unchecked")
-    public <T extends ProtectedBlockLocation> T getBlock(@NotNull final BlockLocation blockLocation) {
-        return (T) blockStorage.get(blockLocation.getChunkLocation()).get(blockLocation);
+    public ProtectedBlockLocation getBlock(@NotNull final BlockLocation blockLocation) {
+        return blockStorage.get(blockLocation.getChunkLocation()).get(blockLocation);
     }
 
     public Set<ProtectedBlockLocation> getProtectedBlocks(@NotNull final Location location) {
@@ -146,7 +163,11 @@ public class BlockController extends Service {
         return protectedLocations;
     }
 
-    private boolean loadNearChunks(@NotNull final ChunkLocation chunkLocation) {
+    public boolean loadNearChunks(@NotNull final Location location) {
+        return loadNearChunks(new ChunkLocation(location.getChunk()));
+    }
+
+    public boolean loadNearChunks(@NotNull final ChunkLocation chunkLocation) {
         // Check for not loaded ones
         for (ChunkLocation location : chunkLocation.getNearChunks(DEFAULT_LOAD_SIZE))
             // Insert to set if it isn't loaded
@@ -184,111 +205,83 @@ public class BlockController extends Service {
                 loadedLocations.clear();
 
                 // Create queries
-                StringBuilder
-                        playerQuery = new StringBuilder("SELECT * FROM world_blocks WHERE (worlds_worldId, chunkX, chunkZ) IN ("),
-                        adminQuery = new StringBuilder("SELECT * FROM world_admin_blocks WHERE (worlds_worldId, chunkX, chunkZ) IN (");
+                StringBuilder stringBuilder = new StringBuilder("SELECT * FROM minecraft.world_blocks WHERE (worlds_worldId, chunkX, chunkZ) IN (");
 
-                StringBuilder[] stringBuilders = new StringBuilder[]{playerQuery, adminQuery};
+                int indexBounds = Math.min(LIMIT_CHUNK_LOAD_SIZE, pendingLoading.size() - 1);
+                int index = 0;
 
-                synchronized (pendingLoading) {
-                    int indexBounds = Math.min(LIMIT_CHUNK_LOAD_SIZE, pendingLoading.size() - 1);
-                    int index = 0;
+                // Iterate through all items
+                Iterator<ChunkLocation> iterator = pendingLoading.iterator();
 
-                    // Iterate through all items
-                    Iterator<ChunkLocation> iterator = pendingLoading.iterator();
+                while (iterator.hasNext() && index <= indexBounds) {
+                    ChunkLocation chunkLocation = iterator.next();
 
-                    while (iterator.hasNext() && index <= indexBounds) {
-                        ChunkLocation chunkLocation = iterator.next();
+                    // Append information
+                    stringBuilder
+                            .append('(')
+                            .append(chunkLocation.getWorldId()).append(", ")
+                            .append(chunkLocation.getChunkX()).append(", ")
+                            .append(chunkLocation.getChunkZ())
+                            .append(')');
 
-                        // Append information
-                        for (StringBuilder stringBuilder : stringBuilders) {
-                            stringBuilder
-                                    .append('(')
-                                    .append(chunkLocation.getWorldId()).append(", ")
-                                    .append(chunkLocation.getChunkX()).append(", ")
-                                    .append(chunkLocation.getChunkZ())
-                                    .append(')');
+                    // Check boundaries
+                    if (index < indexBounds) stringBuilder.append(", ");
+                    index++;
 
-                            // Check boundaries
-                            if (index < indexBounds) stringBuilder.append(", ");
-                        }
-                        index++;
-
-                        // Add to list of loaded
-                        loadedLocations.add(chunkLocation);
-                    }
+                    // Add to list of loaded
+                    loadedLocations.add(chunkLocation);
                 }
 
-                // Close queries
-                for (StringBuilder stringBuilder : stringBuilders) stringBuilder.append(");");
+                // Close query
+                stringBuilder.append(");");
 
-                PreparedStatement
-                        playerStatement = connection.prepareStatement(playerQuery.toString()),
-                        adminStatement = connection.prepareStatement(adminQuery.toString());
+                // Prepare statement
+                PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
 
-                ResultSet
-                        playerResultSet = playerStatement.executeQuery(),
-                        adminResultSet = adminStatement.executeQuery();
+                // Execute statement
+                ResultSet resultSet = preparedStatement.executeQuery();
 
                 int blockSize = 0;
                 long startTime = System.nanoTime();
 
-                synchronized (blockStorage) {
-                    // Iterate through player blocks
-                    while (playerResultSet.next()) {
-                        // Create chunk
-                        ChunkLocation chunkLocation = new ChunkLocation(playerResultSet.getLong("worlds_worldId"), playerResultSet.getInt("chunkX"), playerResultSet.getInt("chunkZ"));
+                while (resultSet.next()) {
+                    // Create chunk
+                    ChunkLocation chunkLocation = new ChunkLocation(
+                            resultSet.getLong("worlds_worldId"),
+                            resultSet.getInt("chunkX"),
+                            resultSet.getInt("chunkZ")
+                    );
 
-                        // Create block
-                        PlayerBlockLocation blockLocation = new PlayerBlockLocation(
-                                chunkLocation,
-                                playerResultSet.getByte("blockX"),
-                                playerResultSet.getShort("blockY"),
-                                playerResultSet.getByte("blockZ"),
-                                playerResultSet.getLong("user_ownerId")
-                        );
+                    // Create block
+                    ProtectedBlockLocation protectedBlockLocation = new ProtectedBlockLocation(
+                            chunkLocation,
+                            ProtectionType.getFromId(resultSet.getByte("ownerType")),
+                            resultSet.getByte("blockX"),
+                            resultSet.getShort("blockY"),
+                            resultSet.getByte("blockZ"),
+                            resultSet.getLong("ownerId")
+                    );
 
-                        // Add protected block
-                        blockStorage.putIfAbsent(blockLocation.getChunkLocation(), new HashMap<>());
-                        blockStorage.get(blockLocation.getChunkLocation()).put(blockLocation, blockLocation);
-                        blockSize++;
-                    }
-
-                    // Iterate through administrator blocks
-                    while (adminResultSet.next()) {
-                        // Create chunk
-                        ChunkLocation chunkLocation = new ChunkLocation(adminResultSet.getLong("worlds_worldId"), adminResultSet.getInt("chunkX"), adminResultSet.getInt("chunkZ"));
-
-                        // Create block
-                        AdministratorBlockLocation blockLocation = new AdministratorBlockLocation(
-                                chunkLocation,
-                                adminResultSet.getByte("blockX"),
-                                adminResultSet.getShort("blockY"),
-                                adminResultSet.getByte("blockZ"),
-                                adminResultSet.getLong("constructionId")
-                        );
-
-                        // Add protected block
-                        blockStorage.putIfAbsent(blockLocation.getChunkLocation(), new HashMap<>());
-                        blockStorage.get(blockLocation.getChunkLocation()).put(blockLocation, blockLocation);
-                        blockSize++;
-                    }
-
-                    // Remove all pending loads
-                    synchronized (pendingLoading) {
-                        pendingLoading.removeAll(loadedLocations);
-                    }
-
-                    // Close everything
-                    playerResultSet.close();
-                    playerStatement.close();
-                    adminResultSet.close();
-                    adminStatement.close();
+                    // Add protected block
+                    blockStorage.putIfAbsent(chunkLocation, new HashMap<>());
+                    blockStorage.get(chunkLocation).put(protectedBlockLocation, protectedBlockLocation);
+                    blockSize++;
                 }
 
-                long deltaTime = System.nanoTime() - startTime;
-                LobsterCraft.logger.info("It took " + formatter.format(deltaTime / (double) TimeUnit.MILLISECONDS.toNanos(1))
-                        + "ms to search for " + blockSize + " blocks.");
+                for (ChunkLocation loadedLocation : loadedLocations) {
+                    // Make sure chunk is set as loaded
+                    blockStorage.putIfAbsent(loadedLocation, new HashMap<>());
+                    // Remove pending loads
+                    pendingLoading.remove(loadedLocation);
+                }
+
+                // Close everything
+                resultSet.close();
+                preparedStatement.close();
+
+                if (blockSize > 0)
+                    LobsterCraft.logger.info("It took " + formatter.format((double) (System.nanoTime() - startTime) / (double) TimeUnit.MILLISECONDS.toNanos(1))
+                            + "ms to search for " + blockSize + " blocks.");
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -319,9 +312,13 @@ public class BlockController extends Service {
                 long start = System.nanoTime();
 
                 // Iterate through all needed chunks
-                for (ChunkLocation chunkLocation : pendingUnloading) {
-                    if (blockStorage.containsKey(chunkLocation))
-                        synchronized (blockStorage) {
+                {
+                    Iterator<ChunkLocation> iterator = pendingUnloading.iterator();
+
+                    while (iterator.hasNext()) {
+                        ChunkLocation chunkLocation = iterator.next();
+
+                        if (blockStorage.containsKey(chunkLocation)) {
                             // Itreate through all blocks
                             for (ProtectedBlockLocation blockLocation : blockStorage.remove(chunkLocation).values()) {
                                 DatabaseState databaseState = blockLocation.getDatabaseState();
@@ -348,230 +345,144 @@ public class BlockController extends Service {
                                 }
                             }
                             unloadingChunks.add(chunkLocation);
+                        } else {
+                            // Remove chunk if it isn't supposed to be database-unloaded
+                            iterator.remove();
                         }
+                    }
                 }
 
                 if (!blocksToInsert.isEmpty()) {
                     // Start statement
-                    StringBuilder adminQuery = new StringBuilder(
-                            "INSERT INTO `minecraft`.`world_admin_blocks` (`constructionId`, `worlds_worldId`, `chunkX`, `chunkZ`, `blockX`, `blockY`, `blockZ`) VALUES "
+                    StringBuilder stringBuilder = new StringBuilder(
+                            "INSERT INTO `minecraft`.`world_blocks` (`worlds_worldId`, `chunkX`, `chunkZ`, `blockX`, `blockY`, `blockZ`, `ownerType`, `ownerId`) VALUES "
                     );
-                    StringBuilder playerQuery = new StringBuilder(
-                            "INSERT INTO `minecraft`.`world_blocks` (`worlds_worldId`, `chunkX`, `chunkZ`, `blockX`, `blockY`, `blockZ`, `user_ownerId`) VALUES "
-                    );
-                    boolean firstAdmin = true, firstPlayer = true;
+                    boolean first = true;
 
+                    // Iterate through all chunks
                     for (Map.Entry<ChunkLocation, HashSet<ProtectedBlockLocation>> entry : blocksToInsert.entrySet()) {
                         ChunkLocation chunkLocation = entry.getKey();
 
+                        // Iterate through all blocks
                         for (ProtectedBlockLocation blockLocation : entry.getValue()) {
-                            if (blockLocation.getType() == ProtectionType.ADMIN_PROTECTION) {
-                                // Append comma first because I can't know the last one
-                                if (!firstAdmin) adminQuery.append(',');
-                                firstAdmin = false;
+                            if (!first) stringBuilder.append(',');
+                            first = false;
 
-                                // Append information
-                                adminQuery
-                                        .append('(')
-                                        .append(((AdministratorBlockLocation) blockLocation).getConstructionId()).append(',')
-
-                                        .append(chunkLocation.getWorldId()).append(',')
-                                        .append(chunkLocation.getChunkX()).append(',')
-                                        .append(chunkLocation.getChunkZ()).append(',')
-
-                                        .append(blockLocation.getRelativeX()).append(',')
-                                        .append(blockLocation.getY()).append(',')
-                                        .append(blockLocation.getRelativeZ())
-                                        .append(')');
-                                blockLocation.setOnDatabase();
-                            } else if (blockLocation.getType() == ProtectionType.PLAYER_PROTECTION) {
-                                // Append comma first because I can't know the last one
-                                if (!firstPlayer) playerQuery.append(',');
-                                firstPlayer = false;
-
-                                // Append information
-                                playerQuery
-                                        .append('(')
-                                        .append(chunkLocation.getWorldId()).append(',')
-                                        .append(chunkLocation.getChunkX()).append(',')
-                                        .append(chunkLocation.getChunkZ()).append(',')
-
-                                        .append(blockLocation.getRelativeX()).append(',')
-                                        .append(blockLocation.getY()).append(',')
-                                        .append(blockLocation.getRelativeZ()).append(',')
-
-                                        .append(((PlayerBlockLocation) blockLocation).getOwnerId())
-                                        .append(')');
-                                blockLocation.setOnDatabase();
-                            }
-                        }
-                    }
-
-                    // Close statement
-                    adminQuery.append(';');
-                    playerQuery.append(';');
-
-                    if (!firstAdmin) {
-                        LobsterCraft.logger.info("Security: " + adminQuery.toString());
-
-                        // Prepare statement
-                        PreparedStatement adminStatement = connection.prepareStatement(adminQuery.toString());
-
-                        // Execute and close the statement
-                        adminStatement.execute();
-                        adminStatement.close();
-                    }
-
-                    if (!firstPlayer) {
-                        LobsterCraft.logger.info("Security: " + playerQuery.toString());
-
-                        // Prepare statement
-                        PreparedStatement playerStatement = connection.prepareStatement(playerQuery.toString());
-
-                        // Execute and close the statement
-                        playerStatement.execute();
-                        playerStatement.close();
-                    }
-
-                    // Clear the list
-                    blocksToInsert.clear();
-                }
-                if (!blocksToUpdate.isEmpty()) {
-                    // Start statement
-                    PreparedStatement
-                            adminStatement = connection.prepareStatement(
-                            "UPDATE `minecraft`.`world_admin_blocks` SET `constructionId` = ? WHERE `worlds_worldId` = ?, `chunkX` = ?, `chunkZ` = ?, `blockX` = ?, `blockY` = ?, `blockZ` = ?;"),
-                            playerStatement = connection.prepareStatement(
-                                    "UPDATE `minecraft`.`world_blocks` SET `user_ownerId` = ? WHERE `worlds_worldId` = ?, `chunkX` = ?, `chunkZ` = ?, `blockX` = ?, `blockY` = ?, `blockZ` = ?;");
-                    boolean haveAdmin = false, havePlayer = false;
-
-                    for (Map.Entry<ChunkLocation, HashSet<ProtectedBlockLocation>> entry : blocksToUpdate.entrySet()) {
-                        ChunkLocation chunkLocation = entry.getKey();
-
-                        for (ProtectedBlockLocation blockLocation : entry.getValue()) {
-                            if (blockLocation.getType() == ProtectionType.ADMIN_PROTECTION) {
-                                // Append information
-                                adminStatement.setLong(1, ((AdministratorBlockLocation) blockLocation).getConstructionId());
-
-                                adminStatement.setLong(2, chunkLocation.getWorldId());
-                                adminStatement.setInt(3, chunkLocation.getChunkX());
-                                adminStatement.setInt(4, chunkLocation.getChunkZ());
-
-                                adminStatement.setByte(5, blockLocation.getRelativeX());
-                                adminStatement.setShort(6, blockLocation.getY());
-                                adminStatement.setByte(7, blockLocation.getRelativeZ());
-
-                                blockLocation.setOnDatabase();
-                                adminStatement.addBatch();
-                                haveAdmin = true;
-                            } else if (blockLocation.getType() == ProtectionType.PLAYER_PROTECTION) {
-                                // Append information
-                                playerStatement.setLong(1, ((PlayerBlockLocation) blockLocation).getOwnerId());
-
-                                playerStatement.setLong(2, chunkLocation.getWorldId());
-                                playerStatement.setInt(3, chunkLocation.getChunkX());
-                                playerStatement.setInt(4, chunkLocation.getChunkZ());
-
-                                playerStatement.setByte(5, blockLocation.getRelativeX());
-                                playerStatement.setShort(6, blockLocation.getY());
-                                playerStatement.setByte(7, blockLocation.getRelativeZ());
-
-                                blockLocation.setOnDatabase();
-                                playerStatement.addBatch();
-                                havePlayer = true;
-                            }
-                        }
-                    }
-
-                    // Execute and close the statements
-                    if (haveAdmin) {
-                        adminStatement.executeBatch();
-                        adminStatement.close();
-                    }
-                    if (havePlayer) {
-                        playerStatement.executeBatch();
-                        playerStatement.close();
-                    }
-
-                    // Clear the list
-                    blocksToUpdate.clear();
-                }
-                if (!blocksToDelete.isEmpty()) {
-                    // Start statement
-                    StringBuilder
-                            adminQuery = new StringBuilder(
-                            "DELETE FROM `minecraft`.`world_admin_blocks` WHERE (worlds_worldId, chunkX, chunkZ, blockX, blockY, blockZ) IN ("),
-                            playerQuery = new StringBuilder(
-                                    "DELETE FROM `minecraft`.`world_blocks` WHERE (worlds_worldId, chunkX, chunkZ, blockX, blockY, blockZ) IN (");
-                    boolean firstAdmin = true, firstPlayer = true;
-
-                    for (Map.Entry<ChunkLocation, HashSet<ProtectedBlockLocation>> entry : blocksToDelete.entrySet()) {
-                        ChunkLocation chunkLocation = entry.getKey();
-
-                        for (ProtectedBlockLocation blockLocation : entry.getValue()) {
-                            StringBuilder query;
-
-                            if (blockLocation.getType() == ProtectionType.ADMIN_PROTECTION) {
-                                // Append comma
-                                if (!firstAdmin) adminQuery.append(',');
-                                firstAdmin = false;
-
-                                // Set query
-                                query = adminQuery;
-                            } else { //if (blockLocation.getType() == ProtectionType.PLAYER_PROTECTION) {
-                                // Append comma
-                                if (!firstPlayer) playerQuery.append(',');
-                                firstPlayer = false;
-
-                                // Set query
-                                query = playerQuery;
-                            }
-
-                            // Append information
-                            query
+                            // Append all information in order
+                            stringBuilder
                                     .append('(')
                                     .append(chunkLocation.getWorldId()).append(',')
                                     .append(chunkLocation.getChunkX()).append(',')
-
                                     .append(chunkLocation.getChunkZ()).append(',')
                                     .append(blockLocation.getRelativeX()).append(',')
                                     .append(blockLocation.getY()).append(',')
-                                    .append(blockLocation.getRelativeZ())
+                                    .append(blockLocation.getRelativeZ()).append(',')
+                                    .append(blockLocation.getType().getId()).append(',')
+                                    .append(blockLocation.getCurrentId())
                                     .append(')');
+                            // Update block instance
                             blockLocation.setOnDatabase();
                         }
                     }
 
                     // Close statement
-                    adminQuery.append(");");
-                    LobsterCraft.logger.info("Security: " + adminQuery.toString());
-                    playerQuery.append(");");
-                    LobsterCraft.logger.info("Security: " + playerQuery.toString());
+                    stringBuilder.append(';');
+                    LobsterCraft.logger.info("Security: " + stringBuilder.toString());
 
-                    if (!firstAdmin) {
-                        // Prepare statement
-                        PreparedStatement adminStatement = connection.prepareStatement(adminQuery.toString());
+                    // Prepare, execute and close statement
+                    PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
+                    preparedStatement.execute();
+                    preparedStatement.close();
 
-                        // Execute and close the statement
-                        adminStatement.execute();
-                        adminStatement.close();
+                    // Clear the list
+                    blocksToInsert.clear();
+                }
+
+                if (!blocksToUpdate.isEmpty()) {
+                    // Start statement
+                    PreparedStatement preparedStatement = connection.prepareStatement(
+                            "UPDATE `minecraft`.`world_blocks` SET  `ownerType` = ?, `ownerId` = ? WHERE `worlds_worldId` = ? AND `chunkX` = ? AND `chunkZ` = ? AND `blockX` = ? AND `blockY` = ? AND `blockZ` = ?;"
+                    );
+
+                    // Itereate through chunks
+                    for (Map.Entry<ChunkLocation, HashSet<ProtectedBlockLocation>> entry : blocksToUpdate.entrySet()) {
+                        ChunkLocation chunkLocation = entry.getKey();
+
+                        // Iterate through blocks
+                        for (ProtectedBlockLocation blockLocation : entry.getValue()) {
+                            // Append information
+                            preparedStatement.setByte(1, blockLocation.getType().getId());
+                            preparedStatement.setLong(2, blockLocation.getCurrentId());
+
+                            // Append where-clause
+                            preparedStatement.setLong(3, chunkLocation.getWorldId());
+                            preparedStatement.setInt(4, chunkLocation.getChunkX());
+                            preparedStatement.setInt(5, chunkLocation.getChunkZ());
+
+                            preparedStatement.setByte(6, blockLocation.getRelativeX());
+                            preparedStatement.setShort(7, blockLocation.getY());
+                            preparedStatement.setByte(8, blockLocation.getRelativeZ());
+
+                            // Add batch
+                            blockLocation.setOnDatabase();
+                            preparedStatement.addBatch();
+                        }
                     }
-                    if (!firstPlayer) {
-                        // Prepare statement
-                        PreparedStatement playerStatement = connection.prepareStatement(playerQuery.toString());
 
-                        // Execute and close the statement
-                        playerStatement.execute();
-                        playerStatement.close();
+                    // Execute and close statement
+                    preparedStatement.execute();
+                    preparedStatement.close();
+
+                    // Clear the list
+                    blocksToUpdate.clear();
+                }
+
+                if (!blocksToDelete.isEmpty()) {
+                    // Start statement
+                    StringBuilder stringBuilder = new StringBuilder(
+                            "DELETE FROM `minecraft`.`world_blocks` WHERE (`worlds_worldId`, `chunkX`, `chunkZ`, `blockX`, `blockY`, `blockZ`) IN ("
+                    );
+                    boolean first = true;
+
+                    // Iterate through all chunks
+                    for (Map.Entry<ChunkLocation, HashSet<ProtectedBlockLocation>> entry : blocksToDelete.entrySet()) {
+                        ChunkLocation chunkLocation = entry.getKey();
+
+                        // Iterate through all blocks
+                        for (ProtectedBlockLocation blockLocation : entry.getValue()) {
+                            if (!first) stringBuilder.append(',');
+                            first = false;
+
+                            // Append all information in order
+                            stringBuilder
+                                    .append('(')
+                                    .append(chunkLocation.getWorldId()).append(',')
+                                    .append(chunkLocation.getChunkX()).append(',')
+                                    .append(chunkLocation.getChunkZ()).append(',')
+                                    .append(blockLocation.getRelativeX()).append(',')
+                                    .append(blockLocation.getY()).append(',')
+                                    .append(blockLocation.getRelativeZ())
+                                    .append(')');
+                            // Update block instance
+                            blockLocation.setOnDatabase();
+                        }
                     }
+
+                    // Close statement
+                    stringBuilder.append(");");
+                    LobsterCraft.logger.info("Security: " + stringBuilder.toString());
+
+                    // Prepare, execute and close statement
+                    PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
+                    preparedStatement.execute();
+                    preparedStatement.close();
 
                     // Clear the list
                     blocksToDelete.clear();
                 }
 
-                synchronized (pendingUnloading) {
-                    pendingUnloading.removeAll(unloadingChunks);
-                }
+                // Remove pending ones
+                pendingUnloading.removeAll(unloadingChunks);
 
                 // Just "debug" something useful
                 if (blockSize > 0)
@@ -593,7 +504,6 @@ public class BlockController extends Service {
 
             // Add chunk to pending unloading (we don't need to check for anything else neither cancel the event)
             pendingUnloading.add(new ChunkLocation(event.getChunk()));
-            LobsterCraft.logger.info("Pending Unload chunk: x=" + event.getChunk().getX() + ", z=" + event.getChunk().getZ());
         }
 
     }

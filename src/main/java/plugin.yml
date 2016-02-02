@@ -24,7 +24,7 @@ commands:
   spawn:
     description: dont know if I can remove every command attribute
   spawnset:
-    description: dont know if I can remove every command attribute
+    aliases: setspawn
   world:
     aliases: world
   give:

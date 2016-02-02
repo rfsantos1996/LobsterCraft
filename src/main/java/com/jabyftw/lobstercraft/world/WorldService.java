@@ -21,20 +21,20 @@ import java.util.Map;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class WorldService extends Service {
@@ -138,58 +138,67 @@ public class WorldService extends Service {
             preparedStatement.close();
         }
 
-        if (!pendingInsertion.isEmpty()) { // Insert pending insertions
-            // Create query
-            StringBuilder stringBuilder = new StringBuilder("INSERT INTO `minecraft`.`worlds` (`worldName`) VALUES \n" +
-                    "SELECT * FROM `minecraft`.`worlds` WHERE `worldName` IN ('world', 'world_nether');");
+        if (!pendingInsertion.isEmpty()) {
+            { // Insert pending insertions
+                // Create query
+                StringBuilder stringBuilder = new StringBuilder("INSERT INTO `minecraft`.`worlds` (`worldName`) VALUES ");
 
-            { // Iterate through all items
-                Iterator<World> iterator = pendingInsertion.iterator();
+                { // Iterate through all items
+                    Iterator<World> iterator = pendingInsertion.iterator();
 
-                while (iterator.hasNext()) {
-                    World world = iterator.next();
+                    while (iterator.hasNext()) {
+                        World world = iterator.next();
 
-                    stringBuilder.append('(').append(world.getName().toLowerCase()).append(')');
-                    if (iterator.hasNext()) stringBuilder.append(", ");
+                        stringBuilder.append("('").append(world.getName().toLowerCase()).append("')");
+                        if (iterator.hasNext()) stringBuilder.append(", ");
+                    }
                 }
+
+                // Close query
+                stringBuilder.append(";");
+
+                // Prepare, execute and close statement
+                PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
+                preparedStatement.execute();
+                preparedStatement.close();
             }
+            { // Retrieve information
+                StringBuilder stringBuilder = new StringBuilder("SELECT * FROM `minecraft`.`worlds` WHERE `worldName` IN (");
 
-            // Start select query
-            stringBuilder.append(";\nSELECT * FROM `minecraft`.`worlds` WHERE `worldName` IN (");
+                { // Iterate through all items (again)
+                    Iterator<World> iterator = pendingInsertion.iterator();
 
-            { // Iterate through all items (again)
-                Iterator<World> iterator = pendingInsertion.iterator();
+                    while (iterator.hasNext()) {
+                        World world = iterator.next();
 
-                while (iterator.hasNext()) {
-                    World world = iterator.next();
+                        // Append their name
+                        stringBuilder.append(world.getName().toLowerCase());
+                        if (iterator.hasNext()) stringBuilder.append(", ");
 
-                    // Append their name
-                    stringBuilder.append(world.getName().toLowerCase());
-                    if (iterator.hasNext()) stringBuilder.append(", ");
-
-                    // Doesn't need them anymore, remove it
-                    iterator.remove();
+                        // Doesn't need them anymore, remove it
+                        iterator.remove();
+                    }
                 }
+
+                // Close query
+                stringBuilder.append(");");
+
+                // Prepare statement
+                PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
+
+                // Return everything as we need to get the world's name (do not trusting linked lists)
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                // Iterate through inserted worlds
+                while (resultSet.next()) {
+                    // Insert them to world map
+                    worldIds.put(resultSet.getLong("worldId"), getWorldIgnoringCase(resultSet.getString("worldName")));
+                }
+
+                // Close statement
+                resultSet.close();
+                preparedStatement.close();
             }
-
-            // Close query
-            stringBuilder.append(");");
-
-            // Prepare statement
-            PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
-
-            // Return everything as we need to get the world's name (do not trusting linked lists)
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            // Iterate through inserted worlds
-            while (resultSet.next()) {
-                // Insert them to world map
-                worldIds.put(resultSet.getLong("worldId"), getWorldIgnoringCase(resultSet.getString("worldName")));
-            }
-
-            // Close statement
-            resultSet.close();
-            preparedStatement.close();
         }
 
         if (!pendingDeletion.isEmpty()) { // Delete pending deletions

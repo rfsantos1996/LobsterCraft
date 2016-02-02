@@ -75,6 +75,9 @@ public class ConditionController {
 
     public enum Condition {
 
+        PLAYER_CLEAR_INVENTORY_CHECK(TimeUnit.SECONDS.toMillis(10)),
+        PLAYER_SUICIDE_CHECK(TimeUnit.SECONDS.toMillis(15)),
+        PLAYER_UNSAFE_ENCHANTMENT_CHECK(TimeUnit.SECONDS.toMillis(10)),
         PROTECTION_CHECK(TimeUnit.MILLISECONDS.toMillis(500)),
         PROTECTION_BEING_LOADED(TimeUnit.SECONDS.toMillis(3)),
         PROTECTION_ADMINISTRATOR_BLOCKS(TimeUnit.SECONDS.toMillis(5)),

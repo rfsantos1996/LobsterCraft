@@ -2,15 +2,12 @@ package com.jabyftw.lobstercraft.player;
 
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
-import com.jabyftw.lobstercraft.player.util.BuildMode;
-import com.jabyftw.lobstercraft.player.util.ConditionController;
-import com.jabyftw.lobstercraft.player.util.Permissions;
-import com.jabyftw.lobstercraft.player.util.PlayerState;
+import com.jabyftw.lobstercraft.player.util.*;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Util;
-import com.jabyftw.lobstercraft.world.util.location_util.OreBlockLocation;
 import com.jabyftw.lobstercraft.world.util.ProtectionType;
+import com.jabyftw.lobstercraft.world.util.location_util.OreBlockLocation;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -31,20 +28,20 @@ import java.util.concurrent.FutureTask;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class PlayerHandler {
@@ -123,7 +120,6 @@ public class PlayerHandler {
         // Execute statement
         preparedStatement.execute();
         playerHandler.databaseState = DatabaseState.ON_DATABASE;
-        //LobsterCraft.logger.info("DatabaseState = ON_DATABASE");
 
         // Store playerId for return
         long playerId = playerHandler.playerId;
@@ -160,7 +156,10 @@ public class PlayerHandler {
         // Clear player
         preLoginState.clearPlayer();
         // Teleport player to spawn location
-        // TODO
+        TeleportBuilder.getBuilder(this)
+                .setLocation(player.getWorld().getSpawnLocation())
+                .setInstantaneousTeleport(true)
+                .execute();
 
         // Set pre-login variables
         player.setCanPickupItems(false);
@@ -429,6 +428,10 @@ public class PlayerHandler {
         this.buildMode = buildMode == null ? BuildMode.DEFAULT : buildMode;
     }
 
+    public long getBuildModeId() {
+        return buildMode.getType() == ProtectionType.ADMIN_PROTECTION ? ((AdministratorBuildMode) buildMode).getConstructionId() : playerId;
+    }
+
     public boolean isRegistered() {
         return this.password != null && playerId >= 0;
     }
@@ -441,9 +444,10 @@ public class PlayerHandler {
         return godMode;
     }
 
-    public void setGodMode(boolean godMode) {
+    public boolean setGodMode(boolean godMode) {
         this.godMode = godMode;
 
+        // Credits: VanishNoPacket
         // If is going to be on god mode, remove entities' agro
         if (godMode) {
             // Iterate through all entities
@@ -454,6 +458,7 @@ public class PlayerHandler {
                     ((Creature) entity).setTarget(null);
             }
         }
+        return godMode;
     }
 
     public boolean isDamageable() {
@@ -488,9 +493,9 @@ public class PlayerHandler {
         return databaseState;
     }
 
-    /*
-     * Equality stuff
-     */
+    public LinkedList<OreBlockLocation> getOreLocationHistory() {
+        return oreLocationHistory;
+    }
 
     protected void setAsModified() {
         if (databaseState == DatabaseState.NOT_ON_DATABASE)
@@ -500,15 +505,15 @@ public class PlayerHandler {
         // If is DELETE_DATABASE | INSERT_DATABASE | UPDATE_DATABASE, continue DELETE_DATABASE | INSERT_DATABASE | UPDATE_DATABASE
     }
 
+    /*
+     * Equality stuff
+     */
+
     @Override
     public boolean equals(Object obj) {
         // Checking the instance of something returns false if null (so it would be ambiguous)
         return obj instanceof PlayerHandler && player.equals(((PlayerHandler) obj).player);
     }
-
-    /*
-     * Static methods
-     */
 
     /**
      * We will have 2 states:
@@ -527,10 +532,6 @@ public class PlayerHandler {
         else
             throw new IllegalStateException("Player is logged in without playerId");
         return hashCodeBuilder.toHashCode();
-    }
-
-    public LinkedList<OreBlockLocation> getOreLocationHistory() {
-        return oreLocationHistory;
     }
 
     /*

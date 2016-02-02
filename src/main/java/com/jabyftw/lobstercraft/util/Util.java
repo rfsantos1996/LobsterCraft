@@ -3,6 +3,7 @@ package com.jabyftw.lobstercraft.util;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.sun.istack.internal.NotNull;
+import org.bukkit.Location;
 import org.bukkit.util.NumberConversions;
 
 import java.math.BigInteger;
@@ -18,20 +19,20 @@ import java.util.regex.Pattern;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public abstract class Util {
@@ -57,7 +58,7 @@ public abstract class Util {
      * @see Util#getMinimumChunkSize(double) for more information about number of chunks loaded
      */
     public static int getMinimumChunkSize(double searchBlockDistance) {
-        return NumberConversions.ceil((searchBlockDistance * 2D) / 16D);
+        return NumberConversions.ceil(searchBlockDistance / 16D);
     }
 
     /**
@@ -209,13 +210,13 @@ public abstract class Util {
     /**
      * Get the Minecraft's time based on earth time in seconds, given by the equation:
      * (earthTimeSeconds / 36) + 600
-     * <p>
+     * <p/>
      * 0 -> 6h00
      * 18.000 -> 0h00
-     * <p>
+     * <p/>
      * Time in seconds: t
      * Minecraft time: m
-     * <p>
+     * <p/>
      * m = t.x + y, using these values we have that x = 1/36 and y = 600
      *
      * @param earthTimeInSeconds time parsed as seconds
@@ -322,5 +323,12 @@ public abstract class Util {
             calendar.add(Calendar.SECOND, seconds);
 
         return calendar.getTimeInMillis() - System.currentTimeMillis();
+    }
+
+    public static String locationToString(@NotNull final Location location) {
+        return "x=" + location.getBlockX() + ", " +
+                "y=" + location.getBlockY() + ", " +
+                "z=" + location.getBlockZ() + ", " +
+                "world=" + location.getWorld().getName();
     }
 }
