@@ -48,7 +48,7 @@ public class PlayerState {
 
         // Store stuff
         // Location
-        playerLocation = player.getLocation();
+        playerLocation = player.getLocation().clone();
         // Potion effects
         activePotionEffects = player.getActivePotionEffects();
         // Inventory

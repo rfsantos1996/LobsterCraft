@@ -3,24 +3,31 @@ package com.jabyftw.lobstercraft.world;
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.util.ConditionController;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Service;
 import com.jabyftw.lobstercraft.util.Util;
 import com.jabyftw.lobstercraft.world.util.ProtectionType;
-import com.jabyftw.lobstercraft.world.util.location_util.*;
+import com.jabyftw.lobstercraft.world.util.location_util.BlockLocation;
+import com.jabyftw.lobstercraft.world.util.location_util.ChunkLocation;
+import com.jabyftw.lobstercraft.world.util.location_util.ProtectedBlockLocation;
+import com.sk89q.worldedit.EditSession;
+import com.sk89q.worldedit.Vector;
+import com.sk89q.worldedit.blocks.BaseBlock;
+import com.sk89q.worldedit.bukkit.BukkitWorld;
+import com.sk89q.worldedit.event.extent.EditSessionEvent;
+import com.sk89q.worldedit.extent.logging.AbstractLoggingExtent;
+import com.sk89q.worldedit.util.eventbus.Subscribe;
 import com.sun.istack.internal.NotNull;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.*;
+import org.bukkit.block.BlockState;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.util.NumberConversions;
 
-import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -69,6 +76,9 @@ public class BlockController extends Service {
     private final ConcurrentLinkedDeque<ChunkLocation>
             pendingLoading = new ConcurrentLinkedDeque<>(), // TODO more than one thread loading => I removed (maybe) unnecessary synchronized blocks
             pendingUnloading = new ConcurrentLinkedDeque<>();
+    private final Set<ChunkLocation>
+            loadedLocations = Collections.synchronizedSet(new HashSet<>(NumberConversions.ceil(LIMIT_CHUNK_LOAD_SIZE * 1.2D))),
+            unloadedLocations = Collections.synchronizedSet(new HashSet<>());
     private final ConcurrentHashMap<ChunkLocation, HashMap<BlockLocation, ProtectedBlockLocation>> blockStorage = new ConcurrentHashMap<>();
 
     private Connection connection;
@@ -90,6 +100,15 @@ public class BlockController extends Service {
             return false;
         }
 
+        if (LobsterCraft.worldEdit != null)
+            BukkitScheduler.runTaskLater(() -> {
+                try {
+                    LobsterCraft.worldEdit.getEventBus().register(new WorldEditLogger());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    LobsterCraft.logger.info("Couldn't register WorldEdit logger.");
+                }
+            }, 0L);
         BukkitScheduler.runTaskTimerAsynchronously(new ChunkLoader(), 20L, CHUNK_LOAD_PERIOD);
         BukkitScheduler.runTaskTimerAsynchronously(chunkUnloader = new ChunkUnloader(), 20L, CHUNK_LOAD_PERIOD);
 
@@ -171,11 +190,16 @@ public class BlockController extends Service {
         // Check for not loaded ones
         for (ChunkLocation location : chunkLocation.getNearChunks(DEFAULT_LOAD_SIZE))
             // Insert to set if it isn't loaded
-            if (!blockStorage.containsKey(location)) pendingLoading.add(location);
+            if (!pendingLoading.contains(location) && !loadedLocations.contains(location) && !blockStorage.containsKey(location))
+                pendingLoading.add(location);
 
         // Check if the minimum are required, return false if it is
         for (ChunkLocation location : chunkLocation.getNearChunks(MINIMUM_LOAD_SIZE))
-            if (pendingLoading.contains(location) || !blockStorage.containsKey(location) || pendingUnloading.contains(location))
+            if (pendingLoading.contains(location) ||
+                    pendingUnloading.contains(location) ||
+                    loadedLocations.contains(location) ||
+                    unloadedLocations.contains(location) ||
+                    !blockStorage.containsKey(location))
                 return false;
 
         return true;
@@ -189,8 +213,6 @@ public class BlockController extends Service {
     }
 
     private class ChunkLoader implements Runnable {
-
-        private final HashSet<ChunkLocation> loadedLocations = new HashSet<>(NumberConversions.ceil(LIMIT_CHUNK_LOAD_SIZE * 1.2D));
 
         @Override
         public void run() {
@@ -210,26 +232,29 @@ public class BlockController extends Service {
                 int indexBounds = Math.min(LIMIT_CHUNK_LOAD_SIZE, pendingLoading.size() - 1);
                 int index = 0;
 
-                // Iterate through all items
-                Iterator<ChunkLocation> iterator = pendingLoading.iterator();
+                synchronized (loadedLocations) {
+                    // Iterate through all items
+                    Iterator<ChunkLocation> iterator = pendingLoading.iterator();
 
-                while (iterator.hasNext() && index <= indexBounds) {
-                    ChunkLocation chunkLocation = iterator.next();
+                    while (iterator.hasNext() && index <= indexBounds) {
+                        ChunkLocation chunkLocation = iterator.next();
 
-                    // Append information
-                    stringBuilder
-                            .append('(')
-                            .append(chunkLocation.getWorldId()).append(", ")
-                            .append(chunkLocation.getChunkX()).append(", ")
-                            .append(chunkLocation.getChunkZ())
-                            .append(')');
+                        // Append information
+                        stringBuilder
+                                .append('(')
+                                .append(chunkLocation.getWorldId()).append(", ")
+                                .append(chunkLocation.getChunkX()).append(", ")
+                                .append(chunkLocation.getChunkZ())
+                                .append(')');
 
-                    // Check boundaries
-                    if (index < indexBounds) stringBuilder.append(", ");
-                    index++;
+                        // Check boundaries
+                        if (index < indexBounds) stringBuilder.append(", ");
+                        index++;
 
-                    // Add to list of loaded
-                    loadedLocations.add(chunkLocation);
+                        // Add to list of loaded
+                        loadedLocations.add(chunkLocation);
+                        iterator.remove();
+                    }
                 }
 
                 // Close query
@@ -268,11 +293,15 @@ public class BlockController extends Service {
                     blockSize++;
                 }
 
-                for (ChunkLocation loadedLocation : loadedLocations) {
-                    // Make sure chunk is set as loaded
-                    blockStorage.putIfAbsent(loadedLocation, new HashMap<>());
-                    // Remove pending loads
-                    pendingLoading.remove(loadedLocation);
+                synchronized (loadedLocations) {
+                    Iterator<ChunkLocation> iterator = loadedLocations.iterator();
+
+                    while (iterator.hasNext()) {
+                        // Make sure chunk is set as loaded
+                        blockStorage.putIfAbsent(iterator.next(), new HashMap<>());
+                        // Remove from set
+                        iterator.remove();
+                    }
                 }
 
                 // Close everything
@@ -295,24 +324,21 @@ public class BlockController extends Service {
                 blocksToUpdate = new HashMap<>(),
                 blocksToDelete = new HashMap<>();
 
-        private final HashSet<ChunkLocation> unloadingChunks = new HashSet<>();
-
         @Override
         public void run() {
+
             // Ignore empty unloading queue
             if (pendingUnloading.isEmpty()) return;
-
 
             try {
                 // Retrieve connection
                 checkConnection();
 
-                unloadingChunks.clear();
                 int blockSize = 0;
                 long start = System.nanoTime();
 
                 // Iterate through all needed chunks
-                {
+                synchronized (unloadedLocations) {
                     Iterator<ChunkLocation> iterator = pendingUnloading.iterator();
 
                     while (iterator.hasNext()) {
@@ -344,7 +370,7 @@ public class BlockController extends Service {
                                         break;
                                 }
                             }
-                            unloadingChunks.add(chunkLocation);
+                            unloadedLocations.add(chunkLocation);
                         } else {
                             // Remove chunk if it isn't supposed to be database-unloaded
                             iterator.remove();
@@ -481,8 +507,16 @@ public class BlockController extends Service {
                     blocksToDelete.clear();
                 }
 
-                // Remove pending ones
-                pendingUnloading.removeAll(unloadingChunks);
+                synchronized (unloadedLocations) {
+                    Iterator<ChunkLocation> iterator = unloadedLocations.iterator();
+
+                    while (iterator.hasNext()) {
+                        // Remove chunk's blocks from map
+                        blockStorage.remove(iterator.next());
+                        // Remove chunk from unloaded location set
+                        iterator.remove();
+                    }
+                }
 
                 // Just "debug" something useful
                 if (blockSize > 0)
@@ -494,7 +528,6 @@ public class BlockController extends Service {
         }
     }
 
-    // TODO test with public x private (debug)
     private class ChunkListener implements Listener {
 
         @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -506,5 +539,116 @@ public class BlockController extends Service {
             pendingUnloading.add(new ChunkLocation(event.getChunk()));
         }
 
+    }
+
+    private class WorldEditLogger {
+
+        private final ConcurrentHashMap<BlockLocation, LogEntry> pendingBlocks = new ConcurrentHashMap<>();
+
+        WorldEditLogger() {
+            BukkitScheduler.runTaskTimerAsynchronously(() -> {
+                if (pendingBlocks.isEmpty())
+                    return;
+
+                Iterator<Map.Entry<BlockLocation, LogEntry>> iterator = pendingBlocks.entrySet().iterator();
+
+                // Iterate through all blocks
+                while (iterator.hasNext()) {
+                    Map.Entry<BlockLocation, LogEntry> entry = iterator.next();
+
+                    if (!LobsterCraft.blockController.loadNearChunks(entry.getKey().getChunkLocation())) {
+                        //LobsterCraft.logger.info("Couldn't load " + entry.getKey().toString() + ", continuing");
+                        continue;
+                    }
+
+                    // Retrieve variables
+                    EditSessionEvent event = entry.getValue().event;
+                    BlockState newState = entry.getValue().blockState;
+
+                    // If block is being set to nothing, unprotect it
+                    if (newState.getType() == Material.AIR) {
+                        ProtectedBlockLocation blockLocation = LobsterCraft.blockController.getBlock(newState.getLocation());
+
+                        // If block exists, remove it
+                        if (blockLocation != null && !blockLocation.isUndefined())
+                            blockLocation.setUndefinedOwner();
+                    } else //noinspection ConstantConditions => it is already filtered before being added to pendingBlocks
+                        if (event.getActor().isPlayer()) {
+                            PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandler(Bukkit.getPlayer(event.getActor().getName()));
+
+                            if (playerHandler == null)
+                                throw new IllegalStateException("Actor has null PlayerHandler: " + event.getActor().getName());
+
+                            if (playerHandler.getProtectionType() != ProtectionType.ADMIN_PROTECTION) {
+                                playerHandler.getConditionController().sendMessageIfConditionReady(
+                                        ConditionController.Condition.WORLD_EDIT_PLAYER_PROTECTION_WARNING,
+                                        "§cUse §4//undo§c, blocos de WorldEdit não serão protegidos fora do modo de construção para administradores."
+                                );
+                                iterator.remove();
+                                return;
+                            }
+
+                            // Protect block for player
+                            LobsterCraft.blockController
+                                    .addBlock(newState.getLocation(), playerHandler.getProtectionType())
+                                    .setCurrentId(playerHandler.getBuildModeId());
+                        }
+
+                    // Remove block after processing
+                    iterator.remove();
+                }
+            }, 20L, 20L);
+        }
+
+        @Subscribe
+        public void logChanges(final EditSessionEvent event) {
+            LobsterCraft.logger.info("Stage: " + event.getStage().name() + " actor=" + (event.getActor() == null ? "null" : event.getActor().getName()));
+            if (event.getActor() == null || event.getStage() != EditSession.Stage.BEFORE_CHANGE)
+                return;
+
+            event.setExtent(new LoggingExtent(event));
+        }
+
+        private class LoggingExtent extends AbstractLoggingExtent {
+
+            private final EditSessionEvent event;
+
+            protected LoggingExtent(EditSessionEvent event) {
+                super(event.getExtent());
+                this.event = event;
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            protected void onBlockChange(Vector position, BaseBlock newBlock) {
+                if (!(event.getWorld() instanceof BukkitWorld))
+                    return;
+
+                World bukkitWorld = ((BukkitWorld) event.getWorld()).getWorld();
+
+                if (LobsterCraft.worldService.isWorldIgnored(bukkitWorld))
+                    return;
+
+                BlockState newState = bukkitWorld.getBlockAt(position.getBlockX(), position.getBlockY(), position.getBlockZ()).getState();
+
+                // Update new state of the block
+                newState.setTypeId(newBlock.getType());
+                newState.setRawData((byte) newBlock.getData());
+
+                // Add block to pending processing map
+                pendingBlocks.put(new BlockLocation(newState.getLocation()), new LogEntry(newState, event));
+            }
+        }
+
+        private class LogEntry {
+
+            protected final BlockState blockState;
+            protected final EditSessionEvent event;
+
+            LogEntry(@NotNull final BlockState blockState, @NotNull final EditSessionEvent event) {
+                this.blockState = blockState;
+                this.event = event;
+            }
+        }
     }
 }

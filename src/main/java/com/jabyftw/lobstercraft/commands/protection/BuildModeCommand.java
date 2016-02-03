@@ -7,6 +7,7 @@ import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.jabyftw.lobstercraft.player.util.AdministratorBuildMode;
+import com.jabyftw.lobstercraft.player.util.BuildMode;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.Util;
@@ -22,53 +23,77 @@ import java.util.concurrent.FutureTask;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class BuildModeCommand extends CommandExecutor {
 
-    private final List<String> listarAliases = Arrays.asList("list", "listar", "nomes", "lista"),
-            alterarAliases = Arrays.asList("modify", "build", "construir", "alterar", "modificar", "change", "edit", "editar"),
-            criarAliases = Arrays.asList("criar", "create", "new", "novo", "nova");
+    private final List<String> listAliases = Arrays.asList("list", "listar", "nomes", "lista"),
+            changeAliases = Arrays.asList("modify", "build", "construir", "alterar", "modificar", "change", "edit", "editar"),
+            createAliases = Arrays.asList("criar", "create", "new", "novo", "nova"),
+            deleteAliases = Arrays.asList("delete", "deletar", "remover", "excluir", "exclude", "del"),
+            exitAliases = Arrays.asList("leave", "sair", "exit", "quit");
 
     public BuildModeCommand() {
         super(
                 "buildmode",
                 Permissions.PROTECTION_ADMINISTRATOR_BUILD_MODE,
                 "Permite ao jogador construir no modo administrador",
-                "/blockmode (criar/construir/deletar*/listar) (nome identificador para construção)"
+                "/blockmode (criar/construir/sair/deletar/listar) (nome identificador para construção)"
         );
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
     public HandleResponse onBuildMode(CommandSender sender, String[] commands) {
-        if (commands.length < 1)
+        if (commands.length < 1) {
+            if (sender instanceof Player)
+                sender.sendMessage("§6Seu modo de construção é §c" + LobsterCraft.playerHandlerService.getPlayerHandler((Player) sender).getProtectionType().name());
             return HandleResponse.RETURN_HELP;
+        }
 
         String firstArgument = commands[0].toLowerCase();
 
         // Check for each argument
-        if (listarAliases.contains(firstArgument))
+        if (listAliases.contains(firstArgument))
             return onList(sender);
-        else if (criarAliases.contains(firstArgument) && commands.length > 1)
+        else if (exitAliases.contains(firstArgument) && sender instanceof Player)
+            return onExit(LobsterCraft.playerHandlerService.getPlayerHandler((Player) sender));
+        else if (createAliases.contains(firstArgument) && commands.length > 1)
             return onCreate(sender, Util.removeIndexFromString(0, commands));
-        else if (alterarAliases.contains(firstArgument) && commands.length > 1 && sender instanceof Player)
+        else if (deleteAliases.contains(firstArgument) && commands.length > 1)
+            return onDelete(sender, Util.removeIndexFromString(0, commands));
+        else if (changeAliases.contains(firstArgument) && commands.length > 1 && sender instanceof Player)
             return onModify(LobsterCraft.playerHandlerService.getPlayerHandler((Player) sender), Util.removeIndexFromString(0, commands));
         else
             return HandleResponse.RETURN_HELP;
+    }
+
+    private HandleResponse onDelete(CommandSender sender, String[] arguments) {
+        // TODO
+        return HandleResponse.RETURN_HELP;
+    }
+
+    private HandleResponse onExit(PlayerHandler playerHandler) {
+        if (playerHandler.getBuildMode() != BuildMode.DEFAULT) {
+            playerHandler.setBuildMode(null);
+            playerHandler.sendMessage("§6Você agora está construindo como jogador.");
+        } else {
+            playerHandler.sendMessage("§cVocê já está no modo de construção padrão.");
+        }
+        return HandleResponse.RETURN_TRUE;
     }
 
     private HandleResponse onModify(PlayerHandler playerHandler, String[] arguments) {

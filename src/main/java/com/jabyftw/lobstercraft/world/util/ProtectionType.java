@@ -2,8 +2,6 @@ package com.jabyftw.lobstercraft.world.util;
 
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.world.util.location_util.ProtectedBlockLocation;
-import com.sun.istack.internal.NotNull;
 import org.bukkit.util.NumberConversions;
 
 /**

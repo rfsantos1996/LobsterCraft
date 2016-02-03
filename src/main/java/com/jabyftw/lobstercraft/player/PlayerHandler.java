@@ -13,6 +13,7 @@ import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Creature;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -62,7 +63,7 @@ public class PlayerHandler {
     private String lastIp = null;
 
     private Player player;
-    private PlayerState preLoginState = null;
+    private PlayerState preLoginState = null, gamemodeState = null;
     private BuildMode buildMode = BuildMode.DEFAULT;
     private TeleportBuilder.Teleport pendingTeleport;
     private volatile DatabaseState databaseState = DatabaseState.NOT_ON_DATABASE;
@@ -151,10 +152,14 @@ public class PlayerHandler {
         // If the state isn't null, restore it
         if (preLoginState != null) preLoginState.restorePlayerState();
 
+        // Set player gamemode to SURVIVAL
+        setGameMode(GameMode.SURVIVAL);
         // Store player State
         preLoginState = new PlayerState(this);
+        LobsterCraft.logger.info("Stored player state for login");
         // Clear player
         preLoginState.clearPlayer();
+        LobsterCraft.logger.info("Cleared player state for login");
         // Teleport player to spawn location
         TeleportBuilder.getBuilder(this)
                 .setLocation(player.getWorld().getSpawnLocation())
@@ -165,6 +170,7 @@ public class PlayerHandler {
         player.setCanPickupItems(false);
         player.setAllowFlight(true);
         player.setFlying(true);
+        LobsterCraft.logger.info("Set flight for login");
 
         // Add player to player list
         LobsterCraft.playerHandlerService.playerHandlers.put(player, this);
@@ -181,6 +187,9 @@ public class PlayerHandler {
         }
 
         if (isLoggedIn()) {
+            // Restore player gamemode
+            setGameMode(GameMode.SURVIVAL);
+
             // Save lastTimeOnline and timeOnline
             this.lastTimeOnline = System.currentTimeMillis();
             this.playTime += Math.abs(System.currentTimeMillis() - loginTime);
@@ -203,8 +212,38 @@ public class PlayerHandler {
             LobsterCraft.playerHandlerService.storeProfile(this);
         }
 
+        // Save player data
+        player.saveData();
+
         // Remove from player list, lastly
         LobsterCraft.playerHandlerService.playerHandlers.remove(player, this);
+    }
+
+    public boolean setGameMode(GameMode gameMode) {
+        // Do nothing if we're changing to he same gamemode
+        if (gameMode == player.getGameMode()) return false;
+
+        // Restore player's last state
+        if (gamemodeState != null) {
+            // Clear current inventory
+            player.getInventory().clear();
+            // Restore player inventory and state
+            gamemodeState.restorePlayerState();
+            gamemodeState = null;
+            LobsterCraft.logger.info("Cleaned inventory and restored state afterwards");
+        }
+
+        // If isn't going to change to survival
+        if (gameMode != GameMode.SURVIVAL) {
+            // Store player's current state (after restoring the past one, if necessary)
+            gamemodeState = new PlayerState(this);
+            gamemodeState.clearPlayer();
+            LobsterCraft.logger.info("Stored state and cleared player");
+        }
+
+        // Finally, update its game mode
+        player.setGameMode(gameMode);
+        return true;
     }
 
     /**
@@ -297,6 +336,7 @@ public class PlayerHandler {
                 if (preLoginState != null) {
                     preLoginState.restorePlayerState();
                     preLoginState = null;
+                    LobsterCraft.logger.info("Restored pre-login state");
                 }
 
                 // Update login time and player's last IP
@@ -352,6 +392,7 @@ public class PlayerHandler {
         if (!this.password.equals(encryptedPassword))
             return ChangeNameResponse.WRONG_PASSWORD;
 
+        // TODO change on Lobstercraft.permissions the group of the user to the next player name and remove the current
         // TODO check if player can change name (time since last change)
         // TODO check if player name is available
         // TODO banned names list
@@ -396,7 +437,6 @@ public class PlayerHandler {
      */
 
     public void sendMessage(@NotNull final String message) {
-        // TODO type of message, fixed chat
         player.sendMessage(message);
     }
 

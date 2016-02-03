@@ -11,20 +11,20 @@ import org.bukkit.Server;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class CommandService extends Service {
@@ -47,7 +47,7 @@ public class CommandService extends Service {
             server.getPluginCommand("login").setExecutor(new LoginCommand());
             server.getPluginCommand("register").setExecutor(new RegisterCommand());
             // player
-            server.getPluginCommand("gamemode").setExecutor(new GamemodeCommand());
+            server.getPluginCommand("gamemode").setExecutor(new GameModeCommand());
             server.getPluginCommand("godmode").setExecutor(new GodModeCommand());
             server.getPluginCommand("fly").setExecutor(new FlyCommand());
             server.getPluginCommand("item").setExecutor(new PendingItemsCommand());

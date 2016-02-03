@@ -45,15 +45,14 @@ public enum ConfigValue {
     WORLD_ADMINISTRATOR_BLOCK_SEARCH_DISTANCE("world.protection.administrator_block_search_distance_xz_only", 125.0D),
 
     WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER("world.chunk_load.minimum_size_multiplier", 1.15d),
-    WORLD_CHUNK_LOAD_PERIOD("world.chunk_load.period_between_loads_ticks", 4L), // as a first query, it took 30-90ms, so this will limit our scheduler to 200ms
+    WORLD_CHUNK_LOAD_PERIOD("world.chunk_load.period_between_loads_ticks", 7L), // as a first query, it took 30-90ms, so this will limit our scheduler to 200ms
     WORLD_CHUNK_LOAD_LIMIT("world.chunk_load.limit_of_chunks_per_load", 500), // 441 is loaded for a full request
 
     LOCATION_TELEPORT_TIME_WAITING("location.teleport.time_waiting_to_start_teleporting_ticks", 4 * 20L),
     LOCATION_TELEPORT_TIME_BETWEEN_ACCEPT_TRIGGERS("location.teleport.time_waiting_between_accept_and_teleport_ticks", 12L),
 
     XRAY_TIME_TO_CONSIDER_SAME_MINING("xray.time_to_consider_same_mining_session", 5 * 60L),
-    XRAY_DISTANCE_TO_CONSIDER_SAME_MINING("xray.distance_to_consider_same_mining_session", 75.0D),
-    ;
+    XRAY_DISTANCE_TO_CONSIDER_SAME_MINING("xray.distance_to_consider_same_mining_session", 75.0D),;
 
     /*LOGIN_JOIN_LIMITER_PLAYERS_ALLOWED("login.max_number_of_players_joining", 16),
     LOGIN_JOIN_LIMITER_PERIOD_OF_TIME("login.period_of_time_seconds", 10.0d),

@@ -8,20 +8,20 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for PacocaCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class ConditionController {
@@ -75,6 +75,7 @@ public class ConditionController {
 
     public enum Condition {
 
+        WORLD_EDIT_PLAYER_PROTECTION_WARNING(TimeUnit.SECONDS.toMillis(30)),
         PLAYER_CLEAR_INVENTORY_CHECK(TimeUnit.SECONDS.toMillis(10)),
         PLAYER_SUICIDE_CHECK(TimeUnit.SECONDS.toMillis(15)),
         PLAYER_UNSAFE_ENCHANTMENT_CHECK(TimeUnit.SECONDS.toMillis(10)),

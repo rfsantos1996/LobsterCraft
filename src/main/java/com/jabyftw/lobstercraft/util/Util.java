@@ -211,19 +211,19 @@ public abstract class Util {
      * Get the Minecraft's time based on earth time in seconds, given by the equation:
      * (earthTimeSeconds / 36) + 600
      * <p/>
-     * 0 -> 6h00
-     * 18.000 -> 0h00
+     * 4.000 -> 10h00
+     * 8.000 -> 14h00
      * <p/>
      * Time in seconds: t
      * Minecraft time: m
      * <p/>
-     * m = t.x + y, using these values we have that x = 1/36 and y = 600
+     * m = t.x + y, using these values we have that x = 0.277... (5 / 18) and y = 6.000
      *
      * @param earthTimeInSeconds time parsed as seconds
      * @return Minecraft's time
      */
     public static long getMinecraftTime(long earthTimeInSeconds) {
-        return (long) (earthTimeInSeconds / 36.0d) + 600L;
+        return (long) (earthTimeInSeconds * 5.0d / 18.0d) - 6000L;
     }
 
     /**

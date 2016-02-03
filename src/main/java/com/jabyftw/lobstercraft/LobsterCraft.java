@@ -12,6 +12,7 @@ import com.jabyftw.lobstercraft.world.BlockController;
 import com.jabyftw.lobstercraft.world.ConstructionsService;
 import com.jabyftw.lobstercraft.world.WorldService;
 import com.jabyftw.lobstercraft.world.xray_protection.XrayProtectionService;
+import com.sk89q.worldedit.WorldEdit;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import net.milkbowl.vault.chat.Chat;
@@ -28,20 +29,20 @@ import java.util.logging.Logger;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class LobsterCraft extends JavaPlugin {
@@ -59,6 +60,9 @@ public class LobsterCraft extends JavaPlugin {
 
     // VanishNoPacket
     public static VanishManager vanishManager;
+
+    // WorldEdit
+    public static WorldEdit worldEdit;
 
     // Vault
     public static Chat chat;
@@ -140,7 +144,7 @@ public class LobsterCraft extends JavaPlugin {
             if (getServer().getPluginManager().getPlugin("ProtocolLib") == null)
                 throw new IllegalStateException("Failed to start ProtocolLib! Go get it before!");
 
-            // Setup protocolLib
+            // Setup ProtocolLib
             protocolManager = ProtocolLibrary.getProtocolManager();
 
             // Check for VanishNoPacket
@@ -150,6 +154,13 @@ public class LobsterCraft extends JavaPlugin {
             // Setup VanishNoPacket
             //noinspection deprecation
             vanishManager = VanishNoPacket.getManager();
+
+            // Check for VanishNoPacket
+            if (getServer().getPluginManager().getPlugin("WorldEdit") == null)
+                throw new IllegalStateException("Failed to find WorldEdit!");
+
+            // Setup WorldEdit
+            worldEdit = WorldEdit.getInstance();
 
             // Setup services
             serverServices = new Service[]{
@@ -187,6 +198,8 @@ public class LobsterCraft extends JavaPlugin {
         // Kick every player
         for (Player player : getServer().getOnlinePlayers()) {
             player.kickPlayer("§cServidor sendo reiniciado.");
+            // Destroy isn't called by event when server is closing
+            playerHandlerService.getPlayerHandlerNoRestrictions(player).destroy();
         }
 
         // Stop services

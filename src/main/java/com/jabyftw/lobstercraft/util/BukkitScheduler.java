@@ -8,20 +8,20 @@ import org.bukkit.scheduler.BukkitTask;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public abstract class BukkitScheduler {
@@ -60,8 +60,10 @@ public abstract class BukkitScheduler {
      * @throws IllegalStateException if server is closing and tried to schedule a task for future
      */
     public static BukkitTask runTaskLater(@NotNull Runnable runnable, long delay) throws IllegalStateException {
-        if (LobsterCraft.serverClosing)
+        if (LobsterCraft.serverClosing && delay > 0)
             throw new IllegalStateException("Server is closing, can't schedule task to later!");
+        else if (delay == 0)
+            return runTask(runnable);
         else
             return Bukkit.getScheduler().runTaskLater(plugin, runnable, delay);
     }

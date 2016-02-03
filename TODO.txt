@@ -1,0 +1,16 @@
+* changename command and structure
+* Chat structure and commands
+* ban records and commands
+* City commands and protection
+* Inventory manipulation for stores, city options etc
+* Money structure (fixed amount of money, how to determinate who gets the amount?)
+
++ Test top command (same out of bounds exception - I may not have the latest build)
++ Fire spread fix
++ BlockIgniteEvent
+
+- Fix same chunk being loaded and the reason to it (entity spawn, probably) (checked, ok)
+- Player time fix (checked, ok)
+- Test explosions on player and admin protected  (checked, ok)
+- Prevent hostile mobs in admin protected areas (must check on spawn and, sadly, deny spawn until loaded) (check, ok)
+- Remove gamemode when quit, store survival information (check, ok)

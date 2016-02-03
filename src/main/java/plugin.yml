@@ -4,7 +4,7 @@ description: Private plugin for server
 
 main: com.jabyftw.lobstercraft.LobsterCraft
 author: rfsantos1996
-depend: [Vault, ProtocolLib, VanishNoPacket]
+depend: [Vault, ProtocolLib, VanishNoPacket, WorldEdit]
 
 commands:
   login:

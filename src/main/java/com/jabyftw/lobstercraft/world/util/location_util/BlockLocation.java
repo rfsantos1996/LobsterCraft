@@ -7,20 +7,20 @@ import org.bukkit.util.NumberConversions;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p>
+ * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p>
+ * <p/>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p>
+ * <p/>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p>
+ * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
 public class BlockLocation {
@@ -68,10 +68,10 @@ public class BlockLocation {
      * This will return block's X coordinate.
      * This value is stored as relative-to-chunk coordinates, given by:
      * relativeX = blockX - (chunkX * 16) - ((blockX < 0) ? 1 : 0)
-     * <p>
+     * <p/>
      * Doing the reverse, we have that:
      * blockX = relativeX + (chunkX * 16) + ((blockX < 0 ?) 1 : 0)
-     * <p>
+     * <p/>
      * Note that blockX will simply check if the coordinates is on the negative side of the world,
      * on our code we check that using chunkX. The result will be the same since negative chunks
      * will give negative coordinates too.
