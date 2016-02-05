@@ -45,8 +45,8 @@ commands:
     aliases: [players, jogadores, lista]
   whisper:
     aliases: [m, msg]
-  r:
-    aliases: reply
+  reply:
+    aliases: r
   broadcast:
     description: dont know if I can remove every command attribute
   clear:

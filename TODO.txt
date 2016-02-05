@@ -1,14 +1,17 @@
 * changename command and structure
-* Chat structure and commands
 * ban records and commands
 * City commands and protection
 * Inventory manipulation for stores, city options etc
 * Money structure (fixed amount of money, how to determinate who gets the amount?)
 
++ Chat structure and commands
 + Test top command (same out of bounds exception - I may not have the latest build)
 + Fire spread fix
 + BlockIgniteEvent
++ /bm delete
 
+- Test //undo not removing blocks (partially checked)
+- Change protection stick to a block, or change how stuff works so I can know the block facing
 - Fix same chunk being loaded and the reason to it (entity spawn, probably) (checked, ok)
 - Player time fix (checked, ok)
 - Test explosions on player and admin protected  (checked, ok)

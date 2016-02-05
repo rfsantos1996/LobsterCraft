@@ -1,5 +1,6 @@
 package com.jabyftw.lobstercraft.player;
 
+import com.jabyftw.lobstercraft.player.chat.ChatProfile;
 import com.jabyftw.lobstercraft.player.inventory.InventoryProfile;
 import com.jabyftw.lobstercraft.player.location.LocationProfile;
 import com.sun.istack.internal.NotNull;
@@ -48,7 +49,18 @@ public enum ProfileType {
         public <T extends Profile> boolean saveProfile(@NotNull Connection connection, T profile) {
             return LocationProfile.saveProfile(connection, (LocationProfile) profile);
         }
-    },;
+    },
+    CHAT_PROFILE(ChatProfile.class) {
+        @Override
+        public <T extends Profile> T getProfile(@NotNull Connection connection, long playerId) throws Exception {
+            return (T) ChatProfile.retrieveProfile(connection, playerId);
+        }
+
+        @Override
+        public <T extends Profile> boolean saveProfile(@NotNull Connection connection, T profile) {
+            return ChatProfile.saveProfile(connection, (ChatProfile) profile);
+        }
+    };
 
     private final Class<? extends Profile> profileClass;
 

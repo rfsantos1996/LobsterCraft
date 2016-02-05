@@ -1,5 +1,6 @@
 package com.jabyftw.lobstercraft.world.listeners;
 
+import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.jabyftw.lobstercraft.player.util.ConditionController;
@@ -23,7 +24,10 @@ import org.bukkit.event.entity.*;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,8 +51,12 @@ import java.util.concurrent.TimeUnit;
 public class ProtectionListener implements Listener {
 
     private final HashMap<Integer, Pair<ProtectedBlockLocation, Long>> fallingEntities = new HashMap<>();
+    private final Material TOOL_HAND_MATERIAL = com.jabyftw.easiercommands.Util.parseToMaterial(LobsterCraft.config.getString(ConfigValue.WORLD_PROTECTION_TOOL_HAND_MATERIAL.toString()));
 
     public ProtectionListener() {
+        if (TOOL_HAND_MATERIAL == null)
+            throw new IllegalStateException("Tool hand material from configuration is null!");
+
         BukkitScheduler.runTaskTimer(() -> {
             Iterator<Pair<ProtectedBlockLocation, Long>> iterator = fallingEntities.values().iterator();
             long currentTimeMillis = System.currentTimeMillis();
@@ -72,11 +80,8 @@ public class ProtectionListener implements Listener {
      * @return true if the player can build on that place
      */
     private boolean checkForNearBlocks(PlayerHandler playerHandler, Location location) {
-        // Get near blocks
-        Set<ProtectedBlockLocation> protectedBlocks = LobsterCraft.blockController.getProtectedBlocks(location);
-
         // Check if chunks aren't loaded
-        if (protectedBlocks == null) {
+        if (!LobsterCraft.blockController.loadNearChunks(location)) {
             // Warn player
             playerHandler.getConditionController().sendMessageIfConditionReady(ConditionController.Condition.PROTECTION_BEING_LOADED, "§cProteção está sendo carregada...");
             return false;
@@ -84,25 +89,36 @@ public class ProtectionListener implements Listener {
 
         // Ignore administrator build mode players
         if (playerHandler.getProtectionType() != ProtectionType.ADMIN_PROTECTION)
-            // Iterate through all blocks
-            for (ProtectedBlockLocation protectedBlock : protectedBlocks)
-                // Check if player own every block near him or block is on administrator protection
-                if (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION && !protectedBlock.isUndefined()) {
-                    // Warn player, return false
-                    playerHandler.getConditionController().sendMessageIfConditionReady(
-                            ConditionController.Condition.PROTECTION_ADMINISTRATOR_BLOCKS,
-                            "§cExistem blocos protegidos por administradores por perto."
-                    );
-                    return false;
-                } else if (protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && !protectedBlock.isUndefined() &&
-                        playerHandler.getPlayerId() != protectedBlock.getCurrentId()) {
-                    // Warn player, return false
-                    playerHandler.getConditionController().sendMessageIfConditionReady(
-                            ConditionController.Condition.PROTECTION_PLAYER_BLOCKS,
-                            "§cExistem blocos de outro jogador por perto."
-                    );
-                    return false;
-                }
+            /*
+             * Average: ~0.41ms (same thing) - http://timings.aikar.co/?url=14884622
+              * Using this method (that doesn't need to check ALL chunks to get to a result will be faster on a real running server)
+             */
+            if (LobsterCraft.blockController.checkForOtherPlayersAndAdministratorBlocks(location, playerHandler.getPlayerId())) {
+                // Warn player, return false
+                playerHandler.getConditionController().sendMessageIfConditionReady(
+                        ConditionController.Condition.PROTECTION_NEAR_BLOCKS,
+                        "§cExistem blocos protegidos por outra pessoa por perto."
+                );
+                return false;
+            }
+
+            /*// Average: ~0.43ms - http://timings.aikar.co/?url=14884662
+            if (LobsterCraft.blockController.checkForAdministratorBlocks(location)) {
+                // Warn player, return false
+                playerHandler.getConditionController().sendMessageIfConditionReady(
+                        ConditionController.Condition.PROTECTION_ADMINISTRATOR_BLOCKS,
+                        "§cExistem blocos protegidos por administradores por perto."
+                );
+                return false;
+            }
+            if (LobsterCraft.blockController.checkForOtherPlayersBlocks(location, playerHandler.getPlayerId())) {
+                // Warn player, return false
+                playerHandler.getConditionController().sendMessageIfConditionReady(
+                        ConditionController.Condition.PROTECTION_PLAYER_BLOCKS,
+                        "§cExistem blocos de outro jogador por perto."
+                );
+                return false;
+            }*/
 
         return true;
     }
@@ -185,13 +201,8 @@ public class ProtectionListener implements Listener {
             return;
         }
 
-        Set<ProtectedBlockLocation> protectedBlocks = LobsterCraft.blockController.getProtectedBlocks(event.getLocation());
-
-        // Iterate through all blocks
-        for (ProtectedBlockLocation protectedBlock : protectedBlocks)
-            // If it is a valid admin block, remove monster
-            if (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION && !protectedBlock.isUndefined())
-                event.setCancelled(true);
+        if (LobsterCraft.blockController.checkForAdministratorBlocks(event.getLocation()))
+            event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -234,14 +245,11 @@ public class ProtectionListener implements Listener {
             return;
         }
 
-        Set<ProtectedBlockLocation> protectedBlocks = LobsterCraft.blockController.getProtectedBlocks(event.getLocation());
-
-        for (ProtectedBlockLocation protectedBlock : protectedBlocks)
-            // If it is near a admin protection, cancel event
-            if (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION && !protectedBlock.isUndefined()) {
-                event.setCancelled(true);
-                return;
-            }
+        // Check for near administrators blocks
+        if (LobsterCraft.blockController.checkForAdministratorBlocks(event.getLocation())) {
+            event.setCancelled(true);
+            return;
+        }
 
         Iterator<Block> iterator = event.blockList().iterator();
 
@@ -249,9 +257,11 @@ public class ProtectionListener implements Listener {
         while (iterator.hasNext()) {
             Block next = iterator.next();
 
+            BlockLocation blockLocation = new BlockLocation(next.getLocation());
+
             // It isn't Suspicious since BlockLocation has the same hashCode() as ProtectedBlockLocation
             //noinspection SuspiciousMethodCalls
-            if (protectedBlocks.contains(new BlockLocation(next.getLocation())))
+            if (LobsterCraft.blockController.getBlocksForChunk(blockLocation.getChunkLocation()).contains(blockLocation))
                 // List is mutable, remove block from damage
                 iterator.remove();
         }
@@ -335,8 +345,18 @@ public class ProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockInteractHighest(PlayerInteractEvent event) {
-        // Conditions to trigger desired effect
-        if (event.getClickedBlock() != null && event.getMaterial() == Material.STICK && event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+        // Conditions to trigger desired effect (clicked a block, material in hand is specific)
+        if (event.getClickedBlock() != null && event.getMaterial() == TOOL_HAND_MATERIAL) {
+            Location bukkitBlockLocation;
+
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                bukkitBlockLocation = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
+            } else if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+                bukkitBlockLocation = event.getClickedBlock().getLocation();
+            } else {
+                return;
+            }
+
             PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandler(event.getPlayer());
 
             // Check if player is spamming
@@ -345,21 +365,20 @@ public class ProtectionListener implements Listener {
             )) return;
 
             // Check if player protection was loaded
-            if (!LobsterCraft.blockController.loadNearChunks(event.getClickedBlock().getLocation())) {
+            if (!LobsterCraft.blockController.loadNearChunks(bukkitBlockLocation)) {
                 playerHandler.getConditionController().sendMessageIfConditionReady(ConditionController.Condition.PROTECTION_BEING_LOADED, "§cProteção está sendo carregada...");
                 return;
             }
 
-            ProtectedBlockLocation blockLocation = LobsterCraft.blockController.getBlock(event.getClickedBlock().getLocation());
+            ProtectedBlockLocation blockLocation = LobsterCraft.blockController.getBlock(bukkitBlockLocation);
 
-            // Check player block
-            if (blockLocation != null) {
-                // Warn player
+            // Check player block, warn player about its state
+            if (blockLocation != null)
                 playerHandler.sendMessage(getProtectedBlockMessage(blockLocation));
-                event.setCancelled(true);
-            } else {
+            else
                 playerHandler.sendMessage("§cEste bloco não está protegido.");
-            }
+
+            event.setCancelled(true);
         }
     }
 
@@ -441,21 +460,17 @@ public class ProtectionListener implements Listener {
         if (event.isCancelled() || LobsterCraft.worldService.isWorldIgnored(event.getBlock().getWorld()))
             return;
 
-        Set<ProtectedBlockLocation> protectedBlocks = LobsterCraft.blockController.getProtectedBlocks(event.getBlock().getLocation());
-
         // Cancel if it isn't loaded
-        if (protectedBlocks == null) {
+        if (!LobsterCraft.blockController.loadNearChunks(event.getBlock().getLocation())) {
             event.setCancelled(true);
             return;
         }
 
-        // Iterate through all protected blocks
-        for (ProtectedBlockLocation protectedBlock : protectedBlocks)
-            // Cancel if administrator blocks are close
-            if (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION && !protectedBlock.isUndefined()) {
-                event.setCancelled(true);
-                return;
-            }
+        // Cancel if administrator blocks are close
+        if (LobsterCraft.blockController.checkForAdministratorBlocks(event.getBlock().getLocation())) {
+            event.setCancelled(true);
+            return;
+        }
 
         ProtectedBlockLocation blockLocation = LobsterCraft.blockController.getBlock(event.getBlock().getLocation());
 

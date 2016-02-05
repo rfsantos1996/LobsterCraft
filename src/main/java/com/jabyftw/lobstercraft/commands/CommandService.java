@@ -1,5 +1,9 @@
 package com.jabyftw.lobstercraft.commands;
 
+import com.jabyftw.lobstercraft.commands.chat.MuteCommand;
+import com.jabyftw.lobstercraft.commands.chat.ReplyCommand;
+import com.jabyftw.lobstercraft.commands.chat.UnmuteCommand;
+import com.jabyftw.lobstercraft.commands.chat.WhisperCommand;
 import com.jabyftw.lobstercraft.commands.location.*;
 import com.jabyftw.lobstercraft.commands.login.LoginCommand;
 import com.jabyftw.lobstercraft.commands.login.RegisterCommand;
@@ -35,6 +39,11 @@ public class CommandService extends Service {
     public boolean onEnable() {
         Server server = Bukkit.getServer();
         {
+            // chat
+            server.getPluginCommand("mute").setExecutor(new MuteCommand());
+            server.getPluginCommand("unmute").setExecutor(new UnmuteCommand());
+            server.getPluginCommand("whisper").setExecutor(new WhisperCommand());
+            server.getPluginCommand("reply").setExecutor(new ReplyCommand());
             // location
             server.getPluginCommand("teleport").setExecutor(new TeleportCommand());
             server.getPluginCommand("teleporthere").setExecutor(new TeleportHereCommand());

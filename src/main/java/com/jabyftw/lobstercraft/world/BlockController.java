@@ -73,13 +73,14 @@ public class BlockController extends Service {
         DEFAULT_LOAD_SIZE = NumberConversions.ceil(minimumLoadSize * LobsterCraft.config.getDouble(ConfigValue.WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER.getPath()));
     }
 
+    // Although they're concurrent, some chunk loading that takes too long are interfering with each other
     private final ConcurrentLinkedDeque<ChunkLocation>
-            pendingLoading = new ConcurrentLinkedDeque<>(), // TODO more than one thread loading => I removed (maybe) unnecessary synchronized blocks
+            pendingLoading = new ConcurrentLinkedDeque<>(), // TODO more than one thread loading
             pendingUnloading = new ConcurrentLinkedDeque<>();
     private final Set<ChunkLocation>
             loadedLocations = Collections.synchronizedSet(new HashSet<>(NumberConversions.ceil(LIMIT_CHUNK_LOAD_SIZE * 1.2D))),
             unloadedLocations = Collections.synchronizedSet(new HashSet<>());
-    private final ConcurrentHashMap<ChunkLocation, HashMap<BlockLocation, ProtectedBlockLocation>> blockStorage = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, ProtectedBlockLocation>> blockStorage = new ConcurrentHashMap<>();
 
     private Connection connection;
     private ChunkUnloader chunkUnloader;
@@ -156,30 +157,74 @@ public class BlockController extends Service {
         return blockStorage.get(blockLocation.getChunkLocation()).get(blockLocation);
     }
 
-    public Set<ProtectedBlockLocation> getProtectedBlocks(@NotNull final Location location) {
-        return getProtectedBlocks(new BlockLocation(location));
+    public Collection<ProtectedBlockLocation> getBlocksForChunk(@NotNull final ChunkLocation chunkLocation) {
+        return blockStorage.get(chunkLocation).values();
     }
 
-    public Set<ProtectedBlockLocation> getProtectedBlocks(@NotNull final BlockLocation nearBlock) {
-        // If it isn't loaded, return
-        if (!loadNearChunks(nearBlock.getChunkLocation())) return null;
+    public boolean checkForOtherPlayersAndAdministratorBlocks(@NotNull final Location location, long playerId) {
+        long start = System.nanoTime();
 
-        HashSet<ProtectedBlockLocation> protectedLocations = new HashSet<>();
+        boolean anyMatch = new BlockLocation(location).getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
+            for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
+                if (!protectedBlock.isUndefined() && ((protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && playerId != protectedBlock.getCurrentId())
+                        || (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION)))
+                    return true;
+            return false;
+        });
+        LobsterCraft.logger.info("Took us " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
+                "ms to check for other player and administrator blocks on storage.");
+        return anyMatch;
+    }
 
-        // Iterate through all near chunks
-        for (ChunkLocation chunkLocation : nearBlock.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE))
-            // Iterate through all blocks on these chunks
-            for (ProtectedBlockLocation protectedBlockLocation : blockStorage.get(chunkLocation).values()) {
-                ProtectionType protectionType = protectedBlockLocation.getType();
+    public boolean checkForOtherPlayersBlocks(@NotNull final Location location, long playerId) {
+        return checkForOtherPlayersBlocks(new BlockLocation(location), playerId);
+    }
 
-                // Check if block is less or equal than the protection distance
-                if ((protectionType.checkOnlyXZ() && protectedBlockLocation.distanceXZSquared(nearBlock) <= protectionType.getSearchDistanceSquared())
-                        || (!protectionType.checkOnlyXZ() && protectedBlockLocation.distanceSquared(nearBlock) <= protectionType.getSearchDistanceSquared()))
-                    // Insert block to list
-                    protectedLocations.add(protectedBlockLocation);
-            }
+    public boolean checkForOtherPlayersBlocks(@NotNull final BlockLocation blockLocation, long playerId) {
+        long start = System.nanoTime();
 
-        return protectedLocations;
+        /*
+        Avg: 0.44ms
+        boolean anyMatch = false;
+        for (ChunkLocation chunkLocation : blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE))
+            for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
+                if (protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && !protectedBlock.isUndefined() && playerId != protectedBlock.getCurrentId())
+                    anyMatch = true;*/
+
+        /*
+         * Actual average: 0.38ms (success) - http://timings.aikar.co/?url=14884599
+         * The old method was taking:
+         * ~180ms without changes (old commit, for each iterating with all blocks) - http://timings.aikar.co/?url=14884327
+         * ~130ms with parallel stream for chunks and stream for blocks - http://timings.aikar.co/?url=14884433
+         * ~70ms with one parallel for chunks and for-each for blocks - http://timings.aikar.co/?url=14884464
+         *
+         */
+        boolean anyMatch = blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
+            for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
+                if (protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && !protectedBlock.isUndefined() && playerId != protectedBlock.getCurrentId())
+                    return true;
+            return false;
+        });
+        LobsterCraft.logger.info("Took us " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
+                "ms to check for other player blocks on storage.");
+        return anyMatch;
+    }
+
+    public boolean checkForAdministratorBlocks(@NotNull final Location location) {
+        return checkForAdministratorBlocks(new BlockLocation(location));
+    }
+
+    public boolean checkForAdministratorBlocks(@NotNull final BlockLocation blockLocation) {
+        long start = System.nanoTime();
+        boolean anyMatch = blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
+            for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
+                if (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION && !protectedBlock.isUndefined())
+                    return true;
+            return false;
+        });
+        LobsterCraft.logger.info("Took us " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
+                "ms to check for administrator blocks on storage.");
+        return anyMatch;
     }
 
     public boolean loadNearChunks(@NotNull final Location location) {
@@ -212,6 +257,33 @@ public class BlockController extends Service {
         }
     }
 
+    public void removeConstruction(@NotNull final Connection connection, long constructionId) throws SQLException {
+        // Prepare statement
+        PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM `minecraft`.`world_blocks` WHERE `ownerType` = ? AND `ownerId` = ?;");
+
+        // Set variables
+        preparedStatement.setByte(1, ProtectionType.ADMIN_PROTECTION.getId());
+        preparedStatement.setLong(2, constructionId);
+
+        // Execute and close statement
+        preparedStatement.execute();
+        preparedStatement.close();
+
+        // Iterate through all chunks
+        for (ConcurrentHashMap<BlockLocation, ProtectedBlockLocation> blockLocationHashMap : blockStorage.values()) {
+            Iterator<ProtectedBlockLocation> iterator = blockLocationHashMap.values().iterator();
+
+            // Iterate through all blocks
+            while (iterator.hasNext()) {
+                ProtectedBlockLocation next = iterator.next();
+
+                // Delete block if it is of the same type
+                if (next.getType() == ProtectionType.ADMIN_PROTECTION && next.getCurrentId() == constructionId)
+                    iterator.remove();
+            }
+        }
+    }
+
     private class ChunkLoader implements Runnable {
 
         @Override
@@ -223,37 +295,36 @@ public class BlockController extends Service {
                 // Prepare connection
                 checkConnection();
 
-                // Clear Set
-                loadedLocations.clear();
-
                 // Create queries
                 StringBuilder stringBuilder = new StringBuilder("SELECT * FROM minecraft.world_blocks WHERE (worlds_worldId, chunkX, chunkZ) IN (");
 
                 int indexBounds = Math.min(LIMIT_CHUNK_LOAD_SIZE, pendingLoading.size() - 1);
                 int index = 0;
 
-                synchronized (loadedLocations) {
-                    // Iterate through all items
-                    Iterator<ChunkLocation> iterator = pendingLoading.iterator();
+                synchronized (pendingLoading) {
+                    synchronized (loadedLocations) {
+                        // Iterate through all items
+                        Iterator<ChunkLocation> iterator = pendingLoading.iterator();
 
-                    while (iterator.hasNext() && index <= indexBounds) {
-                        ChunkLocation chunkLocation = iterator.next();
+                        while (iterator.hasNext() && index <= indexBounds) {
+                            ChunkLocation chunkLocation = iterator.next();
 
-                        // Append information
-                        stringBuilder
-                                .append('(')
-                                .append(chunkLocation.getWorldId()).append(", ")
-                                .append(chunkLocation.getChunkX()).append(", ")
-                                .append(chunkLocation.getChunkZ())
-                                .append(')');
+                            // Append information
+                            stringBuilder
+                                    .append('(')
+                                    .append(chunkLocation.getWorldId()).append(", ")
+                                    .append(chunkLocation.getChunkX()).append(", ")
+                                    .append(chunkLocation.getChunkZ())
+                                    .append(')');
 
-                        // Check boundaries
-                        if (index < indexBounds) stringBuilder.append(", ");
-                        index++;
+                            // Check boundaries
+                            if (index < indexBounds) stringBuilder.append(", ");
+                            index++;
 
-                        // Add to list of loaded
-                        loadedLocations.add(chunkLocation);
-                        iterator.remove();
+                            // Add to list of loaded
+                            loadedLocations.add(chunkLocation);
+                            iterator.remove();
+                        }
                     }
                 }
 
@@ -288,7 +359,7 @@ public class BlockController extends Service {
                     );
 
                     // Add protected block
-                    blockStorage.putIfAbsent(chunkLocation, new HashMap<>());
+                    blockStorage.putIfAbsent(chunkLocation, new ConcurrentHashMap<>());
                     blockStorage.get(chunkLocation).put(protectedBlockLocation, protectedBlockLocation);
                     blockSize++;
                 }
@@ -298,7 +369,7 @@ public class BlockController extends Service {
 
                     while (iterator.hasNext()) {
                         // Make sure chunk is set as loaded
-                        blockStorage.putIfAbsent(iterator.next(), new HashMap<>());
+                        blockStorage.putIfAbsent(iterator.next(), new ConcurrentHashMap<>());
                         // Remove from set
                         iterator.remove();
                     }
@@ -339,41 +410,43 @@ public class BlockController extends Service {
 
                 // Iterate through all needed chunks
                 synchronized (unloadedLocations) {
-                    Iterator<ChunkLocation> iterator = pendingUnloading.iterator();
+                    synchronized (pendingUnloading) {
+                        Iterator<ChunkLocation> iterator = pendingUnloading.iterator();
 
-                    while (iterator.hasNext()) {
-                        ChunkLocation chunkLocation = iterator.next();
+                        while (iterator.hasNext()) {
+                            ChunkLocation chunkLocation = iterator.next();
 
-                        if (blockStorage.containsKey(chunkLocation)) {
-                            // Itreate through all blocks
-                            for (ProtectedBlockLocation blockLocation : blockStorage.remove(chunkLocation).values()) {
-                                DatabaseState databaseState = blockLocation.getDatabaseState();
+                            if (blockStorage.containsKey(chunkLocation)) {
+                                // Itreate through all blocks => It'll be removed, so theres no reason to synchronize
+                                for (ProtectedBlockLocation blockLocation : blockStorage.remove(chunkLocation).values()) {
+                                    DatabaseState databaseState = blockLocation.getDatabaseState();
 
-                                // If databaseState should be saved, increase blockSize
-                                if (databaseState.shouldSave()) blockSize++;
+                                    // If databaseState should be saved, increase blockSize
+                                    if (databaseState.shouldSave()) blockSize++;
 
-                                // Put block on the needed list
-                                switch (databaseState) {
-                                    case INSERT_TO_DATABASE:
-                                        blocksToInsert.putIfAbsent(chunkLocation, new HashSet<>());
-                                        blocksToInsert.get(chunkLocation).add(blockLocation);
-                                        break;
-                                    case UPDATE_DATABASE:
-                                        blocksToUpdate.putIfAbsent(chunkLocation, new HashSet<>());
-                                        blocksToUpdate.get(chunkLocation).add(blockLocation);
-                                        break;
-                                    case DELETE_FROM_DATABASE:
-                                        blocksToDelete.putIfAbsent(chunkLocation, new HashSet<>());
-                                        blocksToDelete.get(chunkLocation).add(blockLocation);
-                                        break;
-                                    default:
-                                        break;
+                                    // Put block on the needed list
+                                    switch (databaseState) {
+                                        case INSERT_TO_DATABASE:
+                                            blocksToInsert.putIfAbsent(chunkLocation, new HashSet<>());
+                                            blocksToInsert.get(chunkLocation).add(blockLocation);
+                                            break;
+                                        case UPDATE_DATABASE:
+                                            blocksToUpdate.putIfAbsent(chunkLocation, new HashSet<>());
+                                            blocksToUpdate.get(chunkLocation).add(blockLocation);
+                                            break;
+                                        case DELETE_FROM_DATABASE:
+                                            blocksToDelete.putIfAbsent(chunkLocation, new HashSet<>());
+                                            blocksToDelete.get(chunkLocation).add(blockLocation);
+                                            break;
+                                        default:
+                                            break;
+                                    }
                                 }
+                                unloadedLocations.add(chunkLocation);
+                            } else {
+                                // Remove chunk if it isn't supposed to be database-unloaded
+                                iterator.remove();
                             }
-                            unloadedLocations.add(chunkLocation);
-                        } else {
-                            // Remove chunk if it isn't supposed to be database-unloaded
-                            iterator.remove();
                         }
                     }
                 }
@@ -543,6 +616,8 @@ public class BlockController extends Service {
 
     private class WorldEditLogger {
 
+        private long lastActorWarning;
+
         private final ConcurrentHashMap<BlockLocation, LogEntry> pendingBlocks = new ConcurrentHashMap<>();
 
         WorldEditLogger() {
@@ -574,10 +649,17 @@ public class BlockController extends Service {
                             blockLocation.setUndefinedOwner();
                     } else //noinspection ConstantConditions => it is already filtered before being added to pendingBlocks
                         if (event.getActor().isPlayer()) {
-                            PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandler(Bukkit.getPlayer(event.getActor().getName()));
+                            PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandlerNoRestrictions(Bukkit.getPlayer(event.getActor().getName()));
 
-                            if (playerHandler == null)
-                                throw new IllegalStateException("Actor has null PlayerHandler: " + event.getActor().getName());
+                            if (playerHandler == null) {
+                                // Warn console (but not for every block)
+                                if (System.currentTimeMillis() - lastActorWarning > TimeUnit.SECONDS.toSeconds(30)) {
+                                    LobsterCraft.logger.warning("Actor is now offline (" + event.getActor().getName() + "), his blocks aren't going to be protected");
+                                    lastActorWarning = System.currentTimeMillis();
+                                }
+                                iterator.remove();
+                                return;
+                            }
 
                             if (playerHandler.getProtectionType() != ProtectionType.ADMIN_PROTECTION) {
                                 playerHandler.getConditionController().sendMessageIfConditionReady(
@@ -602,7 +684,6 @@ public class BlockController extends Service {
 
         @Subscribe
         public void logChanges(final EditSessionEvent event) {
-            LobsterCraft.logger.info("Stage: " + event.getStage().name() + " actor=" + (event.getActor() == null ? "null" : event.getActor().getName()));
             if (event.getActor() == null || event.getStage() != EditSession.Stage.BEFORE_CHANGE)
                 return;
 

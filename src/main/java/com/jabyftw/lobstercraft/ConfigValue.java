@@ -24,7 +24,7 @@ public enum ConfigValue {
     MYSQL_JDBC_URL("mysql.jdbc_url", "jdbc:mysql://localhost:3306/database"),
     MYSQL_USERNAME("mysql.username", "root"),
     MYSQL_PASSWORD("mysql.password", "root"),
-    MYSQL_POOL_SIZE("mysql.pool_size", 6), // the nice answer is 8
+    MYSQL_POOL_SIZE("mysql.pool_size", 8), // the nice answer is 8
     MYSQL_CONNECTION_TIMEOUT("mysql.connection_timeout_seconds", 28800),
 
     LOGIN_PROFILE_SAVING_TIMEOUT("login.profile_saving.timeout_seconds", 60 * 4L), // 4 minutes to the profile be saved
@@ -38,9 +38,11 @@ public enum ConfigValue {
 
     PLAYER_SPEED_MINIMUM_MULTIPLIER("player.speed.minimum_speed_multiplier", 0.05d),
     PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
+    PLAYER_MAXIMUM_AMOUNT_OF_MUTES("player.chat.maximum_amount_of_personal_muted_players", 10),
 
     WORLD_IGNORED_WORLDS("world.ignored_worlds", new String[]{"world_the_end", "world_nether"}),
 
+    WORLD_PROTECTION_TOOL_HAND_MATERIAL("world.protection.tool_hand_material_for_protection_check", "STICK"),
     WORLD_PLAYER_BLOCK_SEARCH_DISTANCE("world.protection.player_block_search_distance_xyz", 12.0D),
     WORLD_ADMINISTRATOR_BLOCK_SEARCH_DISTANCE("world.protection.administrator_block_search_distance_xz_only", 125.0D),
 

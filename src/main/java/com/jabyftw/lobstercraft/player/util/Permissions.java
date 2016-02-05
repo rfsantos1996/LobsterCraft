@@ -27,6 +27,10 @@ public abstract class Permissions {
     PROTECTION_ADMINISTRATOR_BUILD_MODE = "lobstercraft.protection.constructor_build_mode",
             PROTECTION_CREATE_ADMINISTRATOR_BUILDINGS = "lobstercraft.protection.create_buildings",
 
+    CHAT_MUTE = "lobstercraft.chat.mute",
+            CHAT_MUTE_EXCEPTION = "lobstercraft.chat.mute.exception",
+            CHAT_WHISPER = "lobstercraft.chat.whisper",
+
     PLAYER_GAMEMODE_CHANGE = "lobstercraft.player.gamemode",
             PLAYER_GAMEMODE_CHANGE_OTHERS = "lobstercraft.player.gamemode.others",
             PLAYER_SPAWN_MOBS = "lobstercraft.player.spawn_mobs",

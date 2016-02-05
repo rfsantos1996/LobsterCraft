@@ -5,6 +5,7 @@ import com.comphenix.protocol.ProtocolManager;
 import com.jabyftw.lobstercraft.commands.CommandService;
 import com.jabyftw.lobstercraft.player.PlayerHandlerService;
 import com.jabyftw.lobstercraft.player.ProfileService;
+import com.jabyftw.lobstercraft.player.chat.ChatService;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.ConfigurationFile;
 import com.jabyftw.lobstercraft.util.Service;
@@ -75,6 +76,7 @@ public class LobsterCraft extends JavaPlugin {
     public static XrayProtectionService xrayProtectionService;
     public static BlockController blockController;
     public static ConstructionsService constructionsService;
+    public static ChatService chatService;
 
     // State specific variables
     private final static Object timerLock = new Object();
@@ -170,7 +172,8 @@ public class LobsterCraft extends JavaPlugin {
                     xrayProtectionService = new XrayProtectionService(),
                     new CommandService(),
                     blockController = new BlockController(),
-                    constructionsService = new ConstructionsService()
+                    constructionsService = new ConstructionsService(),
+                    chatService = new ChatService()
             };
 
             // Start up all services
@@ -215,6 +218,7 @@ public class LobsterCraft extends JavaPlugin {
         xrayProtectionService = null;
         blockController = null;
         constructionsService = null;
+        chatService = null;
 
         // Delete instances
         serverServices = null;

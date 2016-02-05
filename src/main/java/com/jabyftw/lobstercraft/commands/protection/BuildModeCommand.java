@@ -8,12 +8,14 @@ import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.jabyftw.lobstercraft.player.util.AdministratorBuildMode;
 import com.jabyftw.lobstercraft.player.util.BuildMode;
+import com.jabyftw.lobstercraft.player.util.ConditionController;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -82,8 +84,34 @@ public class BuildModeCommand extends CommandExecutor {
     }
 
     private HandleResponse onDelete(CommandSender sender, String[] arguments) {
-        // TODO
-        return HandleResponse.RETURN_HELP;
+        String constructionName = arguments[0].toLowerCase();
+        Long constructionId = LobsterCraft.constructionsService.getConstructionId(constructionName);
+
+        if (constructionId == null) {
+            sender.sendMessage("§cConstrução não encontrada.");
+            return HandleResponse.RETURN_TRUE;
+        }
+
+        if (sender instanceof Player) {
+            PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandler((Player) sender);
+
+            if (playerHandler.getConditionController().sendMessageIfConditionReady(
+                    ConditionController.Condition.DELETE_CONSTRUCTION_CHECK,
+                    "§cTem certeza de que quer deletar a construção §6" + constructionName + "§c? §6Se sim, repita o comando. §4TODOS OS BLOCOS SERÃO DESPROTEGIDOS."
+            ))
+                return HandleResponse.RETURN_TRUE;
+        }
+
+        BukkitScheduler.runTaskAsynchronously(() -> {
+            try {
+                LobsterCraft.constructionsService.deleteConstruction(constructionName, constructionId);
+                sender.sendMessage("§6Todos os blocos foram desprotegidos, a construção §c" + constructionName + "§6 foi deletada.");
+            } catch (SQLException e) {
+                e.printStackTrace();
+                sender.sendMessage("§cOcorreu um erro no banco de dados.");
+            }
+        });
+        return HandleResponse.RETURN_TRUE;
     }
 
     private HandleResponse onExit(PlayerHandler playerHandler) {

@@ -14,6 +14,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Creature;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -66,6 +67,7 @@ public class PlayerHandler {
     private PlayerState preLoginState = null, gamemodeState = null;
     private BuildMode buildMode = BuildMode.DEFAULT;
     private TeleportBuilder.Teleport pendingTeleport;
+    private volatile CommandSender lastWhisper = null;
     private volatile DatabaseState databaseState = DatabaseState.NOT_ON_DATABASE;
     private boolean loggedIn = false;
     private boolean godMode = false;
@@ -96,7 +98,6 @@ public class PlayerHandler {
 
     public static long savePlayerHandle(@NotNull final Connection connection, @NotNull PlayerHandler playerHandler) throws SQLException {
         boolean insertPlayer = playerHandler.databaseState == DatabaseState.INSERT_TO_DATABASE;
-        //LobsterCraft.logger.info("Database state is " + playerHandler.databaseState.name());
 
         // Prepare statement
         PreparedStatement preparedStatement;
@@ -156,10 +157,8 @@ public class PlayerHandler {
         setGameMode(GameMode.SURVIVAL);
         // Store player State
         preLoginState = new PlayerState(this);
-        LobsterCraft.logger.info("Stored player state for login");
         // Clear player
         preLoginState.clearPlayer();
-        LobsterCraft.logger.info("Cleared player state for login");
         // Teleport player to spawn location
         TeleportBuilder.getBuilder(this)
                 .setLocation(player.getWorld().getSpawnLocation())
@@ -170,7 +169,6 @@ public class PlayerHandler {
         player.setCanPickupItems(false);
         player.setAllowFlight(true);
         player.setFlying(true);
-        LobsterCraft.logger.info("Set flight for login");
 
         // Add player to player list
         LobsterCraft.playerHandlerService.playerHandlers.put(player, this);
@@ -203,10 +201,12 @@ public class PlayerHandler {
 
         // Queue saving all profiles since player is registered
         if (isRegistered()) {
-            // Clear all profiles and store them
-            playerProfiles.forEach(((profileType, profile) -> profile.destroyProfile()));
-            LobsterCraft.profileService.storeProfiles(playerId, playerProfiles.values());
-            playerProfiles.clear();
+            synchronized (playerProfiles) {
+                // Clear all profiles and store them
+                playerProfiles.forEach(((profileType, profile) -> profile.destroyProfile()));
+                LobsterCraft.profileService.storeProfiles(playerId, playerProfiles.values());
+                playerProfiles.clear();
+            }
 
             // Store instance on PlayerHandlerServices in case player re-logs in (it depends whenever player was registered => it'll store password)
             LobsterCraft.playerHandlerService.storeProfile(this);
@@ -230,7 +230,6 @@ public class PlayerHandler {
             // Restore player inventory and state
             gamemodeState.restorePlayerState();
             gamemodeState = null;
-            LobsterCraft.logger.info("Cleaned inventory and restored state afterwards");
         }
 
         // If isn't going to change to survival
@@ -238,7 +237,6 @@ public class PlayerHandler {
             // Store player's current state (after restoring the past one, if necessary)
             gamemodeState = new PlayerState(this);
             gamemodeState.clearPlayer();
-            LobsterCraft.logger.info("Stored state and cleared player");
         }
 
         // Finally, update its game mode
@@ -336,7 +334,6 @@ public class PlayerHandler {
                 if (preLoginState != null) {
                     preLoginState.restorePlayerState();
                     preLoginState = null;
-                    LobsterCraft.logger.info("Restored pre-login state");
                 }
 
                 // Update login time and player's last IP
@@ -478,6 +475,14 @@ public class PlayerHandler {
 
     public boolean isInvisible() {
         return LobsterCraft.vanishManager.isVanished(player);
+    }
+
+    public CommandSender getLastWhisper() {
+        return lastWhisper;
+    }
+
+    public void setLastWhisper(@Nullable final CommandSender lastWhisper) {
+        this.lastWhisper = lastWhisper;
     }
 
     public boolean isGodMode() {

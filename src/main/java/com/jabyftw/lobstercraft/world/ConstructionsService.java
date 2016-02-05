@@ -103,6 +103,32 @@ public class ConstructionsService extends Service {
         });
     }
 
+    public boolean deleteConstruction(String constructionName, long constructionId) throws SQLException {
+        // Remove from construction storage
+        if (constructionsStorage.remove(constructionName, constructionId)) {
+            // Retrieve connection
+            Connection connection = LobsterCraft.dataSource.getConnection();
+
+            // Prepare statement
+            PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM `minecraft`.`world_constructions` WHERE `constructionId` = ?;");
+
+            // Delete all blocks
+            LobsterCraft.blockController.removeConstruction(connection, constructionId);
+
+            // Set variables
+            preparedStatement.setLong(1, constructionId);
+
+            // Execute statement
+            preparedStatement.execute();
+
+            // Close everything
+            preparedStatement.close();
+            connection.close();
+            return true;
+        }
+        return false;
+    }
+
     private void cacheConstructions() throws SQLException {
         // Retrieve connection
         Connection connection = LobsterCraft.dataSource.getConnection();

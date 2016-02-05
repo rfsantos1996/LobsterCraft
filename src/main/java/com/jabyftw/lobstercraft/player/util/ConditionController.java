@@ -75,14 +75,14 @@ public class ConditionController {
 
     public enum Condition {
 
+        DELETE_CONSTRUCTION_CHECK(TimeUnit.SECONDS.toMillis(15)),
         WORLD_EDIT_PLAYER_PROTECTION_WARNING(TimeUnit.SECONDS.toMillis(30)),
         PLAYER_CLEAR_INVENTORY_CHECK(TimeUnit.SECONDS.toMillis(10)),
         PLAYER_SUICIDE_CHECK(TimeUnit.SECONDS.toMillis(15)),
         PLAYER_UNSAFE_ENCHANTMENT_CHECK(TimeUnit.SECONDS.toMillis(10)),
         PROTECTION_CHECK(TimeUnit.MILLISECONDS.toMillis(500)),
         PROTECTION_BEING_LOADED(TimeUnit.SECONDS.toMillis(3)),
-        PROTECTION_ADMINISTRATOR_BLOCKS(TimeUnit.SECONDS.toMillis(5)),
-        PROTECTION_PLAYER_BLOCKS(TimeUnit.SECONDS.toMillis(3));
+        PROTECTION_NEAR_BLOCKS(TimeUnit.SECONDS.toMillis(5));
 
         private final long conditionTime;
 

@@ -11,6 +11,7 @@ import com.jabyftw.lobstercraft.util.Service;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.PluginManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -55,10 +56,13 @@ public class PlayerHandlerService extends Service {
 
     @Override
     public boolean onEnable() {
-        Bukkit.getServer().getPluginManager().registerEvents(new LoginListener(), LobsterCraft.lobsterCraft);
-        Bukkit.getServer().getPluginManager().registerEvents(new JoinListener(), LobsterCraft.lobsterCraft);
-        Bukkit.getServer().getPluginManager().registerEvents(new TeleportListener(), LobsterCraft.lobsterCraft);
-        Bukkit.getServer().getPluginManager().registerEvents(new CustomEventsListener(), LobsterCraft.lobsterCraft); // handles custom events
+        PluginManager pluginManager = Bukkit.getServer().getPluginManager();
+        { // Register everything
+            pluginManager.registerEvents(new LoginListener(), LobsterCraft.lobsterCraft);
+            pluginManager.registerEvents(new JoinListener(), LobsterCraft.lobsterCraft);
+            pluginManager.registerEvents(new TeleportListener(), LobsterCraft.lobsterCraft);
+            pluginManager.registerEvents(new CustomEventsListener(), LobsterCraft.lobsterCraft); // handles custom events
+        }
 
         BukkitScheduler.runTaskTimerAsynchronously(
                 playerHandlerUnloader = new PlayerHandlerUnloader(),
@@ -88,6 +92,18 @@ public class PlayerHandlerService extends Service {
         // Filter logged players
         for (PlayerHandler playerHandler : playerHandlers.values()) {
             if (playerHandler.isLoggedIn())
+                playerSet.add(playerHandler);
+        }
+
+        return playerSet;
+    }
+
+    public Set<PlayerHandler> getVisiblePlayers() {
+        HashSet<PlayerHandler> playerSet = new HashSet<>();
+
+        // Filter logged players
+        for (PlayerHandler playerHandler : playerHandlers.values()) {
+            if (playerHandler.isLoggedIn() && !playerHandler.isInvisible())
                 playerSet.add(playerHandler);
         }
 
