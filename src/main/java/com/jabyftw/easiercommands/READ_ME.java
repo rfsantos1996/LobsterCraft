@@ -1,6 +1,7 @@
 package com.jabyftw.easiercommands;
 
 import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.player.OfflinePlayerHandler;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -33,7 +34,9 @@ public abstract class READ_ME {
     public static final JavaPlugin PLUGIN = LobsterCraft.lobsterCraft;
     public static final Logger LOGGER = LobsterCraft.logger;
 
-    public static final Class<?> PLAYER_CLASS = PlayerHandler.class;
+    public static final Class<?>
+            PLAYER_CLASS = PlayerHandler.class,
+            OFFLINE_PLAYER_CLASS = OfflinePlayerHandler.class;
 
     public static final String
             DESCRIPTION_HEADER = "§6",
@@ -52,5 +55,9 @@ public abstract class READ_ME {
 
     public static void sendCommandSenderMessage(CommandSender commandSender, String coloredMessage) {
         commandSender.sendMessage(coloredMessage);
+    }
+
+    public static Object getOfflinePlayerThatMatches(String string) {
+        return LobsterCraft.playerHandlerService.getOfflinePlayer(string);
     }
 }

@@ -5,6 +5,7 @@ import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
+import com.jabyftw.lobstercraft.util.Util;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -39,6 +40,12 @@ public class RegisterCommand extends CommandExecutor {
             return true;
         }
 
+        // Check password length
+        if (!Util.checkStringLength(password1, 3, 16)) {
+            playerHandler.sendMessage("§cSenha inválida: tamanho inapropriado");
+            return true;
+        }
+
         BukkitScheduler.runTaskAsynchronously(() -> {
             switch (playerHandler.attemptRegister(password1)) {
                 case ERROR_OCCURRED:
@@ -46,6 +53,9 @@ public class RegisterCommand extends CommandExecutor {
                     break;
                 case ALREADY_REGISTERED:
                     playerHandler.sendMessage("§cVocê já está registrado!");
+                    break;
+                case SUCCESSFULLY_LOGGED_IN:
+                    playerHandler.sendMessage("§6Registrado com sucesso!");
                     break;
                 default:
                     break;

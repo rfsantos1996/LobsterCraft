@@ -87,9 +87,9 @@ commands:
     aliases: [chapeu]
   top:
     description: dont know if I can remove every command attribute
-  changeuser:
-    aliases: [changeusername, mudarusuario, mudaruser, mudarnome]
-  changepass:
-    aliases: [changepassword, mudarsenha, passwordchange, passchange]
+  changeusername:
+    aliases: [changeuser, mudarusuario, mudaruser, mudarnome, namechange, changename]
+  changepassword:
+    aliases: [changepass, mudarsenha, passwordchange, passchange, trocarsenha, changesenha]
   buildmode:
     aliases: [bm, blockmode]

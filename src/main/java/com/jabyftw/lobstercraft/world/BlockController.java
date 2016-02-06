@@ -73,6 +73,8 @@ public class BlockController extends Service {
         DEFAULT_LOAD_SIZE = NumberConversions.ceil(minimumLoadSize * LobsterCraft.config.getDouble(ConfigValue.WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER.getPath()));
     }
 
+    private final int NUMBER_OF_CHUNK_LOADER_TASKS = LobsterCraft.config.getInt(ConfigValue.WORLD_CHUNK_LOAD_NUMBER_OF_TASKS.toString());
+
     // Although they're concurrent, some chunk loading that takes too long are interfering with each other
     private final ConcurrentLinkedDeque<ChunkLocation>
             pendingLoading = new ConcurrentLinkedDeque<>(), // TODO more than one thread loading
@@ -87,9 +89,10 @@ public class BlockController extends Service {
 
     @Override
     public boolean onEnable() {
-        LobsterCraft.logger.info("MinimumLoadSize=" + MINIMUM_LOAD_SIZE + ", " +
-                "DefaultLoadSize=" + DEFAULT_LOAD_SIZE + ", " +
-                "defaultChunksLoaded=" + Util.getNumberOfChunksLoaded(DEFAULT_LOAD_SIZE)
+        LobsterCraft.logger.info("minimumLoadSize=" + MINIMUM_LOAD_SIZE + ", " +
+                "defaultLoadSize=" + DEFAULT_LOAD_SIZE + ", " +
+                "defaultChunksLoaded=" + Util.getNumberOfChunksLoaded(DEFAULT_LOAD_SIZE) + ", " +
+                "numberChunkLoadTasks=" + NUMBER_OF_CHUNK_LOADER_TASKS
         );
 
         Bukkit.getServer().getPluginManager().registerEvents(new ChunkListener(), LobsterCraft.lobsterCraft);
@@ -110,8 +113,10 @@ public class BlockController extends Service {
                     LobsterCraft.logger.info("Couldn't register WorldEdit logger.");
                 }
             }, 0L);
-        BukkitScheduler.runTaskTimerAsynchronously(new ChunkLoader(), 20L, CHUNK_LOAD_PERIOD);
-        BukkitScheduler.runTaskTimerAsynchronously(chunkUnloader = new ChunkUnloader(), 20L, CHUNK_LOAD_PERIOD);
+
+        for (int i = 0; i < NUMBER_OF_CHUNK_LOADER_TASKS; i++)
+            BukkitScheduler.runTaskTimerAsynchronously(new ChunkLoader(), 10L, CHUNK_LOAD_PERIOD);
+        BukkitScheduler.runTaskTimerAsynchronously(chunkUnloader = new ChunkUnloader(), 10L, CHUNK_LOAD_PERIOD);
 
         return true;
     }
@@ -162,18 +167,13 @@ public class BlockController extends Service {
     }
 
     public boolean checkForOtherPlayersAndAdministratorBlocks(@NotNull final Location location, long playerId) {
-        long start = System.nanoTime();
-
-        boolean anyMatch = new BlockLocation(location).getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
+        return new BlockLocation(location).getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
             for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
                 if (!protectedBlock.isUndefined() && ((protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && playerId != protectedBlock.getCurrentId())
                         || (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION)))
                     return true;
             return false;
         });
-        LobsterCraft.logger.info("Took us " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
-                "ms to check for other player and administrator blocks on storage.");
-        return anyMatch;
     }
 
     public boolean checkForOtherPlayersBlocks(@NotNull final Location location, long playerId) {
@@ -181,16 +181,6 @@ public class BlockController extends Service {
     }
 
     public boolean checkForOtherPlayersBlocks(@NotNull final BlockLocation blockLocation, long playerId) {
-        long start = System.nanoTime();
-
-        /*
-        Avg: 0.44ms
-        boolean anyMatch = false;
-        for (ChunkLocation chunkLocation : blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE))
-            for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
-                if (protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && !protectedBlock.isUndefined() && playerId != protectedBlock.getCurrentId())
-                    anyMatch = true;*/
-
         /*
          * Actual average: 0.38ms (success) - http://timings.aikar.co/?url=14884599
          * The old method was taking:
@@ -199,15 +189,12 @@ public class BlockController extends Service {
          * ~70ms with one parallel for chunks and for-each for blocks - http://timings.aikar.co/?url=14884464
          *
          */
-        boolean anyMatch = blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
+        return blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
             for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
                 if (protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && !protectedBlock.isUndefined() && playerId != protectedBlock.getCurrentId())
                     return true;
             return false;
         });
-        LobsterCraft.logger.info("Took us " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
-                "ms to check for other player blocks on storage.");
-        return anyMatch;
     }
 
     public boolean checkForAdministratorBlocks(@NotNull final Location location) {
@@ -215,16 +202,12 @@ public class BlockController extends Service {
     }
 
     public boolean checkForAdministratorBlocks(@NotNull final BlockLocation blockLocation) {
-        long start = System.nanoTime();
-        boolean anyMatch = blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
+        return blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
             for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
                 if (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION && !protectedBlock.isUndefined())
                     return true;
             return false;
         });
-        LobsterCraft.logger.info("Took us " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
-                "ms to check for administrator blocks on storage.");
-        return anyMatch;
     }
 
     public boolean loadNearChunks(@NotNull final Location location) {
@@ -288,48 +271,48 @@ public class BlockController extends Service {
 
         @Override
         public void run() {
-            // Ignore empty loading queue
-            if (pendingLoading.isEmpty()) return;
+            // Create queries
+            StringBuilder stringBuilder = new StringBuilder("SELECT * FROM minecraft.world_blocks WHERE (worlds_worldId, chunkX, chunkZ) IN (");
 
-            try {
-                // Prepare connection
-                checkConnection();
-
-                // Create queries
-                StringBuilder stringBuilder = new StringBuilder("SELECT * FROM minecraft.world_blocks WHERE (worlds_worldId, chunkX, chunkZ) IN (");
+            synchronized (pendingLoading) {
+                // Ignore empty loading queue (must be synchronized to the iterator we're using)
+                if (pendingLoading.isEmpty()) return;
 
                 int indexBounds = Math.min(LIMIT_CHUNK_LOAD_SIZE, pendingLoading.size() - 1);
                 int index = 0;
 
-                synchronized (pendingLoading) {
-                    synchronized (loadedLocations) {
-                        // Iterate through all items
-                        Iterator<ChunkLocation> iterator = pendingLoading.iterator();
+                synchronized (loadedLocations) {
+                    // Iterate through all items
+                    Iterator<ChunkLocation> iterator = pendingLoading.iterator();
 
-                        while (iterator.hasNext() && index <= indexBounds) {
-                            ChunkLocation chunkLocation = iterator.next();
+                    while (iterator.hasNext() && index <= indexBounds) {
+                        ChunkLocation chunkLocation = iterator.next();
 
-                            // Append information
-                            stringBuilder
-                                    .append('(')
-                                    .append(chunkLocation.getWorldId()).append(", ")
-                                    .append(chunkLocation.getChunkX()).append(", ")
-                                    .append(chunkLocation.getChunkZ())
-                                    .append(')');
+                        // Append information
+                        stringBuilder
+                                .append('(')
+                                .append(chunkLocation.getWorldId()).append(", ")
+                                .append(chunkLocation.getChunkX()).append(", ")
+                                .append(chunkLocation.getChunkZ())
+                                .append(')');
 
-                            // Check boundaries
-                            if (index < indexBounds) stringBuilder.append(", ");
-                            index++;
+                        // Check boundaries
+                        if (index < indexBounds) stringBuilder.append(", ");
+                        index++;
 
-                            // Add to list of loaded
-                            loadedLocations.add(chunkLocation);
-                            iterator.remove();
-                        }
+                        // Add to list of loaded
+                        loadedLocations.add(chunkLocation);
+                        iterator.remove();
                     }
                 }
 
                 // Close query
                 stringBuilder.append(");");
+            }
+
+            try {
+                // Prepare connection
+                checkConnection();
 
                 // Prepare statement
                 PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
@@ -379,9 +362,10 @@ public class BlockController extends Service {
                 resultSet.close();
                 preparedStatement.close();
 
-                if (blockSize > 0)
-                    LobsterCraft.logger.info("It took " + formatter.format((double) (System.nanoTime() - startTime) / (double) TimeUnit.MILLISECONDS.toNanos(1))
-                            + "ms to search for " + blockSize + " blocks.");
+                double timeTakenMilliseconds = (double) (System.nanoTime() - startTime) / (double) TimeUnit.MILLISECONDS.toNanos(1);
+
+                if (blockSize > 0 && timeTakenMilliseconds > 5.0d)
+                    LobsterCraft.logger.info("It took " + formatter.format(timeTakenMilliseconds) + "ms to search for " + blockSize + " blocks.");
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -486,7 +470,7 @@ public class BlockController extends Service {
 
                     // Close statement
                     stringBuilder.append(';');
-                    LobsterCraft.logger.info("Security: " + stringBuilder.toString());
+                    //LobsterCraft.logger.info("Security: " + stringBuilder.toString());
 
                     // Prepare, execute and close statement
                     PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());
@@ -569,7 +553,7 @@ public class BlockController extends Service {
 
                     // Close statement
                     stringBuilder.append(");");
-                    LobsterCraft.logger.info("Security: " + stringBuilder.toString());
+                    //LobsterCraft.logger.info("Security: " + stringBuilder.toString());
 
                     // Prepare, execute and close statement
                     PreparedStatement preparedStatement = connection.prepareStatement(stringBuilder.toString());

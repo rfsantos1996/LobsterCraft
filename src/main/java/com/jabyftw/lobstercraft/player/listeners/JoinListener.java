@@ -3,12 +3,13 @@ package com.jabyftw.lobstercraft.player.listeners;
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.util.NameChangeEntry;
 import com.jabyftw.lobstercraft.player.util.Permissions;
-import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -17,9 +18,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.NumberConversions;
 
-import java.util.HashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
+import java.util.List;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -41,10 +40,6 @@ import java.util.concurrent.FutureTask;
  */
 public class JoinListener implements Listener {
 
-    private final HashMap<String, FutureTask<PlayerHandler>> profileTaskHolder = new HashMap<>();
-    private final HashMap<String, PlayerHandler> profileHandleHolder = new HashMap<>();
-    private final Object handleHolderLock = new Object();
-
     // Number of players / number of ticks => x players can log in for each ticks (must be a double because it'll be something like 0.08 players/tick
     private final double playersPerTick = (double) LobsterCraft.config.getInt(ConfigValue.LOGIN_LIMITER_NUMBER_OF_PLAYERS.toString()) /
             (LobsterCraft.config.getInt(ConfigValue.LOGIN_LIMITER_PERIOD_OF_TIME.toString()) * 20D);
@@ -55,9 +50,6 @@ public class JoinListener implements Listener {
     @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST) // first thing to do
     public void onAsyncPreLoginLowest(AsyncPlayerPreLoginEvent event) {
         final String playerName = event.getName().toLowerCase();
-
-        // Check for name changes
-        // TODO
 
         // Lets not make the server throw exceptions (it does when logging in just after server start up)
         if (LobsterCraft.getTicksPassed() < 10L) {
@@ -70,13 +62,32 @@ public class JoinListener implements Listener {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_FULL, "§cMuitas pessoas entrando!\n§cTente novamente mais tarde.");
             return;
         }
-        lastPlayerJoinTick = LobsterCraft.getTicksPassed();
 
         // Check if is a valid name
         if (!Util.checkStringCharactersAndLength(playerName, 3, 16)) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§4Seu nome é inválido!\n§cContém caracteres inválidos ou é muito longo/curto.");
             return;
         }
+
+        // Check for banned names
+        if (LobsterCraft.playerHandlerService.blockedNames.contains(event.getName().toLowerCase())) {
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§4Nome inválido.");
+            return;
+        }
+
+        Player onlinePlayer = Bukkit.getPlayer(event.getName());
+        // Check if player is already online
+        if (onlinePlayer != null) {
+            event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "§4Jogador já está online.");
+            return;
+        }
+
+        // Check for name changes
+        for (NameChangeEntry nameChangeEntry : LobsterCraft.playerHandlerService.getNameChangeEntries())
+            if (nameChangeEntry.getOldPlayerName().equalsIgnoreCase(event.getName()) && !nameChangeEntry.isNameAvailable()) {
+                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, "§4Este nome está indisponível!");
+                return;
+            }
 
         // Check if server is full
         Server server = Bukkit.getServer();
@@ -88,57 +99,25 @@ public class JoinListener implements Listener {
                         (!offlinePlayer.isOp() || !LobsterCraft.permission.playerHas(offlinePlayer.getBedSpawnLocation().getWorld().getName(), offlinePlayer, Permissions.JOIN_FULL_SERVER))
                 )) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_FULL, "§4Servidor lotado!\n§cAguarde alguns segundos e tente novamente.");
-            return;
         }
 
         // Check if player is (temporary)banned
         // TODO
-
-        // Request player profile asynchronously
-        FutureTask<PlayerHandler> task = LobsterCraft.playerHandlerService.requestProfile(playerName);
-        BukkitScheduler.runTaskAsynchronously(task::run);
-        profileTaskHolder.put(playerName, task);
-    }
-
-    @EventHandler(ignoreCancelled = false, priority = EventPriority.HIGHEST)
-    public void onAsyncPreLoginHighest(AsyncPlayerPreLoginEvent event) {
-        final String playerName = event.getName().toLowerCase();
-
-        // Await player handler to be received from MySQL
-        synchronized (handleHolderLock) {
-            if (profileTaskHolder.containsKey(playerName))
-                try {
-                    profileHandleHolder.put(playerName, profileTaskHolder.remove(playerName).get());
-                } catch (InterruptedException | ExecutionException | NullPointerException e) { // NullPointerException => caused by profile not being on the list
-                    e.printStackTrace();
-                    // This makes me use Highest instead of Monitor
-                    event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "§4Falha no banco de dados.\n§cTente novamente mais tarde.");
-                }
-            else if (event.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED)
-                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "§4Falha no code flow.\n§cTente novamente mais tarde.");
-        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
-        PlayerHandler playerHandler;
-        synchronized (handleHolderLock) {
-            // Remove player from PlayerHandler holder
-            playerHandler = profileHandleHolder.remove(event.getPlayer().getName().toLowerCase());
-        }
-
-        // Check if we're safe
-        if (playerHandler == null) {
-            event.getPlayer().kickPlayer("§4Falha ao detectar perfil de jogador.\n§cTente novamente mais tarde.");
-            return;
-        }
+        // Create PlayerHandler instance (it will, by itself, be stored)
+        new PlayerHandler(LobsterCraft.playerHandlerService.getOfflinePlayer(event.getPlayer().getName()), event.getPlayer());
 
         // Remove join message => it'll be broadcast when signed in
         event.setJoinMessage("");
-
-        // Initialize player handle
-        playerHandler.initialize(event.getPlayer());
+        lastPlayerJoinTick = LobsterCraft.getTicksPassed();
     }
+
+    /*
+     * Note: Quit event is called after kick event, therefore there is no need to listen to Kick events
+     */
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerQuitHighest(PlayerQuitEvent event) {

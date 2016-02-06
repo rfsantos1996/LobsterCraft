@@ -89,10 +89,6 @@ public class ProtectionListener implements Listener {
 
         // Ignore administrator build mode players
         if (playerHandler.getProtectionType() != ProtectionType.ADMIN_PROTECTION)
-            /*
-             * Average: ~0.41ms (same thing) - http://timings.aikar.co/?url=14884622
-              * Using this method (that doesn't need to check ALL chunks to get to a result will be faster on a real running server)
-             */
             if (LobsterCraft.blockController.checkForOtherPlayersAndAdministratorBlocks(location, playerHandler.getPlayerId())) {
                 // Warn player, return false
                 playerHandler.getConditionController().sendMessageIfConditionReady(
@@ -101,24 +97,6 @@ public class ProtectionListener implements Listener {
                 );
                 return false;
             }
-
-            /*// Average: ~0.43ms - http://timings.aikar.co/?url=14884662
-            if (LobsterCraft.blockController.checkForAdministratorBlocks(location)) {
-                // Warn player, return false
-                playerHandler.getConditionController().sendMessageIfConditionReady(
-                        ConditionController.Condition.PROTECTION_ADMINISTRATOR_BLOCKS,
-                        "§cExistem blocos protegidos por administradores por perto."
-                );
-                return false;
-            }
-            if (LobsterCraft.blockController.checkForOtherPlayersBlocks(location, playerHandler.getPlayerId())) {
-                // Warn player, return false
-                playerHandler.getConditionController().sendMessageIfConditionReady(
-                        ConditionController.Condition.PROTECTION_PLAYER_BLOCKS,
-                        "§cExistem blocos de outro jogador por perto."
-                );
-                return false;
-            }*/
 
         return true;
     }

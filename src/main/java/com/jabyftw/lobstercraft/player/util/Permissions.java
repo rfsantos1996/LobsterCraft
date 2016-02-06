@@ -23,11 +23,13 @@ public abstract class Permissions {
     public static final String
             JOIN_VANISHED = "lobstercraft.join.join_vanished",
             JOIN_FULL_SERVER = "lobstercraft.join.join_full_server",
+            JOIN_CHANGE_USERNAME = "lobstercraft.join.change_username",
 
     PROTECTION_ADMINISTRATOR_BUILD_MODE = "lobstercraft.protection.constructor_build_mode",
             PROTECTION_CREATE_ADMINISTRATOR_BUILDINGS = "lobstercraft.protection.create_buildings",
 
     CHAT_MUTE = "lobstercraft.chat.mute",
+            CHAT_ADMIN_MUTE = "lobstercraft.chat.administrator_mute",
             CHAT_MUTE_EXCEPTION = "lobstercraft.chat.mute.exception",
             CHAT_WHISPER = "lobstercraft.chat.whisper",
 

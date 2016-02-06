@@ -331,4 +331,15 @@ public abstract class Util {
                 "z=" + location.getBlockZ() + ", " +
                 "world=" + location.getWorld().getName();
     }
+
+    public static String retrieveMessage(String... strings) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        // Append all words
+        for (String string : strings)
+            stringBuilder.append(string).append(' ');
+
+        // Return final string
+        return stringBuilder.toString();
+    }
 }

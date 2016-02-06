@@ -86,6 +86,12 @@ public enum ArgumentType {
             return READ_ME.getPlayerThatMatches(string);
         }
     },
+    OFFLINE_PLAYER_NAME(READ_ME.OFFLINE_PLAYER_CLASS) {
+        @Override
+        protected Object isPossible(CommandSender commandSender, String string) {
+            return READ_ME.getOfflinePlayerThatMatches(string);
+        }
+    },
     PLAYER_IP(String.class) {
         @Override
         protected Object isPossible(CommandSender commandSender, String string) {

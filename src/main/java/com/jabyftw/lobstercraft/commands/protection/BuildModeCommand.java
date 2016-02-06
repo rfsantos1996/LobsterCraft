@@ -131,7 +131,7 @@ public class BuildModeCommand extends CommandExecutor {
         // Check if is a valid construction
         if (constructionId == null) {
             // Warn player
-            playerHandler.sendMessage("§cNão foi possível encontrar a construção §6" + arguments[0].toLowerCase() + "§c. Use §6/buildmode list");
+            playerHandler.sendMessage("§4Não foi possível encontrar a construção.§c Use §6/buildmode list");
         } else {
             // Set up administrator mode with desired constructionId
             playerHandler.setBuildMode(new AdministratorBuildMode(constructionId));
@@ -146,7 +146,7 @@ public class BuildModeCommand extends CommandExecutor {
 
             // Check if it is a valid name
             if (!Util.checkStringCharactersAndLength(constructionName, 3, 45)) {
-                sender.sendMessage("§cNome inválido! Deve conter entre 3 e 45 letras sem espaços.");
+                sender.sendMessage("§cNome inválido! Deve conter entre 3 e 45 letras, sem espaços.");
                 return HandleResponse.RETURN_TRUE;
             }
 
@@ -199,7 +199,7 @@ public class BuildModeCommand extends CommandExecutor {
 
         // Check if there are constructions
         if (constructionSet.isEmpty()) {
-            sender.sendMessage("§cNão há construções criadas!");
+            sender.sendMessage("§cAinda não há nenhuma construção disponível!");
             return HandleResponse.RETURN_TRUE;
         }
 

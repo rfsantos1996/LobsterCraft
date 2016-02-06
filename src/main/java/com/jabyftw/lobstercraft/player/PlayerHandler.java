@@ -10,6 +10,7 @@ import com.jabyftw.lobstercraft.world.util.ProtectionType;
 import com.jabyftw.lobstercraft.world.util.location_util.OreBlockLocation;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
+import net.milkbowl.vault.permission.Permission;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -21,7 +22,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import java.security.NoSuchAlgorithmException;
-import java.sql.*;
+import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,97 +56,31 @@ public class PlayerHandler {
     private final LinkedList<OreBlockLocation> oreLocationHistory = new LinkedList<>();
     private final ConditionController conditionController = new ConditionController(this);
 
-    // Database information // TODO make it volatile since it'll be worked on at least 2 different threads but only atomic read/write (I believe)
-    private long playerId = UNDEFINED_PLAYER;
-    private volatile String playerName;
-    private volatile String password = null;
-    private long lastTimeOnline = 0;
-    private long playTime = 0;
-    private String lastIp = null;
+    private final OfflinePlayerHandler offlinePlayer;
 
     private Player player;
     private PlayerState preLoginState = null, gamemodeState = null;
     private BuildMode buildMode = BuildMode.DEFAULT;
     private TeleportBuilder.Teleport pendingTeleport;
     private volatile CommandSender lastWhisper = null;
-    private volatile DatabaseState databaseState = DatabaseState.NOT_ON_DATABASE;
     private boolean loggedIn = false;
     private boolean godMode = false;
     private long loginTime; // Used to calculate playerTime
 
-    /**
-     * Constructor for generation of a new player
-     *
-     * @param playerName logging in player's name
-     */
-    public PlayerHandler(@NotNull final String playerName) {
-        this.playerName = playerName.toLowerCase();
-    }
+    public PlayerHandler(@NotNull final OfflinePlayerHandler offlinePlayer, @NotNull final Player player) {
+        this.offlinePlayer = offlinePlayer;
 
-    public PlayerHandler(final long playerId, @NotNull final String playerName, @NotNull final String password, final long lastTimeOnline, final long playTime, @NotNull final String lastIp) {
-        this.playerId = playerId;
-        this.playerName = playerName.toLowerCase();
-        this.password = password;
-        this.lastTimeOnline = lastTimeOnline;
-        this.playTime = playTime;
-        this.lastIp = lastIp;
-        this.databaseState = DatabaseState.ON_DATABASE;
-    }
-
-    /*
-     * Configuration methods
-     */
-
-    public static long savePlayerHandle(@NotNull final Connection connection, @NotNull PlayerHandler playerHandler) throws SQLException {
-        boolean insertPlayer = playerHandler.databaseState == DatabaseState.INSERT_TO_DATABASE;
-
-        // Prepare statement
-        PreparedStatement preparedStatement;
-        if (insertPlayer)
-            preparedStatement = connection.prepareStatement(
-                    "INSERT INTO `minecraft`.`user_profiles` (`playerName`, `password`, `lastTimeOnline`, `playTime`, `lastIp`) VALUES (?, ?, ?, ?, ?);",
-                    Statement.RETURN_GENERATED_KEYS
-            );
-        else
-            preparedStatement = connection.prepareStatement(
-                    "UPDATE `minecraft`.`user_profiles` SET `playerName` = ?, `password` = ?, `lastTimeOnline` = ?, `playTime` = ?, `lastIp` = ? WHERE `playerId` = ?;"
-            );
-
-        // Set up variables accordingly to the statement executed
-        preparedStatement.setString(1, playerHandler.getPlayerName().toLowerCase()); // Lower case it just to make sure
-        preparedStatement.setString(2, playerHandler.password);
-        preparedStatement.setLong(3, playerHandler.getLastTimeOnline());
-        preparedStatement.setLong(4, playerHandler.getPlayTime());
-        preparedStatement.setString(5, playerHandler.getLastIp());
-        if (!insertPlayer) preparedStatement.setLong(6, playerHandler.getPlayerId());
-
-        // Execute statement
-        preparedStatement.execute();
-        playerHandler.databaseState = DatabaseState.ON_DATABASE;
-
-        // Store playerId for return
-        long playerId = playerHandler.playerId;
-
-        if (insertPlayer) {
-            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
-            if (generatedKeys.next())
-                playerId = generatedKeys.getLong("playerId");
-            else throw new IllegalStateException("There wasn't returned any generated key!");
-        }
-
-        // Close statement
-        preparedStatement.close();
-
-        return playerId;
-    }
-
-    public void initialize(@NotNull Player player) {
         // Check if player name matches
-        if (!player.getName().equalsIgnoreCase(playerName))
-            throw new IllegalArgumentException("Player isn't owner of this PlayerHandler (" + playerName + ")");
+        if (!player.getName().equalsIgnoreCase(offlinePlayer.getPlayerName()))
+            throw new IllegalArgumentException("Player isn't owner of this PlayerHandler (" + offlinePlayer.getPlayerName() + ")");
+
+        // Check if OfflinePlayer already have been assigned before
+        if (this.offlinePlayer.playerHandler != null)
+            throw new IllegalArgumentException("OfflinePlayerHandler has already a PlayerHandler instance (" + offlinePlayer.getPlayerName() + ")");
 
         // Set player instance
         this.player = player;
+        this.offlinePlayer.playerHandler = this;
 
         // Update display name
         player.setDisplayName(ChatColor.translateAlternateColorCodes('&', LobsterCraft.chat.getPlayerPrefix(player) + player.getName() + LobsterCraft.chat.getPlayerSuffix(player)));
@@ -189,59 +124,27 @@ public class PlayerHandler {
             setGameMode(GameMode.SURVIVAL);
 
             // Save lastTimeOnline and timeOnline
-            this.lastTimeOnline = System.currentTimeMillis();
-            this.playTime += Math.abs(System.currentTimeMillis() - loginTime);
+            offlinePlayer.setLastTimeOnline(System.currentTimeMillis());
+            offlinePlayer.addPlayTime(Math.abs(System.currentTimeMillis() - loginTime));
 
             // Set as not logged in
             this.loggedIn = false;
-
-            // Make it save the profile (since it logged in)
-            setAsModified();
         }
 
         // Queue saving all profiles since player is registered
-        if (isRegistered()) {
+        if (isRegistered())
             synchronized (playerProfiles) {
                 // Clear all profiles and store them
                 playerProfiles.forEach(((profileType, profile) -> profile.destroyProfile()));
-                LobsterCraft.profileService.storeProfiles(playerId, playerProfiles.values());
+                LobsterCraft.profileService.storeProfiles(getPlayerId(), playerProfiles.values());
                 playerProfiles.clear();
             }
-
-            // Store instance on PlayerHandlerServices in case player re-logs in (it depends whenever player was registered => it'll store password)
-            LobsterCraft.playerHandlerService.storeProfile(this);
-        }
 
         // Save player data
         player.saveData();
 
         // Remove from player list, lastly
         LobsterCraft.playerHandlerService.playerHandlers.remove(player, this);
-    }
-
-    public boolean setGameMode(GameMode gameMode) {
-        // Do nothing if we're changing to he same gamemode
-        if (gameMode == player.getGameMode()) return false;
-
-        // Restore player's last state
-        if (gamemodeState != null) {
-            // Clear current inventory
-            player.getInventory().clear();
-            // Restore player inventory and state
-            gamemodeState.restorePlayerState();
-            gamemodeState = null;
-        }
-
-        // If isn't going to change to survival
-        if (gameMode != GameMode.SURVIVAL) {
-            // Store player's current state (after restoring the past one, if necessary)
-            gamemodeState = new PlayerState(this);
-            gamemodeState.clearPlayer();
-        }
-
-        // Finally, update its game mode
-        player.setGameMode(gameMode);
-        return true;
     }
 
     /**
@@ -264,20 +167,19 @@ public class PlayerHandler {
         }
 
         // Set variables for register
-        this.password = encryptedPassword;
-        this.lastIp = player.getAddress().getAddress().getHostAddress(); // this was null (updated on forceLogin(), only)
-        setAsModified();
+        offlinePlayer.setPassword(encryptedPassword);
+        offlinePlayer.setLastIp(player.getAddress().getAddress().getHostAddress()); // this was null (updated on forceLogin(), only)
 
         // Save profile, retrieve playerId
         try {
-            playerId = savePlayerHandle(LobsterCraft.dataSource.getConnection(), this); // others will be set as 0, but that's okay
+            offlinePlayer.registerPlayerId();
         } catch (SQLException e) {
             e.printStackTrace();
             return LoginResponse.ERROR_OCCURRED;
         }
 
         // Assure playerId is greater than 0
-        if (playerId < 0) return LoginResponse.ERROR_OCCURRED;
+        if (getPlayerId() < 0) return LoginResponse.ERROR_OCCURRED;
 
         return forceLogin();
     }
@@ -302,7 +204,7 @@ public class PlayerHandler {
         }
 
         // Check if passwords match
-        if (!this.password.equals(encryptedPassword))
+        if (!offlinePlayer.getPassword().equals(encryptedPassword))
             return LoginResponse.PASSWORD_DO_NOT_MATCH;
 
         return forceLogin();
@@ -315,7 +217,7 @@ public class PlayerHandler {
      */
     public LoginResponse forceLogin() {
         // Fetch all profiles
-        FutureTask<Set<Profile>> retrieveProfiles = LobsterCraft.profileService.retrieveProfiles(playerId);
+        FutureTask<Set<Profile>> retrieveProfiles = LobsterCraft.profileService.retrieveProfiles(getPlayerId());
         retrieveProfiles.run();
 
         // Apply all profiles, if execution went right; return error otherwise
@@ -337,7 +239,7 @@ public class PlayerHandler {
                 }
 
                 // Update login time and player's last IP
-                this.lastIp = player.getAddress().getAddress().getHostAddress();
+                offlinePlayer.setLastIp(player.getAddress().getAddress().getHostAddress());
                 this.loginTime = System.currentTimeMillis();
 
                 // Set as logged in
@@ -386,29 +288,68 @@ public class PlayerHandler {
         }
 
         // Check if encrypted password matched
-        if (!this.password.equals(encryptedPassword))
+        if (!offlinePlayer.getPassword().equals(encryptedPassword))
             return ChangeNameResponse.WRONG_PASSWORD;
 
-        // TODO change on Lobstercraft.permissions the group of the user to the next player name and remove the current
-        // TODO check if player can change name (time since last change)
-        // TODO check if player name is available
-        // TODO banned names list
-        // TODO change the player's name
-        // TODO the kick will be on the command => playerName must be updated on database, profile must be stored on queue with the new name
+        // Make sure new player can log in with this name
+        if (LobsterCraft.playerHandlerService.blockedNames.contains(newPlayerName.toLowerCase()) || Util.checkStringCharactersAndLength(newPlayerName, 3, 16))
+            return ChangeNameResponse.PLAYER_NAME_NOT_VALID;
 
-        // TODO make and move Response down
+        {
+            NameChangeEntry nameChangeEntry = LobsterCraft.playerHandlerService.getNameChangeEntry(getPlayerId());
+
+            // Check if player can change name
+            if (nameChangeEntry != null && !nameChangeEntry.canPlayerChangeUsername())
+                return ChangeNameResponse.CANT_CHANGE_NAME_YET;
+            // Player can restore its name after a change because we do not check if username is available when using his NameChangeEntry
+        }
+
+        // Check if name is already available
+        for (NameChangeEntry nameChangeEntry : LobsterCraft.playerHandlerService.getNameChangeEntries()) {
+            // If another player owned the name and it is this name
+            if (nameChangeEntry.getPlayerId() != getPlayerId() && nameChangeEntry.getOldPlayerName().equalsIgnoreCase(newPlayerName)) { // If it is this name
+                // If name isn't available
+                if (!nameChangeEntry.isNameAvailable())
+                    return ChangeNameResponse.PLAYER_NAME_NOT_AVAILABLE;
+            }
+        }
+
+        {
+            OfflinePlayerHandler offlinePlayer = LobsterCraft.playerHandlerService.getOfflinePlayer(newPlayerName);
+            // Check if player is registered (there's a player that have the same name using it)
+            if (offlinePlayer.isRegistered())
+                return ChangeNameResponse.PLAYER_NAME_NOT_AVAILABLE;
+        }
+
+        try {
+            // Insert NameChangeEntry on database
+            NameChangeEntry nameChangeEntry = LobsterCraft.playerHandlerService.getNameChangeEntry(getPlayerId());
+            NameChangeEntry.saveNameChangeEntry(nameChangeEntry == null, nameChangeEntry == null ? new NameChangeEntry(offlinePlayer) : nameChangeEntry.setOldPlayerName(offlinePlayer.getPlayerName()));
+
+            // Update playerName (this will update OfflineProfiles map
+            offlinePlayer.setPlayerName(newPlayerName);
+
+            Permission permission = LobsterCraft.permission;
+            String primaryGroup = permission.getPrimaryGroup(player);
+
+            // Remove player from group and add new player to the group
+            permission.playerRemoveGroup(player, primaryGroup);
+            //noinspection deprecation
+            permission.playerAddGroup(player.getWorld().getName(), Bukkit.getOfflinePlayer(newPlayerName), primaryGroup);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ChangeNameResponse.ERROR_OCCURRED;
+        }
+
+        BukkitScheduler.runTask(() -> player.kickPlayer("§6Seu nome foi alterado!\n§6Entre com o outro usuário."));
         return ChangeNameResponse.SUCCESSFULLY_CHANGED;
     }
-
-    /*
-     * Runtime commands
-     */
 
     public ChangePasswordResponse changePlayerPassword(@NotNull final String oldPassword, @NotNull final String newPassword) {
         String encryptedPassword;
         try {
             // Check if the old password corresponds to the new one
-            if (!Util.encryptString(oldPassword).equals(this.password))
+            if (!Util.encryptString(oldPassword).equals(offlinePlayer.getPassword()))
                 return ChangePasswordResponse.WRONG_OLD_PASSWORD;
 
             // Encrypt new password
@@ -419,7 +360,7 @@ public class PlayerHandler {
         }
 
         // Change password
-        this.password = encryptedPassword;
+        offlinePlayer.setPassword(encryptedPassword);
         return ChangePasswordResponse.SUCCESSFULLY_CHANGED;
     }
 
@@ -429,24 +370,28 @@ public class PlayerHandler {
         return (T) profileClass.cast(playerProfiles.get(profileType));
     }
 
-    /*
-     * Simple getters and setters
-     */
+    public OfflinePlayerHandler getOfflinePlayer() {
+        return offlinePlayer;
+    }
 
-    public void sendMessage(@NotNull final String message) {
-        player.sendMessage(message);
+    public String getPlayerName() {
+        return offlinePlayer.getPlayerName();
+    }
+
+    public long getPlayerId() {
+        return offlinePlayer.getPlayerId();
+    }
+
+    public DatabaseState getDatabaseState() {
+        return offlinePlayer.getDatabaseState();
+    }
+
+    public boolean isRegistered() {
+        return offlinePlayer.isRegistered();
     }
 
     public Player getPlayer() {
         return player;
-    }
-
-    public String getPlayerName() {
-        return playerName;
-    }
-
-    public String getLastIp() {
-        return lastIp;
     }
 
     public boolean isLoggedIn() {
@@ -466,11 +411,11 @@ public class PlayerHandler {
     }
 
     public long getBuildModeId() {
-        return buildMode.getType() == ProtectionType.ADMIN_PROTECTION ? ((AdministratorBuildMode) buildMode).getConstructionId() : playerId;
+        return buildMode.getType() == ProtectionType.ADMIN_PROTECTION ? ((AdministratorBuildMode) buildMode).getConstructionId() : getPlayerId();
     }
 
-    public boolean isRegistered() {
-        return this.password != null && playerId >= 0;
+    public void sendMessage(@NotNull final String message) {
+        player.sendMessage(message);
     }
 
     public boolean isInvisible() {
@@ -510,20 +455,33 @@ public class PlayerHandler {
         return isLoggedIn() && !isInvisible() && !isGodMode();
     }
 
+    public boolean setGameMode(GameMode gameMode) {
+        // Do nothing if we're changing to he same gamemode
+        if (gameMode == player.getGameMode()) return false;
+
+        // Restore player's last state
+        if (gamemodeState != null) {
+            // Clear current inventory
+            player.getInventory().clear();
+            // Restore player inventory and state
+            gamemodeState.restorePlayerState();
+            gamemodeState = null;
+        }
+
+        // If isn't going to change to survival
+        if (gameMode != GameMode.SURVIVAL) {
+            // Store player's current state (after restoring the past one, if necessary)
+            gamemodeState = new PlayerState(this);
+            gamemodeState.clearPlayer();
+        }
+
+        // Finally, update its game mode
+        player.setGameMode(gameMode);
+        return true;
+    }
+
     public ConditionController getConditionController() {
         return conditionController;
-    }
-
-    public long getPlayerId() {
-        return playerId;
-    }
-
-    public long getLastTimeOnline() {
-        return lastTimeOnline;
-    }
-
-    public long getPlayTime() {
-        return playTime;
     }
 
     public TeleportBuilder.Teleport getPendingTeleport() {
@@ -534,25 +492,9 @@ public class PlayerHandler {
         this.pendingTeleport = pendingTeleport;
     }
 
-    public DatabaseState getDatabaseState() {
-        return databaseState;
-    }
-
     public LinkedList<OreBlockLocation> getOreLocationHistory() {
         return oreLocationHistory;
     }
-
-    protected void setAsModified() {
-        if (databaseState == DatabaseState.NOT_ON_DATABASE)
-            databaseState = DatabaseState.INSERT_TO_DATABASE;
-        if (databaseState == DatabaseState.ON_DATABASE)
-            databaseState = DatabaseState.UPDATE_DATABASE;
-        // If is DELETE_DATABASE | INSERT_DATABASE | UPDATE_DATABASE, continue DELETE_DATABASE | INSERT_DATABASE | UPDATE_DATABASE
-    }
-
-    /*
-     * Equality stuff
-     */
 
     @Override
     public boolean equals(Object obj) {
@@ -569,39 +511,41 @@ public class PlayerHandler {
      */
     @Override
     public int hashCode() {
+        // TODO check this when offline player
         HashCodeBuilder hashCodeBuilder = new HashCodeBuilder(7, 17);
         if (!isLoggedIn())
-            hashCodeBuilder.append(playerName);
+            hashCodeBuilder.append(getPlayerName());
         else if (isRegistered())
-            hashCodeBuilder.append(playerId);
+            hashCodeBuilder.append(getPlayerId());
         else
             throw new IllegalStateException("Player is logged in without playerId");
         return hashCodeBuilder.toHashCode();
     }
 
-    /*
-     * Some extra classes
-     */
 
     public enum ChangeNameResponse {
         SUCCESSFULLY_CHANGED,
+        CANT_CHANGE_NAME_YET,
+        PLAYER_NAME_NOT_VALID,
         PLAYER_NAME_NOT_AVAILABLE,
         WRONG_PASSWORD,
         NOT_REGISTERED,
-        ERROR_OCCURRED
+        ERROR_OCCURRED;
     }
+
 
     public enum ChangePasswordResponse {
         SUCCESSFULLY_CHANGED,
         WRONG_OLD_PASSWORD,
-        ERROR_OCCURRED
+        ERROR_OCCURRED;
     }
+
 
     public enum LoginResponse {
         SUCCESSFULLY_LOGGED_IN,
         PASSWORD_DO_NOT_MATCH,
         ALREADY_REGISTERED,
         NOT_REGISTERED,
-        ERROR_OCCURRED
+        ERROR_OCCURRED;
     }
 }

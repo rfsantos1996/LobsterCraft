@@ -1,19 +1,29 @@
-* changename command and structure
 * ban records and commands
 * City commands and protection
-* Inventory manipulation for stores, city options etc
-* Money structure (fixed amount of money, how to determinate who gets the amount?)
+* Inventory manipulation for stores, city options etc {
+    inventory manipulation for player and mayor options
+    cities will be how players build something together
+    must include simple community constructions (villages) to well-separated structures of a city
+    advanced cities:
+        city mayor (will control city options for constructors, residents) ->
+        city structure (structure and homes, city buildings, city building storage for construction) ->
+        economy for the city (taxes, income, automatic item buy for city building storage) ->
+        stores (city-shared storage)
+    with each updates, more homes allowed with more structure blocks allowed
+}
+* Money structure {
+    fixed amount of money
+    how to determinate who/how/when gets the amount?
+}
 
++ OfflinePlayer structure (base of PlayerHandler, possible for commands like /ban, /mute, /unmute etc) {
+    playerName, playerId
+    store on startup
+    use this to check for playersId on JoinListener (PlayerHandleService)
+}
++ changename command and structure
 + Chat structure and commands
 + Test top command (same out of bounds exception - I may not have the latest build)
 + Fire spread fix
 + BlockIgniteEvent
 + /bm delete
-
-- Test //undo not removing blocks (partially checked)
-- Change protection stick to a block, or change how stuff works so I can know the block facing
-- Fix same chunk being loaded and the reason to it (entity spawn, probably) (checked, ok)
-- Player time fix (checked, ok)
-- Test explosions on player and admin protected  (checked, ok)
-- Prevent hostile mobs in admin protected areas (must check on spawn and, sadly, deny spawn until loaded) (check, ok)
-- Remove gamemode when quit, store survival information (check, ok)

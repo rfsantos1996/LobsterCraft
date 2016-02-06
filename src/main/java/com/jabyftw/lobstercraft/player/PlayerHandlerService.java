@@ -6,7 +6,8 @@ import com.jabyftw.lobstercraft.player.listeners.CustomEventsListener;
 import com.jabyftw.lobstercraft.player.listeners.JoinListener;
 import com.jabyftw.lobstercraft.player.listeners.LoginListener;
 import com.jabyftw.lobstercraft.player.listeners.TeleportListener;
-import com.jabyftw.lobstercraft.util.BukkitScheduler;
+import com.jabyftw.lobstercraft.player.util.NameChangeEntry;
+import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Service;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.Bukkit;
@@ -17,12 +18,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.text.DecimalFormat;
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,12 +48,10 @@ public class PlayerHandlerService extends Service {
 
     // OBS: must be Concurrent as it is used on several different threads
     protected final ConcurrentHashMap<Player, PlayerHandler> playerHandlers = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<String, OfflinePlayerHandler> offlinePlayers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, NameChangeEntry> nameChangeEntries = new ConcurrentHashMap<>();
 
-    // Used for stored profiles (in case player re-logs in)
-    private final HashMap<String, PlayerStorage> playerHandlerStorage = new HashMap<>();
-    private final Object storageLock = new Object();
-    private Connection connection;
-    private PlayerHandlerUnloader playerHandlerUnloader;
+    public final List<String> blockedNames = LobsterCraft.config.getStringList(ConfigValue.LOGIN_BLOCKED_PLAYER_NAMES.toString());
 
     @Override
     public boolean onEnable() {
@@ -64,26 +63,28 @@ public class PlayerHandlerService extends Service {
             pluginManager.registerEvents(new CustomEventsListener(), LobsterCraft.lobsterCraft); // handles custom events
         }
 
-        BukkitScheduler.runTaskTimerAsynchronously(
-                playerHandlerUnloader = new PlayerHandlerUnloader(),
-                0,
-                LobsterCraft.config.getLong(ConfigValue.LOGIN_PROFILE_SAVING_PERIOD.toString()) // ticks
-        );
-        return true;
-    }
+        try {
+            // Retrieve connection
+            Connection connection = LobsterCraft.dataSource.getConnection();
 
-    private boolean needUnloading() {
-        boolean needUnloading;
-        synchronized (storageLock) {
-            needUnloading = !playerHandlerStorage.isEmpty();
+            cacheOfflinePlayers(connection);
+            cachePlayerNameChanges(connection);
+
+            connection.close();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
         }
-        return needUnloading;
     }
 
     @Override
     public void onDisable() {
-        while (needUnloading())
-            playerHandlerUnloader.run();
+        try {
+            saveChangedPlayers();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public Set<PlayerHandler> getOnlinePlayers() {
@@ -119,131 +120,132 @@ public class PlayerHandlerService extends Service {
         return playerHandler.isLoggedIn() ? playerHandler : null;
     }
 
-    private void checkConnection() throws SQLException {
-        boolean connectionInvalid = false;
-        // Create connection if it is dead or something
-        if (connection == null || (connectionInvalid = !connection.isValid(1))) {
-            if (connectionInvalid) connection.close();
-            connection = LobsterCraft.dataSource.getConnection();
-        }
+    public OfflinePlayerHandler getOfflinePlayer(String playerName) {
+        OfflinePlayerHandler offlinePlayerHandler = new OfflinePlayerHandler(playerName.toLowerCase());
+        OfflinePlayerHandler currentValue = offlinePlayers.putIfAbsent(playerName.toLowerCase(), offlinePlayerHandler);
+
+        return currentValue == null ? offlinePlayerHandler : currentValue;
     }
 
-    public void storeProfile(@NotNull PlayerHandler playerHandler) {
-        synchronized (storageLock) {
-            playerHandlerStorage.put(playerHandler.getPlayerName(), new PlayerStorage(playerHandler)); // This will store changed player names (success, I guess, I do not need a work-around for this)
-        }
+    public OfflinePlayerHandler getOfflinePlayer(long playerId) {
+        if (playerId < 0) throw new IllegalArgumentException("PlayerId can't be less than zero.");
+
+        for (OfflinePlayerHandler playerHandler : offlinePlayers.values())
+            if (playerHandler.getPlayerId() == playerId)
+                return playerHandler;
+
+        return null;
     }
 
-    /**
-     * Get PlayerHandler instance according to the newest instance: database or waitingQueue (where players are stored in case they re-log in)
-     *
-     * @param profileName the requested profile's name
-     * @return a future task that will return the desired PlayerHandler instance
-     */
-    public FutureTask<PlayerHandler> requestProfile(@NotNull final String profileName) {
-        return new FutureTask<>(() -> {
-            String lowerCasedName = profileName.toLowerCase();
+    public NameChangeEntry getNameChangeEntry(long playerId) {
+        return nameChangeEntries.get(playerId);
+    }
 
-            synchronized (storageLock) {
-                // Check if player was on storage
-                if (playerHandlerStorage.containsKey(lowerCasedName))
-                    //LobsterCraft.logger.info("Getting stored player handler => " + playerHandler.getDatabaseState().name());
-                    return playerHandlerStorage.remove(lowerCasedName).playerHandler;
+    public Collection<NameChangeEntry> getNameChangeEntries() {
+        return nameChangeEntries.values();
+    }
+
+    private void saveChangedPlayers() throws SQLException {
+        long start = System.nanoTime();
+        long numberOfPlayersUpdated = 0;
+
+        // Retrieve connection
+        Connection connection = LobsterCraft.dataSource.getConnection();
+
+        // Prepare statement
+        PreparedStatement preparedStatement = connection.prepareStatement(
+                "UPDATE `minecraft`.`user_profiles` SET `playerName` = ?, `password` = ?, `lastTimeOnline` = ?, `playTime` = ?, `lastIp` = ? WHERE `playerId` = ?;"
+        );
+
+        // Iterate through all players
+        for (OfflinePlayerHandler playerHandler : offlinePlayers.values())
+            // Filter the ones needing updates
+            if (playerHandler.getDatabaseState() == DatabaseState.UPDATE_DATABASE) {
+                preparedStatement.setString(1, playerHandler.getPlayerName());
+                preparedStatement.setString(2, playerHandler.getPassword());
+                preparedStatement.setLong(3, playerHandler.getLastTimeOnline());
+                preparedStatement.setLong(4, playerHandler.getPlayTime());
+                preparedStatement.setString(5, playerHandler.getLastIp());
+                preparedStatement.setLong(6, playerHandler.getPlayerId());
+
+                // Add batch
+                preparedStatement.addBatch();
+
+                // Update their database state
+                playerHandler.setDatabaseState(DatabaseState.ON_DATABASE);
+                numberOfPlayersUpdated++;
             }
 
-            // Else, search player on database
-            PlayerHandler playerHandler = null;
-            try {
-                // Make the connection if non-valid
-                checkConnection();
+        // Execute and close statement
+        if (numberOfPlayersUpdated > 0)
+            preparedStatement.executeBatch();
+        preparedStatement.close();
 
-                // Prepare statement
-                PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM minecraft.user_profiles WHERE playerName=? LIMIT 0, 1;");
-                preparedStatement.setString(1, lowerCasedName);
+        // Close connection
+        connection.close();
 
-                // Execute statement
-                ResultSet resultSet = preparedStatement.executeQuery();
+        if (numberOfPlayersUpdated > 0)
+            LobsterCraft.logger.info("Took us " + new DecimalFormat("0.000").format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
+                    "ms to update " + numberOfPlayersUpdated + " players.");
+    }
 
-                if (resultSet.next()) {
-                    String playerName = resultSet.getString("playerName");
+    private void cacheOfflinePlayers(@NotNull final Connection connection) throws SQLException {
+        long start = System.nanoTime();
 
-                    // Create player handler
-                    playerHandler = new PlayerHandler(
+        // Prepare statement
+        PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM minecraft.user_profiles;");
+
+        // Execute query
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // Iterate through all results
+        while (resultSet.next()) {
+            String playerName = resultSet.getString("playerName").toLowerCase();
+
+            offlinePlayers.put(
+                    playerName,
+                    new OfflinePlayerHandler(
                             resultSet.getLong("playerId"),
                             playerName,
                             resultSet.getString("password"),
                             resultSet.getLong("lastTimeOnline"),
                             resultSet.getLong("playTime"),
                             resultSet.getString("lastIp")
-                    );
-                    //LobsterCraft.logger.info("Jogador no banco de dados: " + lowerCasedName);
-                } else {
-                    playerHandler = new PlayerHandler(lowerCasedName);
-                    //LobsterCraft.logger.info("Novo jogador: " + lowerCasedName + " (database não contém)");
-                }
-
-                // Close everything except connection
-                resultSet.close();
-                preparedStatement.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-
-            return playerHandler;
-        });
-    }
-
-    private class PlayerHandlerUnloader implements Runnable {
-
-        private final long TIME_TO_SAVE_PROFILES = TimeUnit.SECONDS.toMillis(LobsterCraft.config.getLong(ConfigValue.LOGIN_PROFILE_SAVING_TIMEOUT.toString()));
-
-        @Override
-        public void run() {
-            synchronized (storageLock) {
-                if (!playerHandlerStorage.isEmpty()) {
-                    Iterator<PlayerStorage> iterator = playerHandlerStorage.values().iterator();
-
-                    // Iterate through all items
-                    while (iterator.hasNext()) {
-                        PlayerStorage playerStorage = iterator.next();
-
-                        // Check if needs saving
-                        if (Math.abs(System.currentTimeMillis() - playerStorage.timeWhenStored) > TIME_TO_SAVE_PROFILES || LobsterCraft.serverClosing) {
-                            PlayerHandler playerHandler = playerStorage.playerHandler;
-
-                            //LobsterCraft.logger.info("Database state before saving is " + playerHandler.getDatabaseState().name());
-
-                            // Save profile if needed
-                            if (playerHandler.getDatabaseState().shouldSave())
-                                try {
-                                    // Check for our connection
-                                    checkConnection();
-
-                                    // Save PlayerHandler instance
-                                    PlayerHandler.savePlayerHandle(connection, playerHandler);
-                                    //LobsterCraft.logger.info("Saved player " + playerHandler.getPlayerName());
-                                } catch (SQLException e) {
-                                    e.printStackTrace();
-                                    continue; // Do not remove it yet
-                                }
-
-                            // Remove from list
-                            iterator.remove();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private class PlayerStorage {
-
-        private final PlayerHandler playerHandler;
-        private final long timeWhenStored = System.currentTimeMillis();
-
-        private PlayerStorage(@NotNull final PlayerHandler playerHandler) {
-            this.playerHandler = playerHandler;
+                    )
+            );
         }
 
+        // Close everything
+        resultSet.close();
+        preparedStatement.close();
+
+        LobsterCraft.logger.info("Took us " + new DecimalFormat("0.000").format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) +
+                "ms to retrieve " + offlinePlayers.size() + " players.");
+    }
+
+    private void cachePlayerNameChanges(@NotNull final Connection connection) throws SQLException {
+        // Prepare statement
+        PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM minecraft.player_name_changes;");
+
+        // Execute query
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // Iterate through all entries
+        while (resultSet.next()) {
+            long playerId = resultSet.getLong("user_playerId");
+
+            nameChangeEntries.put(
+                    playerId,
+                    new NameChangeEntry(
+                            playerId,
+                            resultSet.getString("oldPlayerName"),
+                            resultSet.getLong("changeDate")
+                    )
+            );
+        }
+
+        // Close everything
+        resultSet.close();
+        preparedStatement.close();
     }
 }

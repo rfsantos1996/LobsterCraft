@@ -32,6 +32,10 @@ public enum ConfigValue {
 
     LOGIN_USE_FAST_MOVEMENT_EVENT_CHECK("login.use_fast_movement_event_check", false),
     LOGIN_PRE_SIGN_IN_COMMANDS("login.commands_allowed_to_execute_before_login", new String[]{"login", "register", "l", "entrar", "registrar", "signin", "sign", "reg"}),
+    LOGIN_BLOCKED_PLAYER_NAMES("login.blocked_player_names", new String[]{"admin", "administrador", "moderador", "moderator"}),
+
+    LOGIN_NAME_CHANGE_PLAYER_ALLOWED_TO_CHANGE("login.name_change.time_to_player_change_name_again_days", 10L),
+    LOGIN_NAME_CHANGE_USERNAME_AVAILABLE("login.name_change.time_to_username_become_available_days", 15L),
 
     LOGIN_LIMITER_NUMBER_OF_PLAYERS("login.limiter.number_of_players", 16),
     LOGIN_LIMITER_PERIOD_OF_TIME("login.limiter.period_of_time_seconds", 10),
@@ -47,8 +51,9 @@ public enum ConfigValue {
     WORLD_ADMINISTRATOR_BLOCK_SEARCH_DISTANCE("world.protection.administrator_block_search_distance_xz_only", 125.0D),
 
     WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER("world.chunk_load.minimum_size_multiplier", 1.15d),
-    WORLD_CHUNK_LOAD_PERIOD("world.chunk_load.period_between_loads_ticks", 7L), // as a first query, it took 30-90ms, so this will limit our scheduler to 200ms
-    WORLD_CHUNK_LOAD_LIMIT("world.chunk_load.limit_of_chunks_per_load", 500), // 441 is loaded for a full request
+    WORLD_CHUNK_LOAD_PERIOD("world.chunk_load.period_between_loads_ticks", 3L), // as a first query, it took 30-90ms, so this will limit our scheduler to 150ms
+    WORLD_CHUNK_LOAD_LIMIT("world.chunk_load.limit_of_chunks_per_load", 171), // 441 is loaded for a full request, 512 / 3 tasks will be 171 chunks/task
+    WORLD_CHUNK_LOAD_NUMBER_OF_TASKS("world.chunk_load.number_of_tasks_running", 3),
 
     LOCATION_TELEPORT_TIME_WAITING("location.teleport.time_waiting_to_start_teleporting_ticks", 4 * 20L),
     LOCATION_TELEPORT_TIME_BETWEEN_ACCEPT_TRIGGERS("location.teleport.time_waiting_between_accept_and_teleport_ticks", 12L),

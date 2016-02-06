@@ -1,10 +1,9 @@
 package com.jabyftw.lobstercraft.commands;
 
-import com.jabyftw.lobstercraft.commands.chat.MuteCommand;
-import com.jabyftw.lobstercraft.commands.chat.ReplyCommand;
-import com.jabyftw.lobstercraft.commands.chat.UnmuteCommand;
-import com.jabyftw.lobstercraft.commands.chat.WhisperCommand;
+import com.jabyftw.lobstercraft.commands.chat.*;
 import com.jabyftw.lobstercraft.commands.location.*;
+import com.jabyftw.lobstercraft.commands.login.ChangePasswordCommand;
+import com.jabyftw.lobstercraft.commands.login.ChangeUsernameCommand;
 import com.jabyftw.lobstercraft.commands.login.LoginCommand;
 import com.jabyftw.lobstercraft.commands.login.RegisterCommand;
 import com.jabyftw.lobstercraft.commands.player.*;
@@ -44,6 +43,8 @@ public class CommandService extends Service {
             server.getPluginCommand("unmute").setExecutor(new UnmuteCommand());
             server.getPluginCommand("whisper").setExecutor(new WhisperCommand());
             server.getPluginCommand("reply").setExecutor(new ReplyCommand());
+            server.getPluginCommand("adminmute").setExecutor(new AdminMuteCommand());
+            server.getPluginCommand("adminunmute").setExecutor(new AdminUnmuteCommand());
             // location
             server.getPluginCommand("teleport").setExecutor(new TeleportCommand());
             server.getPluginCommand("teleporthere").setExecutor(new TeleportHereCommand());
@@ -55,6 +56,8 @@ public class CommandService extends Service {
             // login
             server.getPluginCommand("login").setExecutor(new LoginCommand());
             server.getPluginCommand("register").setExecutor(new RegisterCommand());
+            server.getPluginCommand("changepassword").setExecutor(new ChangePasswordCommand());
+            server.getPluginCommand("changeusername").setExecutor(new ChangeUsernameCommand());
             // player
             server.getPluginCommand("gamemode").setExecutor(new GameModeCommand());
             server.getPluginCommand("godmode").setExecutor(new GodModeCommand());
