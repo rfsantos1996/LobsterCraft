@@ -28,12 +28,21 @@ public abstract class Permissions {
     PROTECTION_ADMINISTRATOR_BUILD_MODE = "lobstercraft.protection.constructor_build_mode",
             PROTECTION_CREATE_ADMINISTRATOR_BUILDINGS = "lobstercraft.protection.create_buildings",
 
+    BAN_SEE_HISTORY = "lobstercraft.ban.check_history",
+            BAN_KICK_PLAYER = "lobstercraft.ban.kick_player",
+            BAN_KICK_EXCEPTION = "lobstercraft.ban.kick_player.exception",
+            BAN_BAN_PLAYER = "lobstercraft.ban.ban_player",
+            BAN_BAN_EXCEPTION = "lobstercraft.ban.ban_player.exception",
+            BAN_TEMPORARY_BAN_PLAYER = "lobstercraft.ban.tempban_player",
+            BAN_TEMPORARY_BAN_EXCEPTION = "lobstercraft.ban.tempban_player.exception",
+
     CHAT_MUTE = "lobstercraft.chat.mute",
             CHAT_ADMIN_MUTE = "lobstercraft.chat.administrator_mute",
             CHAT_MUTE_EXCEPTION = "lobstercraft.chat.mute.exception",
             CHAT_WHISPER = "lobstercraft.chat.whisper",
 
-    PLAYER_GAMEMODE_CHANGE = "lobstercraft.player.gamemode",
+    PLAYER_SAFE_PLAYER = "lobstercraft.player.safe_player",
+            PLAYER_GAMEMODE_CHANGE = "lobstercraft.player.gamemode",
             PLAYER_GAMEMODE_CHANGE_OTHERS = "lobstercraft.player.gamemode.others",
             PLAYER_SPAWN_MOBS = "lobstercraft.player.spawn_mobs",
             PLAYER_SPAWN_MOBS_ON_OTHERS = "lobstercraft.player.spawn_mobs.on_others",
@@ -88,5 +97,7 @@ public abstract class Permissions {
             LOCATION_SPAWN_OTHERS = "lobstercraft.location.spawn.teleport_others",
             LOCATION_CHANGE_WORLD = "lobstercraft.location.change_world",
             LOCATION_CHANGE_WORLD_OTHERS = "lobstercraft.location.change_world.others",
-            LOCATION_SET_SPAWN = "lobstercraft.location.spawn.set_location";
+            LOCATION_SET_SPAWN = "lobstercraft.location.spawn.set_location",
+
+    UTIL_EXIT_SERVER = "lobstercraft.exit_server";
 }

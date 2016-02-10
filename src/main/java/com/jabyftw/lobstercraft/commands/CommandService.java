@@ -1,5 +1,9 @@
 package com.jabyftw.lobstercraft.commands;
 
+import com.jabyftw.lobstercraft.commands.ban.BanCommand;
+import com.jabyftw.lobstercraft.commands.ban.BanHistoryCommand;
+import com.jabyftw.lobstercraft.commands.ban.KickCommand;
+import com.jabyftw.lobstercraft.commands.ban.TemporaryBanCommand;
 import com.jabyftw.lobstercraft.commands.chat.*;
 import com.jabyftw.lobstercraft.commands.location.*;
 import com.jabyftw.lobstercraft.commands.login.ChangePasswordCommand;
@@ -8,6 +12,7 @@ import com.jabyftw.lobstercraft.commands.login.LoginCommand;
 import com.jabyftw.lobstercraft.commands.login.RegisterCommand;
 import com.jabyftw.lobstercraft.commands.player.*;
 import com.jabyftw.lobstercraft.commands.protection.BuildModeCommand;
+import com.jabyftw.lobstercraft.commands.util.ExitCommand;
 import com.jabyftw.lobstercraft.util.Service;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
@@ -38,6 +43,11 @@ public class CommandService extends Service {
     public boolean onEnable() {
         Server server = Bukkit.getServer();
         {
+            // ban
+            server.getPluginCommand("kick").setExecutor(new KickCommand());
+            server.getPluginCommand("ban").setExecutor(new BanCommand());
+            server.getPluginCommand("tempban").setExecutor(new TemporaryBanCommand());
+            server.getPluginCommand("banhistory").setExecutor(new BanHistoryCommand());
             // chat
             server.getPluginCommand("mute").setExecutor(new MuteCommand());
             server.getPluginCommand("unmute").setExecutor(new UnmuteCommand());
@@ -85,6 +95,8 @@ public class CommandService extends Service {
             server.getPluginCommand("hat").setExecutor(new HatCommand());
             // protection
             server.getPluginCommand("buildmode").setExecutor(new BuildModeCommand());
+            // util
+            server.getPluginCommand("exit").setExecutor(new ExitCommand());
         }
         return true;
     }

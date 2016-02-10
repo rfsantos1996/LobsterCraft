@@ -125,7 +125,7 @@ public class LoginListener implements Listener {
 
     @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
     public void onPlayerDamageEvent(PlayerDamageEntityEvent event) {
-        if (checkDamager(event.getDamaged(), LobsterCraft.playerHandlerService.getPlayerHandlerNoRestrictions(event.getPlayer())))
+        if (checkDamager(event.getDamaged(), LobsterCraft.playerHandlerService.getPlayerHandlerNoRestrictions(event.getPlayerDamager())))
             event.setCancelled(true);
     }
 
@@ -279,5 +279,14 @@ public class LoginListener implements Listener {
             event.setCancelled(true);
             event.getPlayer().teleport(from); // Do not use teleport profile as it may not be loaded
         }
+    }
+
+    @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
+    public void onArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
+        PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandlerNoRestrictions(event.getPlayer());
+
+        // Check if player protection was loaded
+        if (!playerHandler.isLoggedIn() || playerHandler.isInvisible())
+            event.setCancelled(true);
     }
 }

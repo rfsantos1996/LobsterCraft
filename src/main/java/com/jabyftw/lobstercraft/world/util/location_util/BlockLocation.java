@@ -109,6 +109,10 @@ public class BlockLocation {
                 NumberConversions.square(blockLocation.getZ() - getZ());
     }
 
+    public Location toLocation() {
+        return new Location(getChunkLocation().getWorld(), getX(), getY(), getZ());
+    }
+
     @Override
     public int hashCode() {
         return new HashCodeBuilder(79, 81)

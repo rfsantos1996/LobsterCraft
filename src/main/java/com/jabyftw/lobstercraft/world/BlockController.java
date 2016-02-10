@@ -12,6 +12,7 @@ import com.jabyftw.lobstercraft.world.util.ProtectionType;
 import com.jabyftw.lobstercraft.world.util.location_util.BlockLocation;
 import com.jabyftw.lobstercraft.world.util.location_util.ChunkLocation;
 import com.jabyftw.lobstercraft.world.util.location_util.ProtectedBlockLocation;
+import com.jabyftw.lobstercraft.world.util.location_util.TemporaryProtectedBlockLocation;
 import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.Vector;
 import com.sk89q.worldedit.blocks.BaseBlock;
@@ -20,6 +21,7 @@ import com.sk89q.worldedit.event.extent.EditSessionEvent;
 import com.sk89q.worldedit.extent.logging.AbstractLoggingExtent;
 import com.sk89q.worldedit.util.eventbus.Subscribe;
 import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
 import org.bukkit.*;
 import org.bukkit.block.BlockState;
 import org.bukkit.event.EventHandler;
@@ -84,8 +86,9 @@ public class BlockController extends Service {
             unloadedLocations = Collections.synchronizedSet(new HashSet<>());
     private final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, ProtectedBlockLocation>> blockStorage = new ConcurrentHashMap<>();
 
-    private Connection connection;
+    public TemporaryBlockProtection temporaryBlockProtection;
     private ChunkUnloader chunkUnloader;
+    private Connection connection;
 
     @Override
     public boolean onEnable() {
@@ -117,12 +120,16 @@ public class BlockController extends Service {
         for (int i = 0; i < NUMBER_OF_CHUNK_LOADER_TASKS; i++)
             BukkitScheduler.runTaskTimerAsynchronously(new ChunkLoader(), 10L, CHUNK_LOAD_PERIOD);
         BukkitScheduler.runTaskTimerAsynchronously(chunkUnloader = new ChunkUnloader(), 10L, CHUNK_LOAD_PERIOD);
+        temporaryBlockProtection = new TemporaryBlockProtection();
 
         return true;
     }
 
     @Override
     public void onDisable() {
+        // End temporary blocks task
+        temporaryBlockProtection.destroy();
+
         // Fill it up with all loaded chunks
         for (World world : Bukkit.getWorlds())
             if (!LobsterCraft.worldService.isWorldIgnored(world))
@@ -140,17 +147,32 @@ public class BlockController extends Service {
         }
     }
 
-    public ProtectedBlockLocation addBlock(@NotNull final Location location, @NotNull ProtectionType type) {
+    /*
+     * Block placed
+     * -> If it is new block, player protected => if theres no next block from the same player -> temporary protection, else -> default protection, get near temporary blocks to send to protection
+     */
+
+    public void addBlock(@NotNull final Location location, @NotNull ProtectionType type, long currentId) {
         ProtectedBlockLocation protectedBlockLocation = new ProtectedBlockLocation(location, type);
         ProtectedBlockLocation currentValue = blockStorage.get(protectedBlockLocation.getChunkLocation()).putIfAbsent(protectedBlockLocation, protectedBlockLocation);
+        ProtectedBlockLocation returningLocation;
 
         if (currentValue == null)
-            return protectedBlockLocation;
+            returningLocation = protectedBlockLocation;
         else if (currentValue.getType() != protectedBlockLocation.getType())
             // Reset block state for new type
-            return currentValue.setProtectionType(type).setCurrentId(PlayerHandler.UNDEFINED_PLAYER);
+            returningLocation = currentValue.setProtectionType(type).setCurrentId(PlayerHandler.UNDEFINED_PLAYER);
         else
-            return currentValue;
+            returningLocation = currentValue;
+        // TODO temporary blocks for protection type
+
+        returningLocation.getDatabaseState().isOnDatabase();
+        returningLocation.setCurrentId(currentId);
+
+        if (type == ProtectionType.PLAYER_PROTECTION) {
+
+        }
+
     }
 
     public ProtectedBlockLocation getBlock(@NotNull final Location location) {
@@ -166,10 +188,10 @@ public class BlockController extends Service {
         return blockStorage.get(chunkLocation).values();
     }
 
-    public boolean checkForOtherPlayersAndAdministratorBlocks(@NotNull final Location location, long playerId) {
+    public boolean checkForOtherPlayersAndAdministratorBlocks(@NotNull final Location location, @Nullable Long playerId) {
         return new BlockLocation(location).getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
             for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
-                if (!protectedBlock.isUndefined() && ((protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && playerId != protectedBlock.getCurrentId())
+                if (!protectedBlock.isUndefined() && ((protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && (playerId == null || playerId != protectedBlock.getCurrentId()))
                         || (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION)))
                     return true;
             return false;
@@ -268,6 +290,15 @@ public class BlockController extends Service {
     }
 
     private class ChunkLoader implements Runnable {
+
+        private Connection connection = null;
+
+        private void checkConnection() throws SQLException {
+            if (connection == null || !connection.isValid(1)) {
+                if (connection != null) connection.close();
+                connection = LobsterCraft.dataSource.getConnection();
+            }
+        }
 
         @Override
         public void run() {
@@ -587,8 +618,18 @@ public class BlockController extends Service {
 
     private class ChunkListener implements Listener {
 
+        @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+        public void onChunkUnloadHighest(ChunkUnloadEvent event) {
+            if (LobsterCraft.worldService.isWorldIgnored(event.getWorld()) || event.isCancelled())
+                return;
+
+            // Cancel those chunks who are on temporary protection (blocks may change during this period)
+            if (!temporaryBlockProtection.canChunkBeUnloaded(new ChunkLocation(event.getChunk())))
+                event.setCancelled(true);
+        }
+
         @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-        public void onChunkUnload(ChunkUnloadEvent event) {
+        public void onChunkUnloadMonitor(ChunkUnloadEvent event) {
             if (LobsterCraft.worldService.isWorldIgnored(event.getWorld()) || event.isCancelled())
                 return;
 
@@ -656,8 +697,7 @@ public class BlockController extends Service {
 
                             // Protect block for player
                             LobsterCraft.blockController
-                                    .addBlock(newState.getLocation(), playerHandler.getProtectionType())
-                                    .setCurrentId(playerHandler.getBuildModeId());
+                                    .addBlock(newState.getLocation(), playerHandler.getProtectionType(), playerHandler.getBuildModeId());
                         }
 
                     // Remove block after processing
@@ -713,6 +753,82 @@ public class BlockController extends Service {
             LogEntry(@NotNull final BlockState blockState, @NotNull final EditSessionEvent event) {
                 this.blockState = blockState;
                 this.event = event;
+            }
+        }
+    }
+
+    public class TemporaryBlockProtection {
+
+        private final double
+                SEARCH_DISTANCE = LobsterCraft.config.getDouble(ConfigValue.WORLD_TEMPORARY_PROTECTION_PROTECTED_DISTANCE.getPath()),
+                SEARCH_DISTANCE_SQUARED = NumberConversions.square(SEARCH_DISTANCE);
+        private final int CHUNK_SEARCH_DISTANCE = Util.getMinimumChunkSize(SEARCH_DISTANCE);
+
+        private final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation>> temporaryBlocksStorage = new ConcurrentHashMap<>();
+
+        public TemporaryBlockProtection() {
+        }
+
+        public void destroy() {
+        }
+
+        // TODO after temporary blocks are processed, return to storage or delete blocks => delete chunk so it can be unloaded from world if necessary
+
+        public void addBlock(@NotNull final ProtectedBlockLocation protectedBlockLocation) {
+            // Make sure chunk is here
+            temporaryBlocksStorage.putIfAbsent(protectedBlockLocation.getChunkLocation(), new ConcurrentHashMap<>());
+
+            // Insert block
+            TemporaryProtectedBlockLocation temporaryLocation = new TemporaryProtectedBlockLocation(protectedBlockLocation);
+            TemporaryProtectedBlockLocation currentValue = temporaryBlocksStorage.get(protectedBlockLocation.getChunkLocation()).putIfAbsent(protectedBlockLocation, temporaryLocation);
+
+            final TemporaryProtectedBlockLocation actualBlock = currentValue == null ? temporaryLocation : currentValue;
+
+            // Check for near blocks
+            BukkitScheduler.runTaskAsynchronously(new BlockProcess(actualBlock));
+        }
+
+        public boolean canChunkBeUnloaded(@NotNull final ChunkLocation chunkLocation) {
+            return !temporaryBlocksStorage.containsKey(chunkLocation);
+        }
+
+        private class BlockProcess implements Runnable {
+
+            private final TemporaryProtectedBlockLocation actualBlock;
+            private final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation>> blocksNear = new ConcurrentHashMap<>();
+
+            private BlockProcess(@NotNull final TemporaryProtectedBlockLocation actualBlock) {
+                this.actualBlock = actualBlock;
+            }
+
+            @Override
+            public void run() {
+                long start = System.nanoTime();
+
+                actualBlock.getChunkLocation().getNearChunks(CHUNK_SEARCH_DISTANCE)
+                        .parallelStream()
+                        // Iterate asynchronously through all chunks
+                        .forEach(
+                                chunkLocation -> {
+                                    // Insert chunk
+                                    blocksNear.putIfAbsent(chunkLocation, new ConcurrentHashMap<>());
+                                    ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation> blocksMap = blocksNear.get(chunkLocation);
+
+                                    // Iterate through all temporary blocks from given chunk
+                                    temporaryBlocksStorage.get(chunkLocation).values()
+                                            .stream()
+                                            // Filter to player's new blocks
+                                            .filter((blockLocation) ->
+                                                    blockLocation.getCurrentId() != PlayerHandler.UNDEFINED_PLAYER &&
+                                                            blockLocation.getType() == actualBlock.getType() &&
+                                                            blockLocation.getCurrentId() == actualBlock.getCurrentId() &&
+                                                            blockLocation.distanceSquared(actualBlock) < SEARCH_DISTANCE_SQUARED
+                                            )
+                                            .forEach(temporaryProtectedBlockLocation -> blocksMap.put(temporaryProtectedBlockLocation, temporaryProtectedBlockLocation));
+                                }
+                        );
+
+                LobsterCraft.logger.info("It took " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) + "ms to process block");
             }
         }
     }

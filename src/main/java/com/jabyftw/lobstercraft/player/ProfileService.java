@@ -132,6 +132,7 @@ public class ProfileService extends Service {
                                 // Save all needed saving profiles (this should ben asynchronous)
                                 for (Profile profile : profileStorage.profileTypes) {
                                     if (profile.getDatabaseState().shouldSave())
+                                        //LobsterCraft.logger.info("Saving " + profile.getProfileType().name() + " for playerId=" + profile.getPlayerId() + " (databaseState=" + profile.databaseState.name() + ")");
                                         profile.getProfileType().saveProfile(connection, profile);
                                 }
 

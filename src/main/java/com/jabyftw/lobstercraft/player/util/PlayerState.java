@@ -119,6 +119,8 @@ public class PlayerState {
         player.setSaturation(0);
         player.setExhaustion(0);
         player.setTotalExperience(0);
+        player.setLevel(0);
+        player.setExp(0);
         player.setFallDistance(0);
         // Restore health and air
         player.setHealthScaled(false);

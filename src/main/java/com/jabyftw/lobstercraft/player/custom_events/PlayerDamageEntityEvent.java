@@ -59,7 +59,7 @@ public class PlayerDamageEntityEvent extends Event implements Cancellable {
     /**
      * @return player that caused the damage (so in case of PlayerDamagePlayerEvent, you're getting the damager)
      */
-    public Player getPlayer() {
+    public Player getPlayerDamager() {
         return shooter != null ? shooter : (Player) damager;
     }
 
@@ -75,6 +75,9 @@ public class PlayerDamageEntityEvent extends Event implements Cancellable {
         return event;
     }
 
+    /**
+     * @return player instance if it hit something through a projectile, null otherwise
+     */
     public Player getShooter() {
         return shooter;
     }

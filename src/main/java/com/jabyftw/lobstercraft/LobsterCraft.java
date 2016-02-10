@@ -4,6 +4,7 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.jabyftw.lobstercraft.commands.CommandService;
 import com.jabyftw.lobstercraft.player.PlayerHandlerService;
+import com.jabyftw.lobstercraft.player.PlayerService;
 import com.jabyftw.lobstercraft.player.ProfileService;
 import com.jabyftw.lobstercraft.player.chat.ChatService;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
@@ -72,6 +73,7 @@ public class LobsterCraft extends JavaPlugin {
     // Public services
     public static ProfileService profileService;
     public static PlayerHandlerService playerHandlerService;
+    public static PlayerService playerService;
     public static WorldService worldService;
     public static XrayProtectionService xrayProtectionService;
     public static BlockController blockController;
@@ -167,6 +169,7 @@ public class LobsterCraft extends JavaPlugin {
             // Setup services
             serverServices = new Service[]{
                     playerHandlerService = new PlayerHandlerService(),
+                    playerService = new PlayerService(),
                     profileService = new ProfileService(),
                     worldService = new WorldService(),
                     xrayProtectionService = new XrayProtectionService(),
@@ -200,7 +203,8 @@ public class LobsterCraft extends JavaPlugin {
 
         // Kick every player
         for (Player player : getServer().getOnlinePlayers()) {
-            player.kickPlayer("§cServidor sendo reiniciado.");
+            // Lets make sure that the message on the disable is different than the stop command
+            player.kickPlayer("§4Ocorreu um erro!");
             // Destroy isn't called by event when server is closing
             playerHandlerService.getPlayerHandlerNoRestrictions(player).destroy();
         }
@@ -214,6 +218,7 @@ public class LobsterCraft extends JavaPlugin {
         // Erase variable
         profileService = null;
         playerHandlerService = null;
+        playerService = null;
         worldService = null;
         xrayProtectionService = null;
         blockController = null;

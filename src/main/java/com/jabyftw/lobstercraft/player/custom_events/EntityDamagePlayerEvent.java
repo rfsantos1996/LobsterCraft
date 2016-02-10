@@ -42,7 +42,7 @@ public class EntityDamagePlayerEvent extends EntityDamageEntityEvent {
         return handlers;
     }
 
-    public Player getPlayer() {
+    public Player getPlayerDamaged() {
         return getDamaged();
     }
 

@@ -26,28 +26,33 @@ import org.bukkit.Location;
  */
 public class ProtectedBlockLocation extends BlockLocation {
 
-    private ProtectionType protectionType;
+    // The "originalType" is required for database accuracy.
+    // If a constructionId is the same as the player and the player block is replaced by one of the construction
+    // it won't be saved on the database without this check
+    private ProtectionType originalType, currentType;
     private long originalId, currentId = PlayerHandler.UNDEFINED_PLAYER;
 
     public ProtectedBlockLocation(@NotNull final ChunkLocation chunkLocation, @NotNull ProtectionType protectionType, byte x, short y, byte z, long currentId) {
         super(chunkLocation, x, y, z);
-        this.protectionType = protectionType;
+        this.originalType = protectionType;
+        this.currentType = protectionType;
         this.originalId = currentId;
         this.currentId = currentId;
     }
 
     public ProtectedBlockLocation(@NotNull final Location location, @NotNull ProtectionType protectionType) {
         super(location);
-        this.protectionType = protectionType;
         this.originalId = PlayerHandler.UNDEFINED_PLAYER;
+        this.originalType = null;
+        this.currentType = protectionType;
     }
 
     public ProtectionType getType() {
-        return protectionType;
+        return currentType;
     }
 
     public ProtectedBlockLocation setProtectionType(@NotNull final ProtectionType protectionType) {
-        this.protectionType = protectionType;
+        this.currentType = protectionType;
         return this;
     }
 
@@ -71,7 +76,7 @@ public class ProtectedBlockLocation extends BlockLocation {
 
     public DatabaseState getDatabaseState() {
         // If nothing changed and it isn't undefined => it is still on database
-        if (this.originalId == currentId && currentId != PlayerHandler.UNDEFINED_PLAYER)
+        if (this.originalId == currentId && originalType == currentType && currentId != PlayerHandler.UNDEFINED_PLAYER)
             return DatabaseState.ON_DATABASE;
 
         // If wasn't on database on the first place
@@ -87,6 +92,7 @@ public class ProtectedBlockLocation extends BlockLocation {
     }
 
     public final void setOnDatabase() {
+        this.originalType = currentType;
         this.originalId = currentId;
     }
 }

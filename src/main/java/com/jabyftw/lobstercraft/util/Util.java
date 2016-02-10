@@ -37,6 +37,8 @@ import java.util.regex.Pattern;
  */
 public abstract class Util {
 
+    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("dd/MM/yy HH:mm");
+
     /**
      * The number of chunks loaded is square((chunkSize * 2) + 1):
      * '3' will give 3*2+1 or 7 that will return 49 chunks loaded
@@ -334,12 +336,20 @@ public abstract class Util {
 
     public static String retrieveMessage(String... strings) {
         StringBuilder stringBuilder = new StringBuilder();
+        boolean first = true;
 
         // Append all words
-        for (String string : strings)
-            stringBuilder.append(string).append(' ');
+        for (String string : strings) {
+            if (!first) stringBuilder.append(' ');
+            first = false;
+            stringBuilder.append(string);
+        }
 
         // Return final string
         return stringBuilder.toString();
+    }
+
+    public static String formatDate(long timeMillis) {
+        return dateFormatter.format(new Date(timeMillis));
     }
 }

@@ -1,5 +1,6 @@
 package com.jabyftw.lobstercraft.player;
 
+import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
 import com.jabyftw.lobstercraft.player.util.*;
@@ -20,6 +21,7 @@ import org.bukkit.entity.Creature;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
@@ -49,6 +51,10 @@ import java.util.concurrent.FutureTask;
  */
 public class PlayerHandler {
 
+    private final static long
+            LOGIN_MESSAGE_PERIOD = LobsterCraft.config.getLong(ConfigValue.LOGIN_MESSAGE_PERIOD.toString()),
+            LOGIN_MESSAGE_COMMAND_TIME = LobsterCraft.config.getLong(ConfigValue.LOGIN_MESSAGE_COMMAND_TIME.toString()) * 20L;
+
     public final static long UNDEFINED_PLAYER = -1;
 
     // Player variables
@@ -56,16 +62,22 @@ public class PlayerHandler {
     private final LinkedList<OreBlockLocation> oreLocationHistory = new LinkedList<>();
     private final ConditionController conditionController = new ConditionController(this);
 
+    // Player information
     private final OfflinePlayerHandler offlinePlayer;
-
     private Player player;
+
+    // Login
     private PlayerState preLoginState = null, gamemodeState = null;
+    private BukkitTask loginMessageTask = null;
+    private long preLoginTick;
+    private boolean loggedIn = false;
+    private long loginTime; // Used to calculate playerTime
+
+    // Etc
     private BuildMode buildMode = BuildMode.DEFAULT;
     private TeleportBuilder.Teleport pendingTeleport;
     private volatile CommandSender lastWhisper = null;
-    private boolean loggedIn = false;
     private boolean godMode = false;
-    private long loginTime; // Used to calculate playerTime
 
     public PlayerHandler(@NotNull final OfflinePlayerHandler offlinePlayer, @NotNull final Player player) {
         this.offlinePlayer = offlinePlayer;
@@ -83,10 +95,14 @@ public class PlayerHandler {
         this.offlinePlayer.playerHandler = this;
 
         // Update display name
-        player.setDisplayName(ChatColor.translateAlternateColorCodes('&', LobsterCraft.chat.getPlayerPrefix(player) + player.getName() + LobsterCraft.chat.getPlayerSuffix(player)));
+        player.setDisplayName(ChatColor.translateAlternateColorCodes('&', LobsterCraft.chat.getPlayerPrefix(player) + player.getName() + LobsterCraft.chat.getPlayerSuffix(player) + ChatColor.RESET));
 
         // If the state isn't null, restore it
         if (preLoginState != null) preLoginState.restorePlayerState();
+
+        // Make player invisible
+        if (!LobsterCraft.vanishManager.isVanished(player))
+            LobsterCraft.vanishManager.toggleVanishQuiet(player, false);
 
         // Set player gamemode to SURVIVAL
         setGameMode(GameMode.SURVIVAL);
@@ -105,6 +121,26 @@ public class PlayerHandler {
         player.setAllowFlight(true);
         player.setFlying(true);
 
+        // Set player login message
+        preLoginTick = LobsterCraft.getTicksPassed();
+        loginMessageTask = BukkitScheduler.runTaskTimer(() -> {
+            if (!player.isOnline()) {
+                loginMessageTask.cancel();
+                return;
+            }
+
+            if (LobsterCraft.getTicksPassed() - preLoginTick > LOGIN_MESSAGE_COMMAND_TIME) {
+                player.kickPlayer(
+                        "§4Você não logou no servidor.\n" +
+                                "§6Use o comando §c" + (isRegistered() ? "/login (senha)" : "/register (senha) (senha)")
+                );
+                return;
+            }
+
+            player.sendMessage("§6Use §c" + (isRegistered() ? "/login (senha)" : "/register (senha) (senha)") + "§6 para entrar no servidor.");
+
+        }, 0L, LOGIN_MESSAGE_PERIOD);
+
         // Add player to player list
         LobsterCraft.playerHandlerService.playerHandlers.put(player, this);
     }
@@ -117,6 +153,12 @@ public class PlayerHandler {
         if (preLoginState != null) {
             preLoginState.restorePlayerState();
             preLoginState = null;
+        }
+
+        // Remove login message task
+        if (loginMessageTask != null) {
+            loginMessageTask.cancel();
+            loginMessageTask = null;
         }
 
         if (isLoggedIn()) {
@@ -143,6 +185,9 @@ public class PlayerHandler {
         // Save player data
         player.saveData();
 
+        // Reset offline profile
+        this.offlinePlayer.playerHandler = null;
+
         // Remove from player list, lastly
         LobsterCraft.playerHandlerService.playerHandlers.remove(player, this);
     }
@@ -166,13 +211,9 @@ public class PlayerHandler {
             return LoginResponse.ERROR_OCCURRED;
         }
 
-        // Set variables for register
-        offlinePlayer.setPassword(encryptedPassword);
-        offlinePlayer.setLastIp(player.getAddress().getAddress().getHostAddress()); // this was null (updated on forceLogin(), only)
-
         // Save profile, retrieve playerId
         try {
-            offlinePlayer.registerPlayerId();
+            offlinePlayer.registerPlayerId(encryptedPassword, player.getAddress().getAddress().getHostAddress());
         } catch (SQLException e) {
             e.printStackTrace();
             return LoginResponse.ERROR_OCCURRED;
@@ -227,6 +268,12 @@ public class PlayerHandler {
         } catch (InterruptedException | ExecutionException | NullPointerException e) {
             e.printStackTrace();
             return LoginResponse.ERROR_OCCURRED;
+        }
+
+        // Remove login message task
+        if (loginMessageTask != null) {
+            loginMessageTask.cancel();
+            loginMessageTask = null;
         }
 
         // synchronize with Bukkit
@@ -449,6 +496,16 @@ public class PlayerHandler {
             }
         }
         return godMode;
+    }
+
+    /**
+     * This will determinate if player has the possibility to interact with other players safely (creative mode or moderators)
+     * Meaning that if this is true, the player cannot exchange items, be killed or kill by PVP, drop exp etc
+     *
+     * @return true if this player can't do all of the above
+     */
+    public boolean isSafePlayer() {
+        return LobsterCraft.permission.has(player, Permissions.PLAYER_SAFE_PLAYER) || player.getGameMode() != GameMode.SURVIVAL;
     }
 
     public boolean isDamageable() {

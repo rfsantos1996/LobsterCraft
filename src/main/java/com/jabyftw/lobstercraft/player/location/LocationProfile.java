@@ -39,6 +39,7 @@ public class LocationProfile extends Profile {
     protected LocationProfile(long playerId, @Nullable final Location lastLocation) {
         super(playerId);
         this.lastLocation = lastLocation;
+        this.databaseState = DatabaseState.ON_DATABASE;
     }
 
     public static LocationProfile retrieveProfile(@NotNull final Connection connection, long playerId) throws Exception {

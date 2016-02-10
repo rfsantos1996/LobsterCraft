@@ -41,4 +41,15 @@ public enum DatabaseState {
                 return false;
         }
     }
+
+    public boolean isOnDatabase() {
+        switch (this) {
+            case ON_DATABASE:
+            case UPDATE_DATABASE:
+            case DELETE_FROM_DATABASE:
+                return true;
+            default:
+                return false;
+        }
+    }
 }

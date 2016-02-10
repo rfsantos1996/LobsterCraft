@@ -1,4 +1,3 @@
-* ban records and commands
 * City commands and protection
 * Inventory manipulation for stores, city options etc {
     inventory manipulation for player and mayor options
@@ -15,15 +14,11 @@
     fixed amount of money
     how to determinate who/how/when gets the amount?
 }
+* options profile
+* Insert temporary player blocks => random break and place will be restored (controller between BlockEvent and BlockController through ProtectionListener)
 
-+ OfflinePlayer structure (base of PlayerHandler, possible for commands like /ban, /mute, /unmute etc) {
-    playerName, playerId
-    store on startup
-    use this to check for playersId on JoinListener (PlayerHandleService)
-}
++ Insecure player (done by permission => moderators won't drop exp, items - even in death, nor will do pvp, take other player's items)
++ Add login messages and timer to kick
 + changename command and structure
 + Chat structure and commands
-+ Test top command (same out of bounds exception - I may not have the latest build)
-+ Fire spread fix
-+ BlockIgniteEvent
 + /bm delete

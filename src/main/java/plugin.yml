@@ -54,7 +54,7 @@ commands:
   suicide:
     description: dont know if I can remove every command attribute
   kill:
-    aliases: [matar]
+    aliases: matar
   killall:
     description: dont know if I can remove every command attribute
   spawnmob:
@@ -78,13 +78,13 @@ commands:
   speed:
     aliases: [flyspeed, walkspeed]
   exp:
-    aliases: [experience]
+    aliases: experience
   level:
     aliases: [leveis, levels, setlevel]
   feed:
     aliases: [eat, hunger]
   hat:
-    aliases: [chapeu]
+    aliases: chapeu
   top:
     description: dont know if I can remove every command attribute
   changeusername:
@@ -93,3 +93,13 @@ commands:
     aliases: [changepass, mudarsenha, passwordchange, passchange, trocarsenha, changesenha]
   buildmode:
     aliases: [bm, blockmode]
+  kick:
+    aliases: [expulsar, kickar]
+  ban:
+    aliases: banir
+  banhistory:
+    aliases: [historico, banhistorico, banhist, banlist]
+  tempban:
+    aliases: [banirtemp, tempbanir]
+  exit:
+    aliases: [sair, fechar, close, stop, save-all]

@@ -2,22 +2,20 @@ package com.jabyftw.lobstercraft.player;
 
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.listeners.CustomEventsListener;
-import com.jabyftw.lobstercraft.player.listeners.JoinListener;
-import com.jabyftw.lobstercraft.player.listeners.LoginListener;
-import com.jabyftw.lobstercraft.player.listeners.TeleportListener;
+import com.jabyftw.lobstercraft.player.listeners.*;
+import com.jabyftw.lobstercraft.player.util.BannedPlayerEntry;
 import com.jabyftw.lobstercraft.player.util.NameChangeEntry;
+import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Service;
+import com.jabyftw.lobstercraft.util.Util;
 import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.HashSet;
@@ -49,7 +47,9 @@ public class PlayerHandlerService extends Service {
     // OBS: must be Concurrent as it is used on several different threads
     protected final ConcurrentHashMap<Player, PlayerHandler> playerHandlers = new ConcurrentHashMap<>();
     protected final ConcurrentHashMap<String, OfflinePlayerHandler> offlinePlayers = new ConcurrentHashMap<>();
+
     private final ConcurrentHashMap<Long, NameChangeEntry> nameChangeEntries = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, HashSet<BannedPlayerEntry>> bannedPlayersEntries = new ConcurrentHashMap<>();
 
     public final List<String> blockedNames = LobsterCraft.config.getStringList(ConfigValue.LOGIN_BLOCKED_PLAYER_NAMES.toString());
 
@@ -59,8 +59,6 @@ public class PlayerHandlerService extends Service {
         { // Register everything
             pluginManager.registerEvents(new LoginListener(), LobsterCraft.lobsterCraft);
             pluginManager.registerEvents(new JoinListener(), LobsterCraft.lobsterCraft);
-            pluginManager.registerEvents(new TeleportListener(), LobsterCraft.lobsterCraft);
-            pluginManager.registerEvents(new CustomEventsListener(), LobsterCraft.lobsterCraft); // handles custom events
         }
 
         try {
@@ -69,7 +67,9 @@ public class PlayerHandlerService extends Service {
 
             cacheOfflinePlayers(connection);
             cachePlayerNameChanges(connection);
+            cachePlayerBanEntries(connection);
 
+            // Close connection
             connection.close();
             return true;
         } catch (SQLException e) {
@@ -143,6 +143,93 @@ public class PlayerHandlerService extends Service {
 
     public Collection<NameChangeEntry> getNameChangeEntries() {
         return nameChangeEntries.values();
+    }
+
+    public Set<BannedPlayerEntry> getBanEntriesFromPlayer(long playerId) {
+        bannedPlayersEntries.putIfAbsent(playerId, new HashSet<>());
+        return bannedPlayersEntries.get(playerId);
+    }
+
+    public BanResponse kickPlayer(@NotNull OfflinePlayerHandler offlinePlayerHandler, @Nullable Long responsibleId,
+                                  @NotNull final BannedPlayerEntry.BanType banType, @NotNull final String reason,
+                                  @Nullable final Long bannedDuration) {
+
+        if (!offlinePlayerHandler.isRegistered()) return BanResponse.PLAYER_NOT_REGISTERED;
+
+        long playerId = offlinePlayerHandler.getPlayerId();
+        long recordDate = System.currentTimeMillis();
+
+        Long unbanDate;
+        if (banType != BannedPlayerEntry.BanType.PLAYER_TEMPORARILY_BANNED) // Only temporary banned requires this argument
+            unbanDate = null;
+        else if (bannedDuration != null)
+            unbanDate = recordDate + bannedDuration;
+        else return BanResponse.INVALID_BAN_TYPE;
+
+        if (!Util.checkStringLength(reason, 4, 120))
+            return BanResponse.INVALID_REASON_LENGTH;
+
+        try {
+            // Retrieve connection
+            Connection connection = LobsterCraft.dataSource.getConnection();
+
+            // Prepare statement
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    "INSERT INTO `minecraft`.`ban_records` (`user_playerId`, `responsibleId`, `banType`, `recordDate`, `reason`, `unbanDate`) VALUES (?, ?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+
+            // Set variables
+            preparedStatement.setLong(1, playerId);
+            if (responsibleId == null)
+                preparedStatement.setNull(2, Types.BIGINT);
+            else
+                preparedStatement.setLong(2, responsibleId);
+            preparedStatement.setByte(3, banType.getType());
+            preparedStatement.setLong(4, recordDate);
+            preparedStatement.setString(5, reason);
+            if (unbanDate == null)
+                preparedStatement.setNull(6, Types.BIGINT);
+            else
+                preparedStatement.setLong(6, unbanDate);
+
+            // Execute statement
+            preparedStatement.execute();
+
+            // Retrieve generated keys
+            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+
+            // Throw error if there is no generated key
+            if (!generatedKeys.next()) throw new SQLException("There is no generated key");
+
+            // Create entry
+            BannedPlayerEntry bannedPlayerEntry = new BannedPlayerEntry(
+                    generatedKeys.getLong("recordId"),
+                    playerId,
+                    responsibleId,
+                    banType,
+                    reason,
+                    recordDate,
+                    unbanDate
+            );
+
+            // Add entry to storage
+            bannedPlayersEntries.putIfAbsent(playerId, new HashSet<>());
+            bannedPlayersEntries.get(playerId).add(bannedPlayerEntry);
+
+            // Close everything
+            generatedKeys.close();
+            preparedStatement.close();
+            connection.close();
+
+            if (offlinePlayerHandler.isOnline())
+                BukkitScheduler.runTask(() -> offlinePlayerHandler.getPlayerHandler().getPlayer().kickPlayer(bannedPlayerEntry.getKickMessage()));
+
+            return BanResponse.SUCCESSFULLY_BANNED;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return BanResponse.ERROR_OCCURRED;
+        }
     }
 
     private void saveChangedPlayers() throws SQLException {
@@ -247,5 +334,45 @@ public class PlayerHandlerService extends Service {
         // Close everything
         resultSet.close();
         preparedStatement.close();
+    }
+
+    private void cachePlayerBanEntries(@NotNull final Connection connection) throws SQLException {
+        // Prepare statement
+        PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM minecraft.ban_records WHERE unbanDate IS NULL OR unbanDate > " + System.currentTimeMillis() + ";");
+
+        // Execute query
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // Iterate through all entries
+        while (resultSet.next()) {
+            long playerId = resultSet.getLong("user_playerId");
+            Long unbanDate = resultSet.getLong("unbanDate");
+            if (resultSet.wasNull()) unbanDate = null;
+
+            bannedPlayersEntries.putIfAbsent(playerId, new HashSet<>());
+            bannedPlayersEntries.get(playerId).add(
+                    new BannedPlayerEntry(
+                            resultSet.getLong("recordId"),
+                            playerId,
+                            resultSet.getLong("responsibleId"),
+                            BannedPlayerEntry.BanType.getBanType(resultSet.getByte("banType")),
+                            resultSet.getString("reason"),
+                            resultSet.getLong("recordDate"),
+                            unbanDate
+                    )
+            );
+        }
+
+        // Close everything
+        resultSet.close();
+        preparedStatement.close();
+    }
+
+    public enum BanResponse {
+        SUCCESSFULLY_BANNED,
+        PLAYER_NOT_REGISTERED,
+        INVALID_REASON_LENGTH,
+        INVALID_BAN_TYPE,
+        ERROR_OCCURRED
     }
 }

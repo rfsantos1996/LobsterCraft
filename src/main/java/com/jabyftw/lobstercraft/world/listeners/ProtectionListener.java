@@ -3,6 +3,8 @@ package com.jabyftw.lobstercraft.world.listeners;
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.custom_events.EntityDamageEntityEvent;
+import com.jabyftw.lobstercraft.player.custom_events.PlayerDamageEntityEvent;
 import com.jabyftw.lobstercraft.player.util.ConditionController;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.Pair;
@@ -16,11 +18,14 @@ import org.bukkit.block.BlockState;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Monster;
+import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 
@@ -162,8 +167,7 @@ public class ProtectionListener implements Listener {
         for (BlockState blockState : blockStates)
             // Insert block
             LobsterCraft.blockController
-                    .addBlock(blockState.getLocation(), playerHandler.getProtectionType())
-                    .setCurrentId(playerHandler.getBuildModeId());
+                    .addBlock(blockState.getLocation(), playerHandler.getProtectionType(), playerHandler.getBuildModeId());
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -206,10 +210,8 @@ public class ProtectionListener implements Listener {
             return;
 
         // Do not even prime when protection isn't loaded
-        if (!LobsterCraft.blockController.loadNearChunks(event.getEntity().getLocation())) {
+        if (!LobsterCraft.blockController.loadNearChunks(event.getEntity().getLocation()))
             event.setCancelled(true);
-            return;
-        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -315,14 +317,82 @@ public class ProtectionListener implements Listener {
 
                 // Do not have to check for undefined owner as it is filtered on insertion
                 LobsterCraft.blockController
-                        .addBlock(event.getBlock().getLocation(), oldBlock.getType())
-                        .setCurrentId(oldBlock.getCurrentId());
+                        .addBlock(event.getBlock().getLocation(), oldBlock.getType(), oldBlock.getCurrentId());
             }
         }
     }
 
+    @EventHandler(priority = EventPriority.LOW)
+    public void onArmorStandDamageByEntity(EntityDamageEntityEvent event) {
+        if (event.getDamaged().getType() == EntityType.ARMOR_STAND) {
+            // Check if world is loaded
+            if (!LobsterCraft.blockController.loadNearChunks(event.getDamaged().getLocation())) {
+                event.setCancelled(true);
+                return;
+            }
+
+            // Ignore players
+            if (event.getDamager() instanceof Player) return;
+
+            // Check for near protection
+            if (LobsterCraft.blockController.checkForOtherPlayersAndAdministratorBlocks(event.getDamaged().getLocation(), null))
+                event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onArmorStandDamageByPlayer(PlayerDamageEntityEvent event) {
+        if (event.getDamaged().getType() == EntityType.ARMOR_STAND) {
+            // Check if world is loaded
+            if (!LobsterCraft.blockController.loadNearChunks(event.getDamaged().getLocation())) {
+                event.setCancelled(true);
+                return;
+            }
+
+            // Check for near protection
+            if (!checkForNearBlocks(LobsterCraft.playerHandlerService.getPlayerHandler(event.getPlayerDamager()), event.getDamaged().getLocation()))
+                event.setCancelled(true);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onBlockInteractHighest(PlayerInteractEvent event) {
+    public void onArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
+        PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandler(event.getPlayer());
+
+        // Check if player protection was loaded
+        if (!checkForNearBlocks(playerHandler, event.getRightClicked().getLocation()))
+            event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
+    public void onInteractHighest(PlayerInteractEvent event) {
+        PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandler(event.getPlayer());
+
+        // Needed, we do not ignore cancelled events
+        if (playerHandler != null) {
+            // Check if player protection was loaded
+            if (!checkForNearBlocks(playerHandler, event.getPlayer().getLocation())) {
+                event.setUseInteractedBlock(Event.Result.DENY);
+                event.setUseItemInHand(Event.Result.DENY);
+                event.setCancelled(true);
+                return;
+            }
+
+            if (event.getClickedBlock() != null) {
+                ProtectedBlockLocation protectedBlockLocation = LobsterCraft.blockController.getBlock(event.getClickedBlock().getLocation());
+
+                // Check it even if checkForNearBlocks return true? This could be dangerous, so yep
+                // If block is protected and the build mode isn't equal the player mode => cancel
+                if (protectedBlockLocation != null && (protectedBlockLocation.getCurrentId() != playerHandler.getBuildModeId() || protectedBlockLocation.getType() != playerHandler.getProtectionType())) {
+                    event.setUseInteractedBlock(Event.Result.DENY);
+                    event.setCancelled(true);
+                }
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onToolInteractHighest(PlayerInteractEvent event) {
         // Conditions to trigger desired effect (clicked a block, material in hand is specific)
         if (event.getClickedBlock() != null && event.getMaterial() == TOOL_HAND_MATERIAL) {
             Location bukkitBlockLocation;
@@ -421,7 +491,7 @@ public class ProtectionListener implements Listener {
         if (!structureBase.isUndefined())
             // Itreate through all blocks
             for (BlockState blockState : event.getBlocks())
-                LobsterCraft.blockController.addBlock(blockState.getLocation(), structureBase.getType()).setCurrentId(structureBase.getCurrentId());
+                LobsterCraft.blockController.addBlock(blockState.getLocation(), structureBase.getType(), structureBase.getCurrentId());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -481,7 +551,7 @@ public class ProtectionListener implements Listener {
 
         // Iterate through all blocks
         if (!sourceProtection.isUndefined())
-            LobsterCraft.blockController.addBlock(event.getBlock().getLocation(), sourceProtection.getType()).setCurrentId(sourceProtection.getCurrentId());
+            LobsterCraft.blockController.addBlock(event.getBlock().getLocation(), sourceProtection.getType(), sourceProtection.getCurrentId());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -511,7 +581,7 @@ public class ProtectionListener implements Listener {
             if (oldProtection == null) continue;
 
             if (!oldProtection.isUndefined())
-                LobsterCraft.blockController.addBlock(futureBlock.getLocation(), oldProtection.getType()).setCurrentId(oldProtection.getCurrentId());
+                LobsterCraft.blockController.addBlock(futureBlock.getLocation(), oldProtection.getType(), oldProtection.getCurrentId());
         }
 
         ProtectedBlockLocation firstBlockProtection = LobsterCraft.blockController.getBlock(event.getBlock().getRelative(event.getDirection()).getLocation());
@@ -547,7 +617,7 @@ public class ProtectionListener implements Listener {
             if (oldProtection == null) continue;
 
             if (!oldProtection.isUndefined())
-                LobsterCraft.blockController.addBlock(futureBlock.getLocation(), oldProtection.getType()).setCurrentId(oldProtection.getCurrentId());
+                LobsterCraft.blockController.addBlock(futureBlock.getLocation(), oldProtection.getType(), oldProtection.getCurrentId());
         }
 
         // Remove protection of the last block on the list

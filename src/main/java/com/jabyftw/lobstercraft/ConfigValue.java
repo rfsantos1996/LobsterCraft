@@ -30,6 +30,8 @@ public enum ConfigValue {
     LOGIN_PROFILE_SAVING_TIMEOUT("login.profile_saving.timeout_seconds", 60 * 4L), // 4 minutes to the profile be saved
     LOGIN_PROFILE_SAVING_PERIOD("login.profile_saving.period_ticks", 10 * 20L), // 10 seconds and all profiles are saved (in ticks)
 
+    LOGIN_MESSAGE_PERIOD("login.login_message.period_ticks", 4 * 20L),
+    LOGIN_MESSAGE_COMMAND_TIME("login.login_message.time_to_use_command_seconds", 60L + 30L),
     LOGIN_USE_FAST_MOVEMENT_EVENT_CHECK("login.use_fast_movement_event_check", false),
     LOGIN_PRE_SIGN_IN_COMMANDS("login.commands_allowed_to_execute_before_login", new String[]{"login", "register", "l", "entrar", "registrar", "signin", "sign", "reg"}),
     LOGIN_BLOCKED_PLAYER_NAMES("login.blocked_player_names", new String[]{"admin", "administrador", "moderador", "moderator"}),
@@ -42,12 +44,16 @@ public enum ConfigValue {
 
     PLAYER_SPEED_MINIMUM_MULTIPLIER("player.speed.minimum_speed_multiplier", 0.05d),
     PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
-    PLAYER_MAXIMUM_AMOUNT_OF_MUTES("player.chat.maximum_amount_of_personal_muted_players", 10),
+    PLAYER_MAXIMUM_AMOUNT_OF_MUTES("player.chat.maximum_amount_of_personal_muted_players", 15),
 
     WORLD_IGNORED_WORLDS("world.ignored_worlds", new String[]{"world_the_end", "world_nether"}),
 
     WORLD_PROTECTION_TOOL_HAND_MATERIAL("world.protection.tool_hand_material_for_protection_check", "STICK"),
     WORLD_PLAYER_BLOCK_SEARCH_DISTANCE("world.protection.player_block_search_distance_xyz", 12.0D),
+    WORLD_TEMPORARY_PROTECTION_PROTECTED_DISTANCE("world.protection.temporary_protection.distance_for_block_check", 3.0D),
+    WORLD_TEMPORARY_PROTECTION_PROTECTED_BLOCK_COUNT("world.protection.temporary_protection.block_count_for_protection", 8),
+    WORLD_TEMPORARY_PROTECTION_TIME("world.protection.temporary_protection.time_temporary_block_is_kept_seconds", 60L * 4),
+    WORLD_TEMPORARY_PROTECTION_TASK_PERIOD("world.protection.temporary_protection.process_block_task_period_seconds", 15L),
     WORLD_ADMINISTRATOR_BLOCK_SEARCH_DISTANCE("world.protection.administrator_block_search_distance_xz_only", 125.0D),
 
     WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER("world.chunk_load.minimum_size_multiplier", 1.15d),
@@ -60,35 +66,6 @@ public enum ConfigValue {
 
     XRAY_TIME_TO_CONSIDER_SAME_MINING("xray.time_to_consider_same_mining_session", 5 * 60L),
     XRAY_DISTANCE_TO_CONSIDER_SAME_MINING("xray.distance_to_consider_same_mining_session", 75.0D),;
-
-    /*LOGIN_JOIN_LIMITER_PLAYERS_ALLOWED("login.max_number_of_players_joining", 16),
-    LOGIN_JOIN_LIMITER_PERIOD_OF_TIME("login.period_of_time_seconds", 10.0d),
-    LOGIN_BEFORE_LOGIN_ALLOWED_COMMANDS("login.allowed_commands_before_login", new String[]{"login", "register", "l", "entrar", "registrar"}),
-    LOGIN_TIME_BETWEEN_PROFILE_SAVES("login.time_between_profile_saves_seconds", 30L),
-    LOGIN_PROFILE_WAITING_TIME("login.profile_waiting_on_queue_seconds", 60 * 4L),
-    LOGIN_REQUIRED_TIME_CHANGE_USERNAME("login.required_time_to_change_username_days", 10),
-    LOGIN_REQUIRED_TIME_USERNAME_AVAILABLE("login.required_time_to_username_be_available_days", 20),
-    LOGIN_FAST_MOVEMENT_CHECK("login.fast_movement_check", false),
-
-    XRAY_TIME_TO_CONSIDER_SAME_MINE("xray.time_to_consider_same_mining_session_seconds", 60 * 4L),
-    XRAY_DISTANCE_TO_CONSIDER_SAME_MINE("xray.distance_to_consider_same_mining_session_blocks", 75.0d),
-
-    TELEPORT_TIME_WAITING("teleport.time_waiting_seconds", 4L),
-    TELEPORT_REQUEST_TIMEOUT("teleport.request_timeout_seconds", 60 * 2L),
-    TELEPORT_TIME_ACCEPT_TELEPORT("teleport.time_between_accept_and_teleport_ticks", 12L),
-
-    PLAYER_TIME_CLEAR_INVENTORY_CONFIRMATION("player.time_to_confirm_clear_inventory_seconds", 45L),
-    PLAYER_TIME_SUICIDE_CONFIRMATION("player.time_to_confirm_suicide_seconds", 45L),
-    PLAYER_TIME_UNSAFE_ENCHANTMENT_CONFIRMATION("player.time_to_confirm_unsafe_enchantment_seconds", 30L),
-    PLAYER_SPEED_MINIMUM_MULTIPLIER("player.speed.minimum_speed_multiplier", 0.05d),
-    PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
-    PLAYER_FIXED_CHAT_REFRESH_DELAY("player.fixed_chat_refresh_delay_seconds", 7L),
-    PLAYER_MAXIMUM_MUTED_PLAYERS("player.maximum_number_of_muted_players", 15),
-
-    BLOCK_IGNORED_WORLDS("block.ignored_worlds", new String[]{"world_the_end", "world_nether"}),
-    BLOCK_LOAD_CHUNK_RANGE("block.load_chunk_range", 3),
-    BLOCK_LOAD_CHUNK_PERIOD("block.load_task_period_ticks", 20L),
-    BLOCK_LOAD_CHUNK_LIMIT_PER_RUN("block.load_task_max_number_of_chunks", 3 * 7 * 7), // the number of chunks in a range of 3 is 7*7 (49) so, 3*49 will be our limit*/
 
     private final String path;
     private final Object defaultValue;
