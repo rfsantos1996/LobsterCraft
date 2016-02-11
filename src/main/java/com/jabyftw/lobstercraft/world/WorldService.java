@@ -14,10 +14,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -66,6 +63,10 @@ public class WorldService extends Service {
 
     @Override
     public void onDisable() {
+    }
+
+    public Collection<World> getWorlds() {
+        return worldIds.values();
     }
 
     public boolean isWorldIgnored(@NotNull final World world) {

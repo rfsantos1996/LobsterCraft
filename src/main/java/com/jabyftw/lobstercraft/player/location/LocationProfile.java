@@ -42,6 +42,23 @@ public class LocationProfile extends Profile {
         this.databaseState = DatabaseState.ON_DATABASE;
     }
 
+    @Override
+    protected void onProfileApplication(@NotNull PlayerHandler playerHandler) {
+    }
+
+    @Override
+    protected void onProfileDestruction() {
+    }
+
+    public Location getLastLocation() {
+        return lastLocation;
+    }
+
+    public void setLastLocation(@Nullable final Location lastLocation) {
+        this.lastLocation = lastLocation;
+        setAsModified();
+    }
+
     public static LocationProfile retrieveProfile(@NotNull final Connection connection, long playerId) throws Exception {
         // Prepare statement
         PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM minecraft.last_location_profile WHERE `user_playerId`=?;");
@@ -110,22 +127,5 @@ public class LocationProfile extends Profile {
             e.printStackTrace();
             return false;
         }
-    }
-
-    @Override
-    protected void onProfileApplication(@NotNull PlayerHandler playerHandler) {
-    }
-
-    @Override
-    protected void onProfileDestruction() {
-    }
-
-    public Location getLastLocation() {
-        return lastLocation;
-    }
-
-    public void setLastLocation(@Nullable final Location lastLocation) {
-        this.lastLocation = lastLocation;
-        setAsModified();
     }
 }

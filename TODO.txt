@@ -14,9 +14,9 @@
     fixed amount of money
     how to determinate who/how/when gets the amount?
 }
-* options profile
-* Insert temporary player blocks => random break and place will be restored (controller between BlockEvent and BlockController through ProtectionListener)
+* options profile (build mode, fly, player time and weather - something more?)
 
++ Insert temporary player blocks => random break and place will be restored (controller between BlockEvent and BlockController through ProtectionListener)
 + Insecure player (done by permission => moderators won't drop exp, items - even in death, nor will do pvp, take other player's items)
 + Add login messages and timer to kick
 + changename command and structure

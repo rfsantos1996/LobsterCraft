@@ -3,6 +3,7 @@ package com.jabyftw.lobstercraft.util;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
 import org.bukkit.Location;
 import org.bukkit.util.NumberConversions;
 
@@ -107,8 +108,8 @@ public abstract class Util {
      * @param maxLength maximum length of the string
      * @return true for valid strings
      */
-    public static boolean checkStringCharactersAndLength(@NotNull String string, int minLength, int maxLength) {
-        return string.matches("[A-Za-z_0-9]{" + minLength + "," + maxLength + "}");
+    public static boolean checkStringCharactersAndLength(@Nullable String string, int minLength, int maxLength) {
+        return string != null && string.matches("[A-Za-z_0-9]{" + minLength + "," + maxLength + "}");
     }
 
     /**
@@ -119,8 +120,8 @@ public abstract class Util {
      * @param maxLength maximum length
      * @return true if password passes
      */
-    public static boolean checkStringLength(@NotNull String string, int minLength, int maxLength) {
-        return string.length() >= minLength && string.length() <= maxLength;
+    public static boolean checkStringLength(@Nullable String string, int minLength, int maxLength) {
+        return string != null && string.length() >= minLength && string.length() <= maxLength;
     }
 
     /**

@@ -44,7 +44,19 @@ public enum ConfigValue {
 
     PLAYER_SPEED_MINIMUM_MULTIPLIER("player.speed.minimum_speed_multiplier", 0.05d),
     PLAYER_SPEED_MAXIMUM_MULTIPLIER("player.speed.maximum_speed_multiplier", 6.0d),
+
     PLAYER_MAXIMUM_AMOUNT_OF_MUTES("player.chat.maximum_amount_of_personal_muted_players", 15),
+
+    MONEY_PLAYER_MINIMUM_AMOUNT_POSSIBLE("money.player.lowest_amount_of_money_absolute_value", 2125.0D),
+
+    MONEY_PLAYER_STARTING_MONEY("money.starting_money.player", 500.0D),
+    MONEY_CITY_STARTING_MONEY("money.starting_money.city", 25_000.0D),
+    MONEY_WORLD_STARTING_MONEY("money.starting_money.world", 2_500_000.0D),
+
+    CITY_STRUCTURE_BASE_PLAYER_NEEDED("city_structure.base_players_needed_for_level_up", 4),
+    CITY_STRUCTURE_PLAYER_MULTIPLIER("city_structure.players_multiplier_needed_for_level_up", 3.0D / 2.0D), // On level 4 there will be 21 homes
+    CITY_STRUCTURE_BASE_MONEY_NEEDED("city_structure.base_money_needed_for_level_up", 25.000D),
+    CITY_STRUCTURE_MONEY_MULTIPLIER("city_structure.players_multiplier_needed_for_level_up", 5.0D / 4.0D), // On level 4 it'll cost 61 000
 
     WORLD_IGNORED_WORLDS("world.ignored_worlds", new String[]{"world_the_end", "world_nether"}),
 
@@ -53,7 +65,7 @@ public enum ConfigValue {
     WORLD_TEMPORARY_PROTECTION_PROTECTED_DISTANCE("world.protection.temporary_protection.distance_for_block_check", 3.0D),
     WORLD_TEMPORARY_PROTECTION_PROTECTED_BLOCK_COUNT("world.protection.temporary_protection.block_count_for_protection", 8),
     WORLD_TEMPORARY_PROTECTION_TIME("world.protection.temporary_protection.time_temporary_block_is_kept_seconds", 60L * 4),
-    WORLD_TEMPORARY_PROTECTION_TASK_PERIOD("world.protection.temporary_protection.process_block_task_period_seconds", 15L),
+    WORLD_TEMPORARY_PROTECTION_TASK_PERIOD("world.protection.temporary_protection.process_block_task_period_seconds", 30L),
     WORLD_ADMINISTRATOR_BLOCK_SEARCH_DISTANCE("world.protection.administrator_block_search_distance_xz_only", 125.0D),
 
     WORLD_DEFAULT_LOAD_SIZE_MULTIPLIER("world.chunk_load.minimum_size_multiplier", 1.15d),

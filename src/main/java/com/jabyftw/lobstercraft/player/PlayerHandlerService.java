@@ -2,7 +2,8 @@ package com.jabyftw.lobstercraft.player;
 
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.listeners.*;
+import com.jabyftw.lobstercraft.player.listeners.JoinListener;
+import com.jabyftw.lobstercraft.player.listeners.LoginListener;
 import com.jabyftw.lobstercraft.player.util.BannedPlayerEntry;
 import com.jabyftw.lobstercraft.player.util.NameChangeEntry;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
@@ -118,6 +119,10 @@ public class PlayerHandlerService extends Service {
     public PlayerHandler getPlayerHandler(@NotNull final Player player) {
         PlayerHandler playerHandler = getPlayerHandlerNoRestrictions(player);
         return playerHandler.isLoggedIn() ? playerHandler : null;
+    }
+
+    public Collection<OfflinePlayerHandler> getOfflinePlayers() {
+        return offlinePlayers.values();
     }
 
     public OfflinePlayerHandler getOfflinePlayer(String playerName) {
@@ -289,12 +294,25 @@ public class PlayerHandlerService extends Service {
         while (resultSet.next()) {
             String playerName = resultSet.getString("playerName").toLowerCase();
 
+            // Check for the nullity of some answers
+            Long economyId = resultSet.getLong("economy_economyId");
+            if (resultSet.wasNull()) economyId = null;
+
+            Long cityId = resultSet.getLong("city_cityId"); // TODO probably will be city_cityId, re-check every usage on database
+            if (resultSet.wasNull()) cityId = null;
+
+            Byte cityPositionId = resultSet.getByte("cityPositionId");
+            if (resultSet.wasNull()) cityPositionId = null;
+
             offlinePlayers.put(
                     playerName,
                     new OfflinePlayerHandler(
                             resultSet.getLong("playerId"),
                             playerName,
                             resultSet.getString("password"),
+                            economyId,
+                            cityId,
+                            cityPositionId,
                             resultSet.getLong("lastTimeOnline"),
                             resultSet.getLong("playTime"),
                             resultSet.getString("lastIp")

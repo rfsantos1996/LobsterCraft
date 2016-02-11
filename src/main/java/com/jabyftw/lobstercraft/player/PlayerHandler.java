@@ -2,11 +2,13 @@ package com.jabyftw.lobstercraft.player;
 
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.economy.EconomyHistoryEntry;
 import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
 import com.jabyftw.lobstercraft.player.util.*;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Util;
+import com.jabyftw.lobstercraft.world.city.CityPosition;
 import com.jabyftw.lobstercraft.world.util.ProtectionType;
 import com.jabyftw.lobstercraft.world.util.location_util.OreBlockLocation;
 import com.sun.istack.internal.NotNull;
@@ -25,10 +27,10 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 /**
@@ -261,15 +263,6 @@ public class PlayerHandler {
         FutureTask<Set<Profile>> retrieveProfiles = LobsterCraft.profileService.retrieveProfiles(getPlayerId());
         retrieveProfiles.run();
 
-        // Apply all profiles, if execution went right; return error otherwise
-        try {
-            for (Profile profile : retrieveProfiles.get()) // Will cause NullPointerException if there is a error on profile retrieving
-                profile.applyProfile(this);
-        } catch (InterruptedException | ExecutionException | NullPointerException e) {
-            e.printStackTrace();
-            return LoginResponse.ERROR_OCCURRED;
-        }
-
         // Remove login message task
         if (loginMessageTask != null) {
             loginMessageTask.cancel();
@@ -288,6 +281,10 @@ public class PlayerHandler {
                 // Update login time and player's last IP
                 offlinePlayer.setLastIp(player.getAddress().getAddress().getHostAddress());
                 this.loginTime = System.currentTimeMillis();
+
+                // Apply all profiles (they can now use synchronous methods and can change player's state)
+                for (Profile profile : retrieveProfiles.get()) // Will cause NullPointerException if there is a error on profile retrieving => player will be kicked, as needed
+                    profile.applyProfile(this);
 
                 // Set as logged in
                 this.loggedIn = true;
@@ -414,7 +411,7 @@ public class PlayerHandler {
     public <T extends Profile> T getProfile(Class<T> profileClass) {
         ProfileType profileType = ProfileType.getType(profileClass);
         if (profileType == null) throw new IllegalStateException("ProfileType is not registered!");
-        return (T) profileClass.cast(playerProfiles.get(profileType));
+        return profileClass.cast(playerProfiles.get(profileType));
     }
 
     public OfflinePlayerHandler getOfflinePlayer() {
@@ -435,6 +432,30 @@ public class PlayerHandler {
 
     public boolean isRegistered() {
         return offlinePlayer.isRegistered();
+    }
+
+    public boolean hasEconomyStructure() {
+        return offlinePlayer.hasEconomyStructure();
+    }
+
+    public long getEconomyId() {
+        return offlinePlayer.getEconomyId();
+    }
+
+    public Collection<EconomyHistoryEntry> getEconomyHistory(int page) throws SQLException {
+        return offlinePlayer.getEconomyHistory(page);
+    }
+
+    public boolean hasCity() {
+        return offlinePlayer.hasCity();
+    }
+
+    public long getCityId() {
+        return offlinePlayer.getCityId();
+    }
+
+    public CityPosition getCityPosition() {
+        return offlinePlayer.getCityPosition();
     }
 
     public Player getPlayer() {
@@ -579,7 +600,6 @@ public class PlayerHandler {
         return hashCodeBuilder.toHashCode();
     }
 
-
     public enum ChangeNameResponse {
         SUCCESSFULLY_CHANGED,
         CANT_CHANGE_NAME_YET,
@@ -587,22 +607,20 @@ public class PlayerHandler {
         PLAYER_NAME_NOT_AVAILABLE,
         WRONG_PASSWORD,
         NOT_REGISTERED,
-        ERROR_OCCURRED;
+        ERROR_OCCURRED
     }
-
 
     public enum ChangePasswordResponse {
         SUCCESSFULLY_CHANGED,
         WRONG_OLD_PASSWORD,
-        ERROR_OCCURRED;
+        ERROR_OCCURRED
     }
-
 
     public enum LoginResponse {
         SUCCESSFULLY_LOGGED_IN,
         PASSWORD_DO_NOT_MATCH,
         ALREADY_REGISTERED,
         NOT_REGISTERED,
-        ERROR_OCCURRED;
+        ERROR_OCCURRED
     }
 }

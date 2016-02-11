@@ -431,15 +431,22 @@ public class ProtectionListener implements Listener {
     }
 
     private String getProtectedBlockMessage(ProtectedBlockLocation blockLocation) {
-        StringBuilder stringBuilder = new StringBuilder("§6Protegido para ");
+        StringBuilder stringBuilder = new StringBuilder("§6Protegido ");
+        boolean blockDefined = !blockLocation.isUndefined();
 
         // Append information
-        if (blockLocation.getType() == ProtectionType.ADMIN_PROTECTION && !blockLocation.isUndefined()) {
-            stringBuilder.append("administrador §c").append(LobsterCraft.constructionsService.getConstructionName(blockLocation.getCurrentId()));
-        } else if (blockLocation.getType() == ProtectionType.PLAYER_PROTECTION && !blockLocation.isUndefined()) {
-            stringBuilder.append("jogador §c#").append(blockLocation.getCurrentId());
+        if (blockDefined) {
+            // "protegido temporariamente para" ou "protegido para"
+            if (blockLocation.isTemporaryBlock()) stringBuilder.append("temporariamente ");
+            stringBuilder.append("para ");
+
+            if (blockLocation.getType() == ProtectionType.ADMIN_PROTECTION)
+                stringBuilder.append("administrador §c").append(LobsterCraft.constructionsService.getConstructionName(blockLocation.getCurrentId()));
+            else if (blockLocation.getType() == ProtectionType.PLAYER_PROTECTION)
+                stringBuilder.append("jogador §c#").append(blockLocation.getCurrentId());
+
         } else {
-            stringBuilder.append("§7desconhecido");
+            stringBuilder.append("para §7(desconhecido)");
         }
 
         return stringBuilder.toString();
@@ -514,8 +521,8 @@ public class ProtectionListener implements Listener {
             return;
         }
 
-        // Cancel if administrator blocks are close
-        if (LobsterCraft.blockController.checkForAdministratorBlocks(event.getBlock().getLocation())) {
+        // Cancel if protected blocks are close
+        if (LobsterCraft.blockController.checkForOtherPlayersAndAdministratorBlocks(event.getBlock().getLocation(), null)) {
             event.setCancelled(true);
             return;
         }

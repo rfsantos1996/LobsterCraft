@@ -79,7 +79,7 @@ public class BlockController extends Service {
 
     // Although they're concurrent, some chunk loading that takes too long are interfering with each other
     private final ConcurrentLinkedDeque<ChunkLocation>
-            pendingLoading = new ConcurrentLinkedDeque<>(), // TODO more than one thread loading
+            pendingLoading = new ConcurrentLinkedDeque<>(),
             pendingUnloading = new ConcurrentLinkedDeque<>();
     private final Set<ChunkLocation>
             loadedLocations = Collections.synchronizedSet(new HashSet<>(NumberConversions.ceil(LIMIT_CHUNK_LOAD_SIZE * 1.2D))),
@@ -127,16 +127,13 @@ public class BlockController extends Service {
 
     @Override
     public void onDisable() {
-        // End temporary blocks task
-        temporaryBlockProtection.destroy();
-
         // Fill it up with all loaded chunks
-        for (World world : Bukkit.getWorlds())
-            if (!LobsterCraft.worldService.isWorldIgnored(world))
-                for (Chunk chunk : world.getLoadedChunks())
-                    pendingUnloading.add(new ChunkLocation(chunk));
+        for (World world : LobsterCraft.worldService.getWorlds())
+            for (Chunk chunk : world.getLoadedChunks())
+                pendingUnloading.add(new ChunkLocation(chunk));
 
         while (!pendingUnloading.isEmpty())
+            // Chunk unloader will unload all blocks and restore temporary blocks
             chunkUnloader.run();
 
         try {
@@ -149,30 +146,31 @@ public class BlockController extends Service {
 
     /*
      * Block placed
-     * -> If it is new block, player protected => if theres no next block from the same player -> temporary protection, else -> default protection, get near temporary blocks to send to protection
+     * -> If current block is null (new block) AND it is player protected
+     * Check for near temporary blocks, if count exceeds the minimum count, transform them into protected blocks
+     * otherwise, create block as temporary block
      */
 
     public void addBlock(@NotNull final Location location, @NotNull ProtectionType type, long currentId) {
-        ProtectedBlockLocation protectedBlockLocation = new ProtectedBlockLocation(location, type);
+        ProtectedBlockLocation protectedBlockLocation = type == ProtectionType.PLAYER_PROTECTION ? new TemporaryProtectedBlockLocation(location, type) : new ProtectedBlockLocation(location, type);
         ProtectedBlockLocation currentValue = blockStorage.get(protectedBlockLocation.getChunkLocation()).putIfAbsent(protectedBlockLocation, protectedBlockLocation);
         ProtectedBlockLocation returningLocation;
 
-        if (currentValue == null)
+        if (currentValue == null) {
             returningLocation = protectedBlockLocation;
-        else if (currentValue.getType() != protectedBlockLocation.getType())
+
+            // If type is player protection, block is marked as temporary
+            if (type == ProtectionType.PLAYER_PROTECTION)
+                // Check for near blocks so they can be marked as fixed
+                temporaryBlockProtection.checkForNearTemporaryBlocks(returningLocation);
+        } else if (currentValue.getType() != type) {
             // Reset block state for new type
             returningLocation = currentValue.setProtectionType(type).setCurrentId(PlayerHandler.UNDEFINED_PLAYER);
-        else
+        } else {
             returningLocation = currentValue;
-        // TODO temporary blocks for protection type
-
-        returningLocation.getDatabaseState().isOnDatabase();
-        returningLocation.setCurrentId(currentId);
-
-        if (type == ProtectionType.PLAYER_PROTECTION) {
-
         }
 
+        returningLocation.setCurrentId(currentId);
     }
 
     public ProtectedBlockLocation getBlock(@NotNull final Location location) {
@@ -188,32 +186,13 @@ public class BlockController extends Service {
         return blockStorage.get(chunkLocation).values();
     }
 
+    // TODO must create methods to check for city's constructions => other getType() == ProtectionType.SOMETHING usages must be replaced by getType().isSomething()
+
     public boolean checkForOtherPlayersAndAdministratorBlocks(@NotNull final Location location, @Nullable Long playerId) {
         return new BlockLocation(location).getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
             for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
                 if (!protectedBlock.isUndefined() && ((protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && (playerId == null || playerId != protectedBlock.getCurrentId()))
                         || (protectedBlock.getType() == ProtectionType.ADMIN_PROTECTION)))
-                    return true;
-            return false;
-        });
-    }
-
-    public boolean checkForOtherPlayersBlocks(@NotNull final Location location, long playerId) {
-        return checkForOtherPlayersBlocks(new BlockLocation(location), playerId);
-    }
-
-    public boolean checkForOtherPlayersBlocks(@NotNull final BlockLocation blockLocation, long playerId) {
-        /*
-         * Actual average: 0.38ms (success) - http://timings.aikar.co/?url=14884599
-         * The old method was taking:
-         * ~180ms without changes (old commit, for each iterating with all blocks) - http://timings.aikar.co/?url=14884327
-         * ~130ms with parallel stream for chunks and stream for blocks - http://timings.aikar.co/?url=14884433
-         * ~70ms with one parallel for chunks and for-each for blocks - http://timings.aikar.co/?url=14884464
-         *
-         */
-        return blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_SIZE).parallelStream().anyMatch(chunkLocation -> {
-            for (ProtectedBlockLocation protectedBlock : blockStorage.get(chunkLocation).values())
-                if (protectedBlock.getType() == ProtectionType.PLAYER_PROTECTION && !protectedBlock.isUndefined() && playerId != protectedBlock.getCurrentId())
                     return true;
             return false;
         });
@@ -412,7 +391,6 @@ public class BlockController extends Service {
 
         @Override
         public void run() {
-
             // Ignore empty unloading queue
             if (pendingUnloading.isEmpty()) return;
 
@@ -434,27 +412,37 @@ public class BlockController extends Service {
                             if (blockStorage.containsKey(chunkLocation)) {
                                 // Itreate through all blocks => It'll be removed, so theres no reason to synchronize
                                 for (ProtectedBlockLocation blockLocation : blockStorage.remove(chunkLocation).values()) {
-                                    DatabaseState databaseState = blockLocation.getDatabaseState();
+                                    // Check for temporary blocks, they shouldn't be inserted
+                                    if (blockLocation.isTemporaryBlock()) {
+                                        Location location = blockLocation.toLocation();
 
-                                    // If databaseState should be saved, increase blockSize
-                                    if (databaseState.shouldSave()) blockSize++;
+                                        // Restore block if chunk is loaded
+                                        if (location.getChunk().isLoaded())
+                                            // Restore block
+                                            ((TemporaryProtectedBlockLocation) blockLocation).restoreBlock();
+                                    } else {
+                                        DatabaseState databaseState = blockLocation.getDatabaseState();
 
-                                    // Put block on the needed list
-                                    switch (databaseState) {
-                                        case INSERT_TO_DATABASE:
-                                            blocksToInsert.putIfAbsent(chunkLocation, new HashSet<>());
-                                            blocksToInsert.get(chunkLocation).add(blockLocation);
-                                            break;
-                                        case UPDATE_DATABASE:
-                                            blocksToUpdate.putIfAbsent(chunkLocation, new HashSet<>());
-                                            blocksToUpdate.get(chunkLocation).add(blockLocation);
-                                            break;
-                                        case DELETE_FROM_DATABASE:
-                                            blocksToDelete.putIfAbsent(chunkLocation, new HashSet<>());
-                                            blocksToDelete.get(chunkLocation).add(blockLocation);
-                                            break;
-                                        default:
-                                            break;
+                                        // If databaseState should be saved, increase blockSize
+                                        if (databaseState.shouldSave()) blockSize++;
+
+                                        // Put block on the needed list
+                                        switch (databaseState) {
+                                            case INSERT_TO_DATABASE:
+                                                blocksToInsert.putIfAbsent(chunkLocation, new HashSet<>());
+                                                blocksToInsert.get(chunkLocation).add(blockLocation);
+                                                break;
+                                            case UPDATE_DATABASE:
+                                                blocksToUpdate.putIfAbsent(chunkLocation, new HashSet<>());
+                                                blocksToUpdate.get(chunkLocation).add(blockLocation);
+                                                break;
+                                            case DELETE_FROM_DATABASE:
+                                                blocksToDelete.putIfAbsent(chunkLocation, new HashSet<>());
+                                                blocksToDelete.get(chunkLocation).add(blockLocation);
+                                                break;
+                                            default:
+                                                break;
+                                        }
                                     }
                                 }
                                 unloadedLocations.add(chunkLocation);
@@ -618,7 +606,11 @@ public class BlockController extends Service {
 
     private class ChunkListener implements Listener {
 
-        @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+        // If temporary block is noticed between chunkUnload, it'll be restored
+        // Either the player has teleported (he may come back through /back) or he already forgot for the block because
+        // he is too far. I'll let the chunk be unloaded anyway
+
+        /*@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
         public void onChunkUnloadHighest(ChunkUnloadEvent event) {
             if (LobsterCraft.worldService.isWorldIgnored(event.getWorld()) || event.isCancelled())
                 return;
@@ -626,7 +618,7 @@ public class BlockController extends Service {
             // Cancel those chunks who are on temporary protection (blocks may change during this period)
             if (!temporaryBlockProtection.canChunkBeUnloaded(new ChunkLocation(event.getChunk())))
                 event.setCancelled(true);
-        }
+        }*/
 
         @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
         public void onChunkUnloadMonitor(ChunkUnloadEvent event) {
@@ -762,50 +754,53 @@ public class BlockController extends Service {
         private final double
                 SEARCH_DISTANCE = LobsterCraft.config.getDouble(ConfigValue.WORLD_TEMPORARY_PROTECTION_PROTECTED_DISTANCE.getPath()),
                 SEARCH_DISTANCE_SQUARED = NumberConversions.square(SEARCH_DISTANCE);
-        private final int CHUNK_SEARCH_DISTANCE = Util.getMinimumChunkSize(SEARCH_DISTANCE);
+        private final int
+                MINIMUM_NEAR_BLOCKS = LobsterCraft.config.getInt(ConfigValue.WORLD_TEMPORARY_PROTECTION_PROTECTED_BLOCK_COUNT.getPath()),
+                CHUNK_SEARCH_DISTANCE = Util.getMinimumChunkSize(SEARCH_DISTANCE);
 
-        private final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation>> temporaryBlocksStorage = new ConcurrentHashMap<>();
+        // TODO chunk control
 
         public TemporaryBlockProtection() {
+            LobsterCraft.logger.info(
+                    "minimumNearTemporaryBlocksNeeded=" + MINIMUM_NEAR_BLOCKS + ", " +
+                            "chunkTemporaryBlocksSearchDistance=" + CHUNK_SEARCH_DISTANCE
+            );
+
+            // This is a low priority task, and it should not consume our resources. Do it slowly and without locking the main thread too much
+            BukkitScheduler.runTaskTimer(() -> {
+                // Get all chunks synchronously
+                HashMap<World, Chunk[]> worldsChunk = new HashMap<>();
+
+                // Get all chunks safely (so we do not throw an ConcurrentModificationException)
+                for (World world : LobsterCraft.worldService.getWorlds())
+                    worldsChunk.put(world, world.getLoadedChunks());
+
+                // Do the time consuming stuff asynchronously
+                BukkitScheduler.runTaskAsynchronously(() -> {
+                    // Iterate through all worlds
+                    for (Chunk[] chunkArray : worldsChunk.values())
+                        // Iterate through their loaded chunks
+                        for (Chunk chunk : chunkArray) {
+                            ChunkLocation chunkLocation = new ChunkLocation(chunk);
+
+                            // Iterate through their locations
+                            for (ProtectedBlockLocation blockLocation : blockStorage.get(chunkLocation).values())
+                                // Check if needs restoring
+                                if (blockLocation.isTemporaryBlock() && ((TemporaryProtectedBlockLocation) blockLocation).shouldBeRestored())
+                                    // Restore block synchronously without checking chunk
+                                    BukkitScheduler.runTask(((TemporaryProtectedBlockLocation) blockLocation)::restoreBlock);
+                        }
+                });
+            }, 20L, LobsterCraft.config.getLong(ConfigValue.WORLD_TEMPORARY_PROTECTION_TASK_PERIOD.getPath()) * 20L);
         }
 
-        public void destroy() {
-        }
-
-        // TODO after temporary blocks are processed, return to storage or delete blocks => delete chunk so it can be unloaded from world if necessary
-
-        public void addBlock(@NotNull final ProtectedBlockLocation protectedBlockLocation) {
-            // Make sure chunk is here
-            temporaryBlocksStorage.putIfAbsent(protectedBlockLocation.getChunkLocation(), new ConcurrentHashMap<>());
-
-            // Insert block
-            TemporaryProtectedBlockLocation temporaryLocation = new TemporaryProtectedBlockLocation(protectedBlockLocation);
-            TemporaryProtectedBlockLocation currentValue = temporaryBlocksStorage.get(protectedBlockLocation.getChunkLocation()).putIfAbsent(protectedBlockLocation, temporaryLocation);
-
-            final TemporaryProtectedBlockLocation actualBlock = currentValue == null ? temporaryLocation : currentValue;
-
-            // Check for near blocks
-            BukkitScheduler.runTaskAsynchronously(new BlockProcess(actualBlock));
-        }
-
-        public boolean canChunkBeUnloaded(@NotNull final ChunkLocation chunkLocation) {
-            return !temporaryBlocksStorage.containsKey(chunkLocation);
-        }
-
-        private class BlockProcess implements Runnable {
-
-            private final TemporaryProtectedBlockLocation actualBlock;
-            private final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation>> blocksNear = new ConcurrentHashMap<>();
-
-            private BlockProcess(@NotNull final TemporaryProtectedBlockLocation actualBlock) {
-                this.actualBlock = actualBlock;
-            }
-
-            @Override
-            public void run() {
+        public void checkForNearTemporaryBlocks(@NotNull final ProtectedBlockLocation protectedBlockLocation) {
+            // Run asynchronously, please
+            BukkitScheduler.runTaskAsynchronously(() -> {
                 long start = System.nanoTime();
+                final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation>> blocksNear = new ConcurrentHashMap<>();
 
-                actualBlock.getChunkLocation().getNearChunks(CHUNK_SEARCH_DISTANCE)
+                protectedBlockLocation.getChunkLocation().getNearChunks(CHUNK_SEARCH_DISTANCE)
                         .parallelStream()
                         // Iterate asynchronously through all chunks
                         .forEach(
@@ -815,21 +810,38 @@ public class BlockController extends Service {
                                     ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation> blocksMap = blocksNear.get(chunkLocation);
 
                                     // Iterate through all temporary blocks from given chunk
-                                    temporaryBlocksStorage.get(chunkLocation).values()
+                                    blockStorage.get(chunkLocation).values()
                                             .stream()
                                             // Filter to player's new blocks
                                             .filter((blockLocation) ->
+                                                    // Fast checks
                                                     blockLocation.getCurrentId() != PlayerHandler.UNDEFINED_PLAYER &&
-                                                            blockLocation.getType() == actualBlock.getType() &&
-                                                            blockLocation.getCurrentId() == actualBlock.getCurrentId() &&
-                                                            blockLocation.distanceSquared(actualBlock) < SEARCH_DISTANCE_SQUARED
+                                                            blockLocation.getType() == protectedBlockLocation.getType() &&
+                                                            blockLocation.getCurrentId() == protectedBlockLocation.getCurrentId() &&
+                                                            blockLocation.isTemporaryBlock() &&
+                                                            // Slow check
+                                                            blockLocation.distanceSquared(protectedBlockLocation) < SEARCH_DISTANCE_SQUARED
                                             )
-                                            .forEach(temporaryProtectedBlockLocation -> blocksMap.put(temporaryProtectedBlockLocation, temporaryProtectedBlockLocation));
+                                            // Add each block
+                                            .forEach(blockLocation -> blocksMap.put(blockLocation, (TemporaryProtectedBlockLocation) blockLocation));
                                 }
                         );
 
-                LobsterCraft.logger.info("It took " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) + "ms to process block");
-            }
+                long count = 0;
+
+                // Count blocks
+                for (ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation> blockHolder : blocksNear.values())
+                    count += blockHolder.size();
+
+                if (count >= MINIMUM_NEAR_BLOCKS)
+                    // Remove all blocks from temporary block storage and insert to block protection
+                    for (Map.Entry<ChunkLocation, ConcurrentHashMap<BlockLocation, TemporaryProtectedBlockLocation>> entry : blocksNear.entrySet())
+                        for (TemporaryProtectedBlockLocation blockLocation : entry.getValue().values())
+                            // Mark them as fixed
+                            blockLocation.setBlockAsFixed();
+
+                LobsterCraft.logger.info("It took " + formatter.format((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)) + "ms to process block (near blocks=" + count + ")");
+            });
         }
     }
 }

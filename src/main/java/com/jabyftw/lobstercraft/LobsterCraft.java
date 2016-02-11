@@ -11,6 +11,7 @@ import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.ConfigurationFile;
 import com.jabyftw.lobstercraft.util.Service;
 import com.jabyftw.lobstercraft.world.BlockController;
+import com.jabyftw.lobstercraft.world.CityService;
 import com.jabyftw.lobstercraft.world.ConstructionsService;
 import com.jabyftw.lobstercraft.world.WorldService;
 import com.jabyftw.lobstercraft.world.xray_protection.XrayProtectionService;
@@ -77,6 +78,7 @@ public class LobsterCraft extends JavaPlugin {
     public static WorldService worldService;
     public static XrayProtectionService xrayProtectionService;
     public static BlockController blockController;
+    public static CityService cityService;
     public static ConstructionsService constructionsService;
     public static ChatService chatService;
 
@@ -175,6 +177,7 @@ public class LobsterCraft extends JavaPlugin {
                     xrayProtectionService = new XrayProtectionService(),
                     new CommandService(),
                     blockController = new BlockController(),
+                    cityService = new CityService(),
                     constructionsService = new ConstructionsService(),
                     chatService = new ChatService()
             };
@@ -211,8 +214,13 @@ public class LobsterCraft extends JavaPlugin {
 
         // Stop services
         for (Service serverService : serverServices) {
-            serverService.onDisable();
-            LobsterCraft.logger.info(serverService.getName() + " disabled.");
+            try {
+                serverService.onDisable();
+                LobsterCraft.logger.info(serverService.getName() + " disabled successfully.");
+            } catch (Exception e) {
+                e.printStackTrace();
+                LobsterCraft.logger.info(serverService.getName() + " failed to disabled.");
+            }
         }
 
         // Erase variable
@@ -223,6 +231,7 @@ public class LobsterCraft extends JavaPlugin {
         xrayProtectionService = null;
         blockController = null;
         constructionsService = null;
+        cityService = null;
         chatService = null;
 
         // Delete instances

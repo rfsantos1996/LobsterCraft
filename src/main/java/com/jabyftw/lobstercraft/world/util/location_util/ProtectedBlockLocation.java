@@ -70,6 +70,10 @@ public class ProtectedBlockLocation extends BlockLocation {
         return this;
     }
 
+    public boolean isTemporaryBlock() {
+        return false;
+    }
+
     public boolean isUndefined() {
         return currentId == PlayerHandler.UNDEFINED_PLAYER;
     }

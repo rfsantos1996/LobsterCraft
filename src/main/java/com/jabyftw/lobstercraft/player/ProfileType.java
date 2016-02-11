@@ -1,11 +1,14 @@
 package com.jabyftw.lobstercraft.player;
 
+import com.jabyftw.lobstercraft.economy.EconomyProfile;
+import com.jabyftw.lobstercraft.economy.EconomyStructure;
 import com.jabyftw.lobstercraft.player.chat.ChatProfile;
 import com.jabyftw.lobstercraft.player.inventory.InventoryProfile;
 import com.jabyftw.lobstercraft.player.location.LocationProfile;
 import com.sun.istack.internal.NotNull;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -59,6 +62,22 @@ public enum ProfileType {
         @Override
         public <T extends Profile> boolean saveProfile(@NotNull Connection connection, T profile) {
             return ChatProfile.saveProfile(connection, (ChatProfile) profile);
+        }
+    },
+    ECONOMY_PROFILE(EconomyProfile.class) {
+        @Override
+        public <T extends Profile> T getProfile(@NotNull Connection connection, long playerId) throws Exception {
+            return (T) new EconomyProfile(playerId, EconomyStructure.retrieveProfile(connection, EconomyStructure.StructureType.PLAYER_STRUCTURE, playerId, true));
+        }
+
+        @Override
+        public <T extends Profile> boolean saveProfile(@NotNull Connection connection, T profile) {
+            try {
+                return EconomyStructure.saveEconomyStructure(connection, ((EconomyProfile) profile).getEconomyStructure()) > 0;
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false;
+            }
         }
     };
 
