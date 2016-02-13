@@ -27,20 +27,20 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p/>
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p/>
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p/>
+ * <p>
  * Email address: rafael.sartori96@gmail.com
  */
 public class PlayerHandlerService extends Service {
@@ -48,6 +48,7 @@ public class PlayerHandlerService extends Service {
     // OBS: must be Concurrent as it is used on several different threads
     protected final ConcurrentHashMap<Player, PlayerHandler> playerHandlers = new ConcurrentHashMap<>();
     protected final ConcurrentHashMap<String, OfflinePlayerHandler> offlinePlayers = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<Long, OfflinePlayerHandler> offlinePlayersIds = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<Long, NameChangeEntry> nameChangeEntries = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, HashSet<BannedPlayerEntry>> bannedPlayersEntries = new ConcurrentHashMap<>();
@@ -125,6 +126,10 @@ public class PlayerHandlerService extends Service {
         return offlinePlayers.values();
     }
 
+    public int numberOfPlayers() {
+        return offlinePlayers.size();
+    }
+
     public OfflinePlayerHandler getOfflinePlayer(String playerName) {
         OfflinePlayerHandler offlinePlayerHandler = new OfflinePlayerHandler(playerName.toLowerCase());
         OfflinePlayerHandler currentValue = offlinePlayers.putIfAbsent(playerName.toLowerCase(), offlinePlayerHandler);
@@ -134,12 +139,7 @@ public class PlayerHandlerService extends Service {
 
     public OfflinePlayerHandler getOfflinePlayer(long playerId) {
         if (playerId < 0) throw new IllegalArgumentException("PlayerId can't be less than zero.");
-
-        for (OfflinePlayerHandler playerHandler : offlinePlayers.values())
-            if (playerHandler.getPlayerId() == playerId)
-                return playerHandler;
-
-        return null;
+        return offlinePlayersIds.get(playerId);
     }
 
     public NameChangeEntry getNameChangeEntry(long playerId) {
@@ -298,26 +298,26 @@ public class PlayerHandlerService extends Service {
             Long economyId = resultSet.getLong("economy_economyId");
             if (resultSet.wasNull()) economyId = null;
 
-            Long cityId = resultSet.getLong("city_cityId"); // TODO probably will be city_cityId, re-check every usage on database
+            Long cityId = resultSet.getLong("city_cityId");
             if (resultSet.wasNull()) cityId = null;
 
             Byte cityPositionId = resultSet.getByte("cityPositionId");
             if (resultSet.wasNull()) cityPositionId = null;
 
-            offlinePlayers.put(
+            OfflinePlayerHandler playerHandler = new OfflinePlayerHandler(
+                    resultSet.getLong("playerId"),
                     playerName,
-                    new OfflinePlayerHandler(
-                            resultSet.getLong("playerId"),
-                            playerName,
-                            resultSet.getString("password"),
-                            economyId,
-                            cityId,
-                            cityPositionId,
-                            resultSet.getLong("lastTimeOnline"),
-                            resultSet.getLong("playTime"),
-                            resultSet.getString("lastIp")
-                    )
+                    resultSet.getString("password"),
+                    economyId,
+                    cityId,
+                    cityPositionId,
+                    resultSet.getLong("lastTimeOnline"),
+                    resultSet.getLong("playTime"),
+                    resultSet.getString("lastIp")
             );
+
+            offlinePlayers.put(playerName, playerHandler);
+            offlinePlayersIds.put(playerHandler.getPlayerId(), playerHandler);
         }
 
         // Close everything

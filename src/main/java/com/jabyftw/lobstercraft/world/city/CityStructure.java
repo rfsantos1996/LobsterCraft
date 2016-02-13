@@ -2,18 +2,17 @@ package com.jabyftw.lobstercraft.world.city;
 
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.economy.EconomyStructure;
 import com.jabyftw.lobstercraft.player.OfflinePlayerHandler;
 import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.util.DatabaseState;
+import com.jabyftw.lobstercraft.util.Util;
 import com.jabyftw.lobstercraft.world.util.location_util.BlockLocation;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.NumberConversions;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for PacocaCraft Plugin
@@ -36,86 +35,125 @@ import java.util.Set;
 public class CityStructure {
 
     // Configuration for number of homes
-    private static final int NUMBER_OF_PLAYERS_NEEDED = LobsterCraft.config.getInt(ConfigValue.LOCATION_TELEPORT_TIME_BETWEEN_ACCEPT_TRIGGERS.getPath());
-    private static final double PLAYER_MULTIPLIER = LobsterCraft.config.getDouble(ConfigValue.LOCATION_TELEPORT_TIME_BETWEEN_ACCEPT_TRIGGERS.getPath());
+    private static final int NUMBER_OF_PLAYERS_NEEDED = LobsterCraft.config.getInt(ConfigValue.CITY_STRUCTURE_BASE_PLAYER_NEEDED.getPath());
+    private static final double PLAYER_MULTIPLIER = LobsterCraft.config.getDouble(ConfigValue.CITY_STRUCTURE_PLAYER_MULTIPLIER.getPath());
 
     // Configuration for money costs on update
-    private static final double STARTING_CITY_MONEY = LobsterCraft.config.getDouble(ConfigValue.MONEY_CITY_STARTING_MONEY.getPath());
-    private static final double MONEY_MULTIPLIER = LobsterCraft.config.getDouble(ConfigValue.LOCATION_TELEPORT_TIME_BETWEEN_ACCEPT_TRIGGERS.getPath());
+    private static final double
+            STARTING_CITY_MONEY = LobsterCraft.config.getDouble(ConfigValue.CITY_STRUCTURE_BASE_MONEY_NEEDED.getPath()),
+            MONEY_MULTIPLIER = LobsterCraft.config.getDouble(ConfigValue.CITY_STRUCTURE_MONEY_MULTIPLIER.getPath());
 
-    private final long cityId;
+    // Ceil/floor taxes
+    private static final double
+            CEIL_CITY_TAX = LobsterCraft.config.getDouble(ConfigValue.MONEY_CITY_CEIL_TAX.getPath()),
+            FLOOR_CITY_TAX = LobsterCraft.config.getDouble(ConfigValue.MONEY_CITY_FLOOR_TAX.getPath()),
+            FLOOR_LOW_CAPACITY_CITY_TAX = LobsterCraft.config.getDouble(ConfigValue.MONEY_CITY_FLOOR_TAX.getPath());
+    // Alarming economy, tax increase
+    private static final double ALARMING_ECONOMY_TRIGGER = LobsterCraft.config.getDouble(ConfigValue.MONEY_CITY_ALARMING_CAPACITY_ECONOMY.getPath());
+
+    private long cityId = PlayerHandler.UNDEFINED_PLAYER;
     private final String cityName;
-    private final EconomyStructure economyStructure;
-    private final HashMap<ItemStack, Integer> cityInventory, storeItems; // Store as an array of items with their amount
+    //private final EconomyStructure economyStructure;
+    private final HashSet<CityHomeLocation> homeLocations = new HashSet<>();
+    private final HashMap<ItemStack, Integer> cityInventory = new HashMap<>(), storeItems = new HashMap<>(); // Store as an array of items with their amount
 
+    private DatabaseState databaseState = DatabaseState.NOT_ON_DATABASE;
     private BlockLocation cityCenter;
-    private volatile int cityLevel;
+    private volatile int cityLevel = 1;
+    private long lastTaxPayDate;
+    private double taxFee = (CEIL_CITY_TAX + FLOOR_CITY_TAX) / 2.0D;
 
-    public CityStructure(long cityId, @NotNull final String cityName, @NotNull final EconomyStructure economyStructure,
+    public CityStructure(long cityId, @NotNull final String cityName, //@NotNull final EconomyStructure economyStructure,
                          @Nullable final ItemStack[] cityInventory, @Nullable final ItemStack[] storeItems,
-                         @NotNull final BlockLocation cityCenter, int cityLevel) {
+                         @Nullable final Collection<CityHomeLocation> homeLocations, @NotNull final BlockLocation cityCenter,
+                         int cityLevel, long lastTaxPayDate, double taxFee) {
         this.cityId = cityId;
         this.cityName = cityName;
-        this.economyStructure = economyStructure;
-        this.cityInventory = getHashMapFromItemStacks(cityInventory);
-        this.storeItems = getHashMapFromItemStacks(storeItems);
+        //this.economyStructure = economyStructure;
+        this.homeLocations.addAll(homeLocations);
+        this.cityInventory.putAll(getHashMapFromItemStacks(cityInventory));
+        this.storeItems.putAll(getHashMapFromItemStacks(storeItems));
 
+        this.databaseState = DatabaseState.ON_DATABASE;
         this.cityCenter = cityCenter;
         this.cityLevel = cityLevel;
+        this.lastTaxPayDate = lastTaxPayDate;
+        this.taxFee = taxFee;
+
+        checkForLevelUp();
     }
 
     /*
-     * EconomyStructure {
-     *      long economyId
-     *      EconomyType type
-     *      double moneyAmount
-     *      MoneyResponse spendMoney(double amount, String reason, boolean allowNegative) => SUCCESSFULLY_SPENT, INVALID_AMOUNT, NOT_ENOUGH_MONEY, MAXIMUM_NEGATIVE_AMOUNT_REACHED, INVALID_REASON, ERROR_OCCURRED
-     *      MoneyResponse receiveMoney(double amount, String reason) => SUCCESSFULLY_SPENT, INVALID_AMOUNT, INVALID_REASON (64 characters), ERROR_OCCURRED
-     * }
-     */
-
-    /*
-     * List of center of house locations (stored on a different table)
-     * City center location
-     * City name (allow space, no special characters but underline and -; 24 characters)
-     * City level (affected by number of citizens, fees acquired - city money)
-     * City official's occupation (must be 1 manager at a time, varying on builders) => got from OfflinePlayerHandler
-     * City Inventory (will share items)
-     * City EconomyStructure {
-     *      After certain level => open store, people have to visit the city to buy items
-     *      After certain level => non-standard items will be allowed
-     *      City money => percentage of player's received money will go to the city
-     *      After some days the city will have to pay their part to the server (restoring the money that the server lends the player through Jobs, level ups -> fixed level, skills)
-     *      Can go negative 3 times
-     * }
-     * City Store (will sell an amount of shared items on city's price - corrected via world's economy [commanded by an administrator] AND via city's deficit [city can loan money - approved by the manager])
-     * City id
-     * City OfflinePlayerHandlers => got from OfflinePlayerHandler
+     * Server taxes for cities will be:
+     *      Total earnings since the last server fee date * serverTaxFee => retrieve the earnings (positive amounts) for this economy structure from history since the last server fee pay date
      *
-     * Note: OfflinePlayerHandler will store the city Id and city position with cityPositionDate (may be a manager, builder or just citizen), exp, level, player class (Miner, Archer, Fighter, Builder and Woodcutter)
+     * World EconomyStructure:
+     *      It'll go out from the server to the common players through job
+     *      It'll go out from the city to the citizens through job (they'll have a bonus of exp and money)
+     *     Every player earnings/expenses will include taxes (server's OR city's taxes; city taxes are higher)
+     *
+     *     City will get money to pay the default server tax and have some to upgrade or pay more jobs
+     *     City expenses will not account on taxes (just earnings)
+     *     All player expenses/earnings will have taxes either from city (it'll have a ceiling and floor, the manager will set the right amount for the city) or server (fixed one, lower than the city's floor tax)
+     *          Earnings will be discounted the fee: receiver will receive the amount * fee and player amount * (1 - fee)
+     *          Expenses will be increased the fee: receiver will pay amount * (1 + fee), receiver will receive the amount * fee
+     *     Leaving/Creating/Entering the city will cost money (on server taxes)
+     *     Updating the city won't cost taxes since it'll be used the city money (through earnings and deposits)
+     *     Depositing to the city will be on server's taxes
+     *
+     * World without enough money:
+     *      Players will receive less job money (server has 25% of his total capacity ? start correcting to economize) => total capacity being Amount per player * number of players
+     *      Base fees will be higher
+     *
+     * City without enough money:
+     *      Players will receive less job money (city has 25% of his level up capacity)
+     *      If players cant lend the city money => City will be on negative and, eventually, break (after the 3 negatives spents on the server fee)
      */
-    /*
-     * World EconomyStructure {
-     *      world money => give money to players through jobs, receives an amount when a player is registered
-     *      Receives an amount when city pays its fees
-     * }
-     */
 
-    private HashMap<ItemStack, Integer> getHashMapFromItemStacks(@Nullable final ItemStack[] itemStacks) {
-        HashMap<ItemStack, Integer> items = new HashMap<>();
+    public double moneyNeededForUpdate(int cityLevel, boolean getNextLevel) {
+        // Current value + remaining 30% of next level value
+        return (cityLevel * MONEY_MULTIPLIER * STARTING_CITY_MONEY) + (getNextLevel ? ALARMING_ECONOMY_TRIGGER * moneyNeededForUpdate(cityLevel + 1, false) : 0);
+    }
 
-        // Check if itemStacks is null
-        if (itemStacks != null)
-            // Iterate through all of them
-            for (ItemStack itemStack : itemStacks) {
-                int itemAmount = itemStack.getAmount();
-                // Reset to 1 the amount
-                itemStack.setAmount(1);
-                // Insert to map
-                items.put(itemStack, itemAmount);
-            }
+    public int numberOfCitizensNeededForUpdate(int cityLevel) {
+        return NumberConversions.ceil(cityLevel * PLAYER_MULTIPLIER * NUMBER_OF_PLAYERS_NEEDED);
+    }
 
-        return items;
+    public int maximumNumberOfCitizens() {
+        // 1 less than the next level up is capable of handling
+        return numberOfCitizensNeededForUpdate(cityLevel + 1) - 1;
+    }
+
+    public long getCityId() {
+        return cityId;
+    }
+
+    public String getCityName() {
+        return cityName;
+    }
+
+    public BlockLocation getCityCenter() {
+        return cityCenter;
+    }
+
+    public synchronized int getCityLevel() {
+        return cityLevel;
+    }
+
+    public JoinCityResponse joinCity(@NotNull final PlayerHandler playerHandler, @NotNull final CityHomeLocation homeLocation) {
+        if (playerHandler.hasCity())
+            return JoinCityResponse.ALREADY_IN_CITY;
+
+        if (homeLocation.getCityId() != cityId)
+            return JoinCityResponse.ERROR_OCCURRED;
+
+        return JoinCityResponse.SUCCESSFULLY_JOINED_CITY;
+    }
+
+    public enum JoinCityResponse {
+        ERROR_OCCURRED,
+        ALREADY_IN_CITY,
+        SUCCESSFULLY_JOINED_CITY
     }
 
     public Set<OfflinePlayerHandler> getCitizens() {
@@ -145,17 +183,52 @@ public class CityStructure {
             playerHandler.sendMessage(message);
     }
 
+    public TaxFeeChangeResponse setTaxFee(double taxFee) {
+        if (taxFee < 0.0D || taxFee > 1.0D)
+            return TaxFeeChangeResponse.OUT_OF_RANGE;
+        if (taxFee > CEIL_CITY_TAX)
+            return TaxFeeChangeResponse.TAX_TOO_HIGH;
+        if (taxFee < FLOOR_CITY_TAX)
+            return TaxFeeChangeResponse.TAX_TOO_LOW;
+
+        sendMessage("§6Taxas mudaram de §c" + Util.formatTaxes(this.taxFee) + "§6 para §c" + Util.formatTaxes(taxFee));
+        this.taxFee = taxFee;
+        setAsModified();
+        return TaxFeeChangeResponse.SUCCESSFULLY_CHANGED_TAXES;
+    }
+
+    public DatabaseState getDatabaseState() {
+        return databaseState;
+    }
+
+    public void setAsModified() {
+        if (databaseState == DatabaseState.NOT_ON_DATABASE)
+            databaseState = DatabaseState.INSERT_TO_DATABASE;
+        if (databaseState == DatabaseState.ON_DATABASE)
+            databaseState = DatabaseState.UPDATE_DATABASE;
+    }
+
+    /*private void checkTaxLevel() {
+        if ((economyStructure.getMoneyAmount() / moneyNeededForUpdate(cityLevel, false)) <= ALARMING_ECONOMY_TRIGGER)
+            // Update tax
+            setTaxFee(Math.max(taxFee, FLOOR_LOW_CAPACITY_CITY_TAX));
+    }*/
+
     private synchronized LevelUpResponse checkForLevelUp() {
+        // Check if tax is right
+        //checkTaxLevel();
+
         // Check for required money
-        if (economyStructure.getMoneyAmount() < moneyNeededForUpdate())
-            return LevelUpResponse.NOT_ENOUGH_MONEY;
+        //if (economyStructure.getMoneyAmount() < moneyNeededForUpdate(cityLevel, true))
+        //return LevelUpResponse.NOT_ENOUGH_MONEY;
 
         // Check for required players
-        if (getCitizens().size() < numberOfCitizensNeeded())
+        if (getCitizens().size() < numberOfCitizensNeededForUpdate(cityLevel))
             return LevelUpResponse.NOT_ENOUGH_CITIZENS;
 
         // Added level
         cityLevel += 1;
+        setAsModified();
 
         // Broadcast achievement
         sendMessage("§6A cidade evoluiu para o§c level " + cityLevel + "§6! Agora será possível construir até §c" + maximumNumberOfCitizens() + " casas§6!");
@@ -163,44 +236,36 @@ public class CityStructure {
         return LevelUpResponse.SUCCESSFULLY_LEVELED_UP;
     }
 
-    public double moneyNeededForUpdate() {
-        return cityLevel * MONEY_MULTIPLIER * STARTING_CITY_MONEY;
+    private HashMap<ItemStack, Integer> getHashMapFromItemStacks(@Nullable final ItemStack[] itemStacks) {
+        HashMap<ItemStack, Integer> items = new HashMap<>();
+
+        // Check if itemStacks is null
+        if (itemStacks != null)
+            // Iterate through all of them
+            for (ItemStack itemStack : itemStacks) {
+                int itemAmount = itemStack.getAmount();
+                // Reset to 1 the amount
+                itemStack.setAmount(1);
+                // Insert to map
+                items.put(itemStack, itemAmount);
+            }
+
+        return items;
     }
 
-    public int numberOfCitizensNeeded() {
-        return NumberConversions.ceil(cityLevel * PLAYER_MULTIPLIER * NUMBER_OF_PLAYERS_NEEDED);
-    }
+    private ItemStack[] getItemStacksFromHashMap(@NotNull final HashMap<ItemStack, Integer> storedItems) {
+        Set<Map.Entry<ItemStack, Integer>> entries = storedItems.entrySet();
 
-    public int maximumNumberOfCitizens() {
-        return NumberConversions.ceil(numberOfCitizensNeeded() * PLAYER_MULTIPLIER) - 1;
-    }
+        int i = 0;
+        ItemStack[] itemStacks = new ItemStack[entries.size()];
 
-    public long getCityId() {
-        return cityId;
-    }
+        for (Map.Entry<ItemStack, Integer> entry : entries) {
+            ItemStack itemStack = entry.getKey().clone();
+            itemStack.setAmount(entry.getValue());
+            itemStacks[i++] = itemStack;
+        }
 
-    public String getCityName() {
-        return cityName;
-    }
-
-    public synchronized EconomyStructure.SpentMoneyResponse spendAmount(double amount, @NotNull final String reason, boolean allowNegative) {
-        EconomyStructure.SpentMoneyResponse spentMoneyResponse = economyStructure.spendAmount(amount, reason, allowNegative);
-        checkForLevelUp();
-        return spentMoneyResponse;
-    }
-
-    public synchronized EconomyStructure.MoneyReceiveResponse receiveAmount(double amount, @NotNull final String reason) {
-        EconomyStructure.MoneyReceiveResponse moneyReceiveResponse = economyStructure.receiveAmount(amount, reason);
-        checkForLevelUp();
-        return moneyReceiveResponse;
-    }
-
-    public BlockLocation getCityCenter() {
-        return cityCenter;
-    }
-
-    public synchronized int getCityLevel() {
-        return cityLevel;
+        return itemStacks;
     }
 
     @Override
@@ -211,6 +276,13 @@ public class CityStructure {
     @Override
     public boolean equals(Object obj) {
         return (obj instanceof CityStructure && cityName.equals(((CityStructure) obj).cityName)) || (obj instanceof String && cityName.equals(obj));
+    }
+
+    public enum TaxFeeChangeResponse {
+        TAX_TOO_HIGH,
+        TAX_TOO_LOW,
+        OUT_OF_RANGE,
+        SUCCESSFULLY_CHANGED_TAXES
     }
 
     public enum LevelUpResponse {

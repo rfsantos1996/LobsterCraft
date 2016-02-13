@@ -2,13 +2,13 @@ package com.jabyftw.lobstercraft.player;
 
 import com.jabyftw.lobstercraft.ConfigValue;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.economy.EconomyHistoryEntry;
 import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
 import com.jabyftw.lobstercraft.player.util.*;
 import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Util;
 import com.jabyftw.lobstercraft.world.city.CityPosition;
+import com.jabyftw.lobstercraft.world.city.CityStructure;
 import com.jabyftw.lobstercraft.world.util.ProtectionType;
 import com.jabyftw.lobstercraft.world.util.location_util.OreBlockLocation;
 import com.sun.istack.internal.NotNull;
@@ -27,7 +27,6 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,20 +34,20 @@ import java.util.concurrent.FutureTask;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p/>
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p/>
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p/>
+ * <p>
  * Email address: rafael.sartori96@gmail.com
  */
 public class PlayerHandler {
@@ -223,6 +222,12 @@ public class PlayerHandler {
 
         // Assure playerId is greater than 0
         if (getPlayerId() < 0) return LoginResponse.ERROR_OCCURRED;
+
+        // Give money to the world since a new player joined
+        /*EconomyService.worldEconomyStructure.receiveAmount(
+                EconomyService.WORLD_PER_PLAYER_AMOUNT - EconomyStructure.StructureType.PLAYER_STRUCTURE.getStartingMoney(), // Remove the starting money so we don't need to create 2 history
+                "Novo jogador " + getPlayerName() + " (playerId=" + getPlayerId() + ")"
+        );*/
 
         return forceLogin();
     }
@@ -438,16 +443,24 @@ public class PlayerHandler {
         return offlinePlayer.hasEconomyStructure();
     }
 
+    /*public EconomyProfile getEconomyStructure() {
+        return getProfile(EconomyProfile.class);
+    }*/
+
     public long getEconomyId() {
         return offlinePlayer.getEconomyId();
     }
 
-    public Collection<EconomyHistoryEntry> getEconomyHistory(int page) throws SQLException {
+    /*public Collection<EconomyHistoryEntry> getEconomyHistory(int page) throws SQLException {
         return offlinePlayer.getEconomyHistory(page);
-    }
+    }*/
 
     public boolean hasCity() {
         return offlinePlayer.hasCity();
+    }
+
+    public CityStructure getCity() {
+        return offlinePlayer.getCity();
     }
 
     public long getCityId() {

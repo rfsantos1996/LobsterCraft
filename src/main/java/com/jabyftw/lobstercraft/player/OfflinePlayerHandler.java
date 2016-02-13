@@ -1,16 +1,14 @@
 package com.jabyftw.lobstercraft.player;
 
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.economy.EconomyHistoryEntry;
-import com.jabyftw.lobstercraft.economy.EconomyStructure;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.world.city.CityPosition;
+import com.jabyftw.lobstercraft.world.city.CityStructure;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.sql.*;
-import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -92,6 +90,9 @@ public class OfflinePlayerHandler {
 
         this.playerId = insertPlayerHandle(this);
 
+        // Insert player to the Id map
+        LobsterCraft.playerHandlerService.offlinePlayersIds.put(playerId, this);
+
         // Update state
         this.databaseState = DatabaseState.ON_DATABASE;
     }
@@ -151,9 +152,9 @@ public class OfflinePlayerHandler {
         return economyId;
     }
 
-    public Collection<EconomyHistoryEntry> getEconomyHistory(int page) throws SQLException {
+    /*public Collection<EconomyHistoryEntry> getEconomyHistory(int page) throws SQLException {
         return EconomyStructure.getHistory(economyId, page);
-    }
+    }*/
 
     public boolean hasCity() {
         return cityId != null && cityId > 0 && cityPosition != null;
@@ -163,7 +164,10 @@ public class OfflinePlayerHandler {
         return cityId;
     }
 
-    // TODO get CityStructure using Lobstercraft#cityService
+    public CityStructure getCity() {
+        // TODO get CityStructure using Lobstercraft#cityService
+        return null;
+    }
 
     public CityPosition getCityPosition() {
         return cityPosition;

@@ -10,6 +10,7 @@ import org.bukkit.util.NumberConversions;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -20,25 +21,29 @@ import java.util.regex.Pattern;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p/>
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p/>
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p/>
+ * <p>
  * Email address: rafael.sartori96@gmail.com
  */
 public abstract class Util {
 
-    private final static SimpleDateFormat dateFormatter = new SimpleDateFormat("dd/MM/yy HH:mm");
+    private final static SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yy HH:mm");
+    private final static DecimalFormat
+            taxFormat = new DecimalFormat("##0'%"),
+            moneyFormat = new DecimalFormat("'$0.00"),
+            decimalFormat = new DecimalFormat("0.000");
 
     /**
      * The number of chunks loaded is square((chunkSize * 2) + 1):
@@ -213,13 +218,13 @@ public abstract class Util {
     /**
      * Get the Minecraft's time based on earth time in seconds, given by the equation:
      * (earthTimeSeconds / 36) + 600
-     * <p/>
+     * <p>
      * 4.000 -> 10h00
      * 8.000 -> 14h00
-     * <p/>
+     * <p>
      * Time in seconds: t
      * Minecraft time: m
-     * <p/>
+     * <p>
      * m = t.x + y, using these values we have that x = 0.277... (5 / 18) and y = 6.000
      *
      * @param earthTimeInSeconds time parsed as seconds
@@ -351,6 +356,18 @@ public abstract class Util {
     }
 
     public static String formatDate(long timeMillis) {
-        return dateFormatter.format(new Date(timeMillis));
+        return dateFormat.format(new Date(timeMillis));
+    }
+
+    public static String formatDecimal(double decimal) {
+        return decimalFormat.format(decimal);
+    }
+
+    public static String formatMoney(double decimal) {
+        return moneyFormat.format(decimal);
+    }
+
+    public static String formatTaxes(double taxFee) {
+        return taxFormat.format(taxFee);
     }
 }

@@ -2,20 +2,20 @@ package com.jabyftw.lobstercraft;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for LobsterCraft Plugin
- * <p/>
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p/>
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p/>
+ * <p>
  * Email address: rafael.sartori96@gmail.com
  */
 public enum ConfigValue {
@@ -47,15 +47,21 @@ public enum ConfigValue {
 
     PLAYER_MAXIMUM_AMOUNT_OF_MUTES("player.chat.maximum_amount_of_personal_muted_players", 15),
 
-    MONEY_PLAYER_MINIMUM_AMOUNT_POSSIBLE("money.player.lowest_amount_of_money_absolute_value", 2125.0D),
+    MONEY_MINIMUM_MONEY_POSSIBLE("money.minimum_possible_absolute", 2_250.0D),
+    MONEY_PER_PLAYER_AMOUNT("money.server_per_player_amount", 75_000.0D),
+    MONEY_PLAYER_STARTING_AMOUNT("money.player_starting_amount", 500.0D),
 
-    MONEY_PLAYER_STARTING_MONEY("money.starting_money.player", 500.0D),
-    MONEY_CITY_STARTING_MONEY("money.starting_money.city", 25_000.0D),
-    MONEY_WORLD_STARTING_MONEY("money.starting_money.world", 2_500_000.0D),
+    MONEY_SERVER_CEIL_TAX("money.tax.server_ceil_tax", 0.40D),
+    MONEY_SERVER_DEFAULT_TAX("money.tax.server_default_tax", 0.03D),
+    MONEY_CITY_CEIL_TAX("money.tax.ceil_city_tax", 0.3D),
+    MONEY_CITY_FLOOR_TAX("money.tax.floor_city_tax", 0.07D),
+    MONEY_CITY_FLOOR_LOW_CAPACITY_TAX("money.tax.floor_city_tax_when_low_capacity", 0.16D),
+    MONEY_CITY_ALARMING_CAPACITY_ECONOMY("money.tax.alarming_city_economy_capacity_trigger", 0.3D),
+    //MONEY_("", ),
 
     CITY_STRUCTURE_BASE_PLAYER_NEEDED("city_structure.base_players_needed_for_level_up", 4),
     CITY_STRUCTURE_PLAYER_MULTIPLIER("city_structure.players_multiplier_needed_for_level_up", 3.0D / 2.0D), // On level 4 there will be 21 homes
-    CITY_STRUCTURE_BASE_MONEY_NEEDED("city_structure.base_money_needed_for_level_up", 25.000D),
+    CITY_STRUCTURE_BASE_MONEY_NEEDED("city_structure.base_money_needed_for_level_up", 25_000.0D),
     CITY_STRUCTURE_MONEY_MULTIPLIER("city_structure.players_multiplier_needed_for_level_up", 5.0D / 4.0D), // On level 4 it'll cost 61 000
 
     WORLD_IGNORED_WORLDS("world.ignored_worlds", new String[]{"world_the_end", "world_nether"}),

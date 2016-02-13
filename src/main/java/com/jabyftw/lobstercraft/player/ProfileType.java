@@ -1,31 +1,28 @@
 package com.jabyftw.lobstercraft.player;
 
-import com.jabyftw.lobstercraft.economy.EconomyProfile;
-import com.jabyftw.lobstercraft.economy.EconomyStructure;
 import com.jabyftw.lobstercraft.player.chat.ChatProfile;
 import com.jabyftw.lobstercraft.player.inventory.InventoryProfile;
 import com.jabyftw.lobstercraft.player.location.LocationProfile;
 import com.sun.istack.internal.NotNull;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
- * <p/>
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * <p/>
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * <p/>
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * <p/>
+ * <p>
  * Email address: rafael.sartori96@gmail.com
  */
 @SuppressWarnings("unchecked")
@@ -64,7 +61,7 @@ public enum ProfileType {
             return ChatProfile.saveProfile(connection, (ChatProfile) profile);
         }
     },
-    ECONOMY_PROFILE(EconomyProfile.class) {
+    /*ECONOMY_PROFILE(EconomyProfile.class) {
         @Override
         public <T extends Profile> T getProfile(@NotNull Connection connection, long playerId) throws Exception {
             return (T) new EconomyProfile(playerId, EconomyStructure.retrieveProfile(connection, EconomyStructure.StructureType.PLAYER_STRUCTURE, playerId, true));
@@ -79,7 +76,7 @@ public enum ProfileType {
                 return false;
             }
         }
-    };
+    }*/;
 
     private final Class<? extends Profile> profileClass;
 
