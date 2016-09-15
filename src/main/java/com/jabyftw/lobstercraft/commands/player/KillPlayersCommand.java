@@ -3,8 +3,9 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 
 /**
@@ -28,19 +29,19 @@ import org.bukkit.command.CommandSender;
 public class KillPlayersCommand extends CommandExecutor {
 
     public KillPlayersCommand() {
-        super("kill", Permissions.PLAYER_KILL, "Permite ao jogador matar jogadores", "/kill (jogador)");
+        super("kill", Permissions.PLAYER_KILL.toString(), "Permite ao jogador matar jogadores", "/kill (jogador)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public boolean onKill(CommandSender commandSender, PlayerHandler playerHandler) {
-        playerHandler.getPlayer().damage(Double.MAX_VALUE - 1);
+    private boolean onKill(CommandSender commandSender, OnlinePlayer onlinePlayer) {
+        onlinePlayer.getPlayer().damage(Double.MAX_VALUE - 1);
 
         // Make sure he is dead
-        if (playerHandler.getPlayer().getHealth() > 0d)
-            playerHandler.getPlayer().setHealth(0d);
+        if (onlinePlayer.getPlayer().getHealth() > 0d)
+            onlinePlayer.getPlayer().setHealth(0d);
 
-        playerHandler.sendMessage("§cVocê foi morto por §4" + commandSender.getName() + "§c através de comando.");
-        commandSender.sendMessage("§cVocê matou " + playerHandler.getPlayer().getDisplayName());
+        onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§cVocê foi morto por §4", commandSender.getName(), "§c através de comando."));
+        commandSender.sendMessage(Util.appendStrings("§cVocê matou ", onlinePlayer.getPlayer().getDisplayName()));
         return true;
     }
 }

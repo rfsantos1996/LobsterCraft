@@ -3,8 +3,12 @@ package com.jabyftw.lobstercraft.commands.login;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.util.BukkitScheduler;
+import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.util.Util;
+import org.bukkit.Bukkit;
+
+import java.security.NoSuchAlgorithmException;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -31,22 +35,30 @@ public class LoginCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onLogin(final PlayerHandler playerHandler, final String password) {
-        BukkitScheduler.runTaskAsynchronously(() -> {
-            switch (playerHandler.attemptLogin(password)) {
-                case ERROR_OCCURRED:
-                    BukkitScheduler.runTask(() -> playerHandler.getPlayer().kickPlayer("§4Ocorreu um erro durante login!\n§cTente novamente mais tarde."));
-                    break;
+    private boolean onLogin(final OnlinePlayer onlinePlayer, final String password) {
+        try {
+            OnlinePlayer.LoginResponse response = onlinePlayer.attemptLoginPlayer(Util.encryptString(password));
+            switch (response) {
                 case PASSWORD_DO_NOT_MATCH:
-                    playerHandler.sendMessage("§cSenha não coincide.");
-                    break;
+                    onlinePlayer.getPlayer().sendMessage("§cSenha não coincide.");
+                    return true;
                 case NOT_REGISTERED:
-                    playerHandler.sendMessage("§cVocê não está registrado!");
-                    break;
+                    onlinePlayer.getPlayer().sendMessage("§cVocê não está registrado!");
+                    return true;
+                case ALREADY_LOGGED_IN:
+                    onlinePlayer.getPlayer().sendMessage("§cVocê já está online!");
+                    return true;
+                case ALREADY_REGISTERED:
+                case LOGIN_WENT_ASYNCHRONOUS_SUCCESSFULLY:
+                    // Do nothing/not possible to occur
+                    return false;
                 default:
-                    break;
+                    throw new IllegalStateException(Util.appendStrings("Option not handled on player login: ", response));
             }
-        });
-        return true;
+        } catch (NoSuchAlgorithmException exception) {
+            exception.printStackTrace();
+            onlinePlayer.getPlayer().sendMessage("§4Um erro ocorreu! §cTente novamente mais tarde.");
+            return true;
+        }
     }
 }

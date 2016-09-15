@@ -4,8 +4,8 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.OfflinePlayerHandler;
-import com.jabyftw.lobstercraft.player.util.BannedPlayerEntry;
+import com.jabyftw.lobstercraft.player.OfflinePlayer;
+import com.jabyftw.lobstercraft.player.PlayerHandlerService;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
@@ -33,38 +33,40 @@ import java.util.Set;
 public class BanHistoryCommand extends CommandExecutor {
 
     public BanHistoryCommand() {
-        super("banhistory", Permissions.BAN_SEE_HISTORY, "Permite ao moderador verificar o histórico do jogador", "/banhistory (jogador)");
+        super("banhistory", Permissions.BAN_SEE_HISTORY.toString(), "Permite ao moderador verificar o histórico do jogador", "/banhistory (jogador)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public boolean onList(CommandSender commandSender, OfflinePlayerHandler target) {
+    private boolean onList(CommandSender commandSender, OfflinePlayer target) {
         if (!target.isRegistered()) {
             commandSender.sendMessage("§cJogador não registrado.");
             return true;
         }
 
-        Set<BannedPlayerEntry> banEntries = LobsterCraft.playerHandlerService.getBanEntriesFromPlayer(target.getPlayerId());
-
+        Set<PlayerHandlerService.BannedPlayerEntry> banEntries = LobsterCraft.servicesManager.playerHandlerService.getPlayerBanEntries(target.getPlayerId());
         if (banEntries.isEmpty()) {
             commandSender.sendMessage("§cNenhum ban encontrado para §6" + target.getPlayerName());
+            return true;
+        } else {
+            StringBuilder stringBuilder = new StringBuilder("§c=== §6Histórico de §4").append(target.getPlayerName()).append(" §c===");
+            boolean first = true;
+
+            for (PlayerHandlerService.BannedPlayerEntry banEntry : banEntries) {
+                if (!first) stringBuilder.append("§c, ");
+                first = false;
+
+                stringBuilder
+                        .append("§c").append(Util.formatDate(banEntry.getRecordDate())).append("§6 | ")
+                        .append("§c").append(banEntry.getBanType().getTypeName()).append("§6 | ");
+                stringBuilder.append("§c").append(banEntry.getModeratorId() != null ?
+                        LobsterCraft.servicesManager.playerHandlerService.getOfflinePlayer(banEntry.getModeratorId()).getPlayerName()
+                        : "console").append("§6 | ");
+                stringBuilder.append("§c\"").append(banEntry.getReason()).append("\"");
+                if (banEntry.getBanType() == PlayerHandlerService.BanType.PLAYER_TEMPORARILY_BANNED)
+                    stringBuilder.append("§6 | §cbanido até ").append(Util.formatDate(banEntry.getUnbanDate()));
+            }
+            commandSender.sendMessage(stringBuilder.toString());
+            return true;
         }
-
-        StringBuilder stringBuilder = new StringBuilder("§c=== §6Histórico de §4" + target.getPlayerName() + " §c===");
-        boolean first = true;
-
-        for (BannedPlayerEntry banEntry : banEntries) {
-            if (!first) stringBuilder.append("§c, ");
-            first = true;
-
-            stringBuilder
-                    .append("§c").append(Util.formatDate(banEntry.getRecordDate())).append("§6 | ")
-                    .append("§c").append(banEntry.getBanType().getTypeName()).append("§6 | ")
-                    .append("§c").append(LobsterCraft.playerHandlerService.getOfflinePlayer(banEntry.getResponsibleId()).getPlayerName()).append("§6 | ")
-                    .append("§c\"").append(banEntry.getReason()).append("\"");
-            if (!banEntry.isPermanent())
-                stringBuilder.append("§6 | §cbanido até ").append(Util.formatDate(banEntry.getUnbanDate()));
-        }
-
-        return true;
     }
 }

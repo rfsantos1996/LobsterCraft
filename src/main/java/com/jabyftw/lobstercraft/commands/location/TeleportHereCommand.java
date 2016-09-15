@@ -3,8 +3,8 @@ package com.jabyftw.lobstercraft.commands.location;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.TeleportBuilder;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 
 /**
@@ -28,15 +28,15 @@ import com.jabyftw.lobstercraft.player.util.Permissions;
 public class TeleportHereCommand extends CommandExecutor {
 
     public TeleportHereCommand() {
-        super("teleporthere", Permissions.LOCATION_TELEPORT, "Permite ao jogador teleportar outros à sua localização", "/tphere (jogador)");
+        super("teleporthere", Permissions.LOCATION_TELEPORT_HERE.toString(), "Permite ao jogador teleportar outros à sua localização", "/tphere (jogador)");
     }
 
-    @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.LOCATION_TELEPORT_OTHERS)
-    public boolean onTeleportHere(PlayerHandler playerHandler, PlayerHandler target) {
-        TeleportBuilder.getBuilder(target)
-                .setPlayerLocation(playerHandler)
+    @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_PLAYER_OTHERS)
+    public boolean onTeleportHere(OnlinePlayer onlinePlayer, OnlinePlayer targetPlayer) {
+        TeleportBuilder.getBuilder(targetPlayer)
+                .setPlayerLocation(onlinePlayer)
+                .overrideRegisterLastLocation(true) // always register last location
                 .setInstantaneousTeleport(true)
-                .registerLastLocation(true)
                 .execute();
         return true;
     }

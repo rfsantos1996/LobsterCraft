@@ -3,8 +3,8 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.util.ConditionController;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.TriggerController;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 
 /**
@@ -28,24 +28,24 @@ import com.jabyftw.lobstercraft.player.util.Permissions;
 public class SuicideCommand extends CommandExecutor {
 
     public SuicideCommand() {
-        super("suicide", Permissions.PLAYER_SUICIDE, "Permite ao jogador tirar a propria vida", "/suicide");
+        super("suicide", Permissions.PLAYER_SUICIDE.toString(), "Permite ao jogador tirar a propria vida", "/suicide");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onSuicide(PlayerHandler playerHandler) {
-        if (playerHandler.getConditionController().sendMessageIfConditionReady(
-                ConditionController.Condition.PLAYER_SUICIDE_CHECK,
-                "§cVocê tem certeza que quer se matar? §6Se sim, use o comando novamente; porém a vida é tão boa.."
+    private boolean onSuicide(OnlinePlayer onlinePlayer) {
+        if (onlinePlayer.getTriggerController().sendMessageIfTriggered(
+                TriggerController.TemporaryTrigger.PLAYER_SUICIDE_CHECK,
+                "§cVocê tem certeza que quer se matar? §6Se sim, use o comando novamente; porém, a vida é tão boa.."
         )) return true;
 
         // Kill him
-        playerHandler.getPlayer().damage(Double.MAX_VALUE - 1);
+        onlinePlayer.getPlayer().damage(Double.MAX_VALUE - 1);
 
         // Make sure he is dead
-        if (playerHandler.getPlayer().getHealth() > 0d)
-            playerHandler.getPlayer().setHealth(0d);
+        if (onlinePlayer.getPlayer().getHealth() > 0d)
+            onlinePlayer.getPlayer().setHealth(0d);
 
-        playerHandler.sendMessage("§4Você ingeriu 264mg de cianeto de hidrogênio!");
+        onlinePlayer.getPlayer().sendMessage("§4Você respirou 264mg de cianeto de hidrogênio.");
         return true;
     }
 }

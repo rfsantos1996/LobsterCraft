@@ -3,7 +3,7 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -32,30 +32,30 @@ import java.util.ArrayList;
 public class ClearEnchantmentCommand extends CommandExecutor {
 
     public ClearEnchantmentCommand() {
-        super("clearenchantment", Permissions.PLAYER_CLEAR_ENCHANTMENT, "Permite ao jogador tirar encantamento dos itens", "/cenchant");
+        super("clearenchantment", Permissions.PLAYER_CLEAR_ENCHANTMENT.toString(), "Permite ao jogador tirar encantamento dos itens", "/cenchant");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onClearEnchantment(PlayerHandler playerHandler) {
-        ItemStack itemInHand = playerHandler.getPlayer().getItemInHand();
+    private boolean onClearEnchantment(OnlinePlayer onlinePlayer) {
+        ItemStack mainHandItem = onlinePlayer.getPlayer().getInventory().getItemInMainHand();
 
         // Check if item exists
-        if (itemInHand == null || itemInHand.getType() == Material.AIR) {
-            playerHandler.sendMessage("§cNão tem itens na sua mão!");
+        if (mainHandItem == null || mainHandItem.getType() == Material.AIR) {
+            onlinePlayer.getPlayer().sendMessage("§cNão tem itens na sua mão!");
             return true;
         }
 
         // Check if item contains any enchantments
-        if (itemInHand.getEnchantments().isEmpty()) {
-            playerHandler.sendMessage("§cO item na sua mão não está encantado!");
+        if (mainHandItem.getEnchantments().isEmpty()) {
+            onlinePlayer.getPlayer().sendMessage("§cO item na sua mão não está encantado!");
             return true;
         }
 
         // Acquire all enchantments (on a copy because while removing it may change the KeySet and throw exceptions) and remove them
-        ArrayList<Enchantment> enchantments = new ArrayList<>(itemInHand.getEnchantments().keySet());
-        enchantments.forEach(itemInHand::removeEnchantment);
+        ArrayList<Enchantment> enchantments = new ArrayList<>(mainHandItem.getEnchantments().keySet());
+        enchantments.forEach(mainHandItem::removeEnchantment);
 
-        playerHandler.sendMessage("§6Encantamentos removidos com sucesso!");
+        onlinePlayer.getPlayer().sendMessage("§6Encantamentos removidos com sucesso!");
         return true;
     }
 }

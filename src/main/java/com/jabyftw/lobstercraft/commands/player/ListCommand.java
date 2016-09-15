@@ -33,11 +33,11 @@ import java.util.Iterator;
 public class ListCommand extends CommandExecutor {
 
     public ListCommand() {
-        super("list", Permissions.PLAYER_LIST, "Permite ao jogador ver a lista de pessoas online", "/list");
+        super("list", Permissions.PLAYER_LIST.toString(), "Permite ao jogador ver a lista de pessoas online", "/list");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public boolean onList(CommandSender commandSender) {
+    private boolean onList(CommandSender commandSender) {
         Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
 
         StringBuilder stringBuilder = new StringBuilder("§6Jogadores ")
@@ -50,7 +50,7 @@ public class ListCommand extends CommandExecutor {
             Player player = iterator.next();
 
             // Add if player don't have permission to be hidden or if player isn't hidden
-            if (!LobsterCraft.permission.has(player, Permissions.PLAYER_LIST_HIDDEN) && !LobsterCraft.vanishManager.isVanished(player)) {
+            if (!LobsterCraft.permission.has(player, Permissions.PLAYER_LIST_HIDDEN.toString()) && !LobsterCraft.vanishManager.isVanished(player)) {
                 stringBuilder.append("§c").append(player.getDisplayName());
                 if (iterator.hasNext()) stringBuilder.append("§6, ");
             }

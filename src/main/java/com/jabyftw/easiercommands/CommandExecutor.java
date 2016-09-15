@@ -1,5 +1,7 @@
 package com.jabyftw.easiercommands;
 
+import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.*;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.ChatColor;
@@ -57,8 +59,8 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
             throw new IllegalArgumentException("You must register the command on plugin.yml!");
 
         ((PluginCommand) command
-                .setDescription(READ_ME.DESCRIPTION_HEADER + description)
-                .setUsage(READ_ME.USAGE_HEADER + usageMessage)
+                .setDescription(com.jabyftw.lobstercraft.util.Util.appendStrings(READ_ME.DESCRIPTION_HEADER, description)) // TODO
+                .setUsage(com.jabyftw.lobstercraft.util.Util.appendStrings(READ_ME.USAGE_HEADER, usageMessage))
                 .setPermissionMessage(READ_ME.PERMISSION_HEADER))
                 .setExecutor(executor);
         command.setPermission(permission == null || permission.length() == 0 ? null : permission);
@@ -356,9 +358,9 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
      * @param additionalPermissions array of permissions
      * @return true if player have all requested permissions
      */
-    protected boolean hasPermissions(CommandSender commandSender, String[] additionalPermissions) {
-        for (String additionalPermission : additionalPermissions)
-            if (additionalPermission.length() > 0 && !commandSender.hasPermission(additionalPermission))
+    protected boolean hasPermissions(CommandSender commandSender, Permissions[] additionalPermissions) { // TODO move it?
+        for (Permissions additionalPermission : additionalPermissions)
+            if (!commandSender.hasPermission(additionalPermission.toString()))
                 return false;
         return true;
     }

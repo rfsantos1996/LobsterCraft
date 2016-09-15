@@ -5,11 +5,12 @@ import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.OfflinePlayerHandler;
-import com.jabyftw.lobstercraft.player.util.BannedPlayerEntry;
+import com.jabyftw.lobstercraft.player.OfflinePlayer;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.PlayerHandlerService;
 import com.jabyftw.lobstercraft.player.util.Permissions;
-import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.Util;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -34,35 +35,39 @@ import org.bukkit.entity.Player;
 public class BanCommand extends CommandExecutor {
 
     public BanCommand() {
-        super("ban", Permissions.BAN_BAN_PLAYER, "Permite ao moderador banir jogadores", "/ban (jogador) (motivo)");
+        super("ban", Permissions.BAN_PLAYER_PERMANENTLY.toString(), "Permite ao moderador banir jogadores", "/ban (jogador) (motivo)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public HandleResponse onTempbanPlayer(CommandSender commandSender, OfflinePlayerHandler playerHandler, String... reasonArray) {
-        if (!(commandSender instanceof Player) && playerHandler.isOnline() &&
-                LobsterCraft.permission.has(playerHandler.getPlayerHandler().getPlayer(), Permissions.BAN_BAN_EXCEPTION))
+    private HandleResponse onBanPlayer(CommandSender commandSender, OfflinePlayer offlinePlayer, String... reasonArray) {
+        OnlinePlayer onlinePlayer = offlinePlayer.getOnlinePlayer(null);
+
+        // Check if a not-op is trying to ban a player that have the permission
+        if (!commandSender.isOp() && onlinePlayer != null && LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.BAN_EXCEPTION.toString()))
             return HandleResponse.RETURN_NO_PERMISSION;
 
-        BukkitScheduler.runTaskAsynchronously(() -> {
-            String reason = Util.retrieveMessage(reasonArray);
+        // TODO: condition: if player is offline, asks the sender if he is sure to ban player
 
-            switch (LobsterCraft.playerHandlerService.kickPlayer(
-                    playerHandler,
-                    commandSender instanceof Player ? LobsterCraft.playerHandlerService.getPlayerHandler((Player) commandSender).getPlayerId() : null,
-                    BannedPlayerEntry.BanType.PLAYER_PERMANENTLY_BANNED,
+        // Ban asynchronously
+        Bukkit.getScheduler().runTaskAsynchronously(LobsterCraft.plugin, () -> {
+            String reason = Util.retrieveMessage(reasonArray);
+            switch (LobsterCraft.servicesManager.playerHandlerService.kickPlayer(
+                    offlinePlayer,
+                    PlayerHandlerService.BanType.PLAYER_PERMANENTLY_BANNED,
                     reason,
+                    commandSender instanceof Player ?
+                            LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) commandSender, null).getOfflinePlayer().getPlayerId() : null,
                     null
             )) {
-                case SUCCESSFULLY_BANNED:
-                    commandSender.sendMessage("§6Jogador §c" + playerHandler.getPlayerName() + " §6foi expulso.");
+                case SUCCESSFULLY_EXECUTED:
+                    commandSender.sendMessage(Util.appendStrings("§6Jogador §c", offlinePlayer.getPlayerName(), " §6foi banido permanentemente."));
                     break;
                 case INVALID_REASON_LENGTH:
-                    commandSender.sendMessage("§cMotivo inválido (muito curto ou longo)");
+                    commandSender.sendMessage("§cMotivo inválido: texto muito curto ou muito longo");
                     break;
                 case PLAYER_NOT_REGISTERED:
                     commandSender.sendMessage("§cJogador não registrado.");
                     break;
-                case INVALID_BAN_TYPE:
                 case ERROR_OCCURRED:
                     commandSender.sendMessage("§4Ocorreu um erro!");
                     break;

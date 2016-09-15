@@ -3,7 +3,7 @@ package com.jabyftw.lobstercraft.commands.location;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.Location;
 
@@ -28,14 +28,14 @@ import org.bukkit.Location;
 public class SpawnSetCommand extends CommandExecutor {
 
     public SpawnSetCommand() {
-        super("spawnset", Permissions.LOCATION_SET_SPAWN, "Permite ao jogador mudar a localização do spawn.", "/spawnset");
+        super("spawnset", Permissions.LOCATION_CHANGE_WORLD_SPAWN.toString(), "Permite ao jogador mudar a localização do spawn.", "/spawnset");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onSpawnSet(PlayerHandler playerHandler) {
-        Location location = playerHandler.getPlayer().getLocation();
+    private boolean onSpawnSet(OnlinePlayer onlinePlayer) {
+        Location location = onlinePlayer.getPlayer().getLocation();
         location.getWorld().setSpawnLocation(location.getBlockX(), location.getBlockY(), location.getBlockZ());
-        playerHandler.sendMessage("§6Spawn alterado para este mundo!");
+        onlinePlayer.getPlayer().sendMessage("§6Spawn alterado para este mundo!");
         return true;
     }
 }

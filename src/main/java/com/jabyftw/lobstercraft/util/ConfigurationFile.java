@@ -1,6 +1,6 @@
 package com.jabyftw.lobstercraft.util;
 
-import com.jabyftw.lobstercraft.ConfigValue;
+import com.jabyftw.lobstercraft_old.ConfigValue;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -33,8 +33,12 @@ public class ConfigurationFile extends YamlConfiguration {
 
     public ConfigurationFile(@NotNull final Plugin plugin, @NotNull final String fileName) throws IOException, InvalidConfigurationException {
         super();
-        this.configurationFile = new File(plugin.getDataFolder(), fileName + ".yml");
+        this.configurationFile = new File(plugin.getDataFolder(), fileName);
         loadFile();
+    }
+
+    public String getFileName() {
+        return configurationFile.getName();
     }
 
     public void saveFile() throws IOException {

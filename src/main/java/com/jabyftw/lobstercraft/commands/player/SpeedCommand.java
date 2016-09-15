@@ -3,10 +3,9 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.ConfigValue;
-import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -30,21 +29,19 @@ import org.bukkit.entity.Player;
  */
 public class SpeedCommand extends CommandExecutor {
 
-    private final static double
-            MINIMUM_SPEED_MULTIPLIER = LobsterCraft.config.getDouble(ConfigValue.PLAYER_SPEED_MINIMUM_MULTIPLIER.getPath()),
-            MAXIMUM_SPEED_MULTIPLIER = LobsterCraft.config.getDouble(ConfigValue.PLAYER_SPEED_MAXIMUM_MULTIPLIER.getPath());
+    private final static float MAXIMUM_SPEED = 10.0f, MINIMUM_SPEED = 0.01f;
 
     public SpeedCommand() {
-        super("speed", Permissions.PLAYER_SPEED, "Permite ao jogador mudar a sua velocidade", "/speed (fly/walk) (velocidade)");
+        super("speed", Permissions.PLAYER_SPEED.toString(), "Permite ao jogador mudar a sua velocidade", "/speed (fly/walk) (velocidade)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onSpeedChange(PlayerHandler playerHandler, String type) {
+    private boolean onSpeedChange(OnlinePlayer playerHandler, String type) {
         return onSpeedChange(playerHandler, type, 1f);
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onSpeedChange(PlayerHandler playerHandler, String type, float speed) {
+    private boolean onSpeedChange(OnlinePlayer playerHandler, String type, float speed) {
         Player player = playerHandler.getPlayer();
         boolean isFlySpeed = type.toLowerCase().startsWith("f") || type.toLowerCase().startsWith("v"); // "fly" "voar"
 
@@ -56,12 +53,12 @@ public class SpeedCommand extends CommandExecutor {
         setPlayerSpeed(player, isFlySpeed, getBukkitMoveSpeed(speed, isFlySpeed));
 
         // Send player message
-        playerHandler.sendMessage("§6Sua velocidade de §c" + (isFlySpeed ? "vôo" : "andar") + "§6 foi alterada para §c" + (speed == 1f ? "o padrão" : speed));
+        playerHandler.getPlayer().sendMessage("§6Sua velocidade de §c" + (isFlySpeed ? "vôo" : "andar") + "§6 foi alterada para §c" + (speed == 1f ? "o padrão" : speed));
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_SPEED_OTHERS)
-    public boolean onSpeedChangeOthers(CommandSender commandSender, PlayerHandler target, String type, float speed) {
+    private boolean onSpeedChangeOthers(CommandSender commandSender, OnlinePlayer target, String type, float speed) {
         Player targetPlayer = target.getPlayer();
         boolean isFlySpeed = type.toLowerCase().startsWith("f") || type.toLowerCase().startsWith("v"); // "fly" "voar"
 
@@ -73,8 +70,10 @@ public class SpeedCommand extends CommandExecutor {
         setPlayerSpeed(targetPlayer, isFlySpeed, getBukkitMoveSpeed(speed, isFlySpeed));
 
         // Send targetPlayer message
-        target.sendMessage("§6Sua velocidade de §c" + (isFlySpeed ? "vôo" : "andar") + "§6 foi alterada para §c" + (speed == 1f ? "o padrão" : speed) + "§6 por §c" + commandSender.getName());
-        commandSender.sendMessage("§6Velocidade de " + targetPlayer.getDisplayName() + "§6 de §c" + (isFlySpeed ? "vôo" : "andar") + "§6 foi alterada para §c" + (speed == 1f ? "o padrão" : speed));
+        target.getPlayer().sendMessage(Util.appendStrings("§6Sua velocidade de §c", isFlySpeed ? "vôo" : "andar", "§6 foi alterada para §c",
+                (speed == 1f ? "o padrão" : speed), "§6 por §c", commandSender.getName()));
+        commandSender.sendMessage(Util.appendStrings("§6Velocidade de ", targetPlayer.getDisplayName(), "§6 de §c", isFlySpeed ? "vôo" : "andar", "§6 foi alterada para §c",
+                (speed == 1f ? "o padrão" : speed)));
         return true;
     }
 
@@ -86,24 +85,24 @@ public class SpeedCommand extends CommandExecutor {
      * @return the Bukkit's (Minecraft's) speed
      */
     private float getBukkitMoveSpeed(float shownSpeed, boolean isFlySpeed) {
-        return (isFlySpeed ? 0.2f : 0.1f) * shownSpeed;
+        return (isFlySpeed ? 0.2f : 0.1f) * (shownSpeed / (isFlySpeed ? 2.0f : 1.0f));
     }
 
     private boolean checkSpeedLimits(CommandSender commandSender, float speed) {
-        if (speed < MINIMUM_SPEED_MULTIPLIER) {
-            commandSender.sendMessage("§4Velocidade muito baixa! §6Mínimo: §c" + MINIMUM_SPEED_MULTIPLIER);
+        if (Math.abs(speed) < MINIMUM_SPEED) {
+            commandSender.sendMessage(Util.appendStrings("§4Velocidade muito baixa! §6Mínimo: §c", Util.formatDecimal(MINIMUM_SPEED)));
             return false;
-        } else if (speed > MAXIMUM_SPEED_MULTIPLIER) {
-            commandSender.sendMessage("§4Velocidade muito alta! §6Máximo: §c" + MAXIMUM_SPEED_MULTIPLIER);
+        } else if (Math.abs(speed) > MAXIMUM_SPEED) {
+            commandSender.sendMessage(Util.appendStrings("§4Velocidade muito alta! §6Máximo: §c", Util.formatDecimal(MAXIMUM_SPEED)));
             return false;
         }
         return true;
     }
 
-    private void setPlayerSpeed(Player player, boolean isFlySpeed, float bukkitMoveSpeed) {
+    private void setPlayerSpeed(Player player, boolean isFlySpeed, float moveSpeed) {
         if (isFlySpeed)
-            player.setFlySpeed(bukkitMoveSpeed);
+            player.setFlySpeed(moveSpeed);
         else
-            player.setWalkSpeed(bukkitMoveSpeed);
+            player.setWalkSpeed(moveSpeed);
     }
 }

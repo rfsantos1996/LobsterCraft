@@ -4,7 +4,7 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 
@@ -31,27 +31,27 @@ import java.util.concurrent.TimeUnit;
 public class PlayerTimeCommand extends CommandExecutor {
 
     public PlayerTimeCommand() {
-        super("ptime", Permissions.PLAYER_PLAYER_TIME, "Permite ao jogador alterar seu proprio horario", "/ptime (horas do dia - 7h28m)");
+        super("ptime", Permissions.PLAYER_PLAYER_TIME.toString(), "Permite ao jogador alterar seu proprio horario", "/ptime (horas do dia - 7h28m)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onPlayerTime(PlayerHandler playerHandler) {
-        playerHandler.getPlayer().resetPlayerTime();
-        playerHandler.sendMessage("§cTempo padrão restaurado!");
+    private boolean onPlayerTime(OnlinePlayer onlinePlayer) {
+        onlinePlayer.getPlayer().resetPlayerTime();
+        onlinePlayer.getPlayer().sendMessage("§cTempo padrão restaurado!");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onPlayerTime(PlayerHandler playerHandler, Long timeDifference) {
+    private boolean onPlayerTime(OnlinePlayer onlinePlayer, Long timeDifference) {
         long minecraftTime = Util.getMinecraftTime(timeDifference / TimeUnit.SECONDS.toMillis(1));
-        LobsterCraft.logger.info(
-                "playerTime=" + playerHandler.getPlayer().getPlayerTime() + ", " +
-                        "parsedMinecraftTime=" + minecraftTime + ", " +
-                        "worldTime=" + playerHandler.getPlayer().getWorld().getTime()
-        );
+        LobsterCraft.logger.info(Util.appendStrings(
+                "playerTime=", onlinePlayer.getPlayer().getPlayerTime(), ", ",
+                "parsedMinecraftTime=", minecraftTime, ", ",
+                "worldTime=", onlinePlayer.getPlayer().getWorld().getTime()
+        ));
 
-        playerHandler.getPlayer().setPlayerTime(minecraftTime, false);
-        playerHandler.sendMessage("§6Tempo atualizado! Use §c/ptime§6 para restaurar.");
+        onlinePlayer.getPlayer().setPlayerTime(minecraftTime, false);
+        onlinePlayer.getPlayer().sendMessage("§6Tempo atualizado! Use §c/ptime§6 para restaurar.");
         return true;
     }
 }

@@ -3,10 +3,10 @@ package com.jabyftw.lobstercraft.commands.chat;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.OfflinePlayerHandler;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.chat.ChatProfile;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft_old.player.OfflinePlayerHandler;
+import com.jabyftw.lobstercraft_old.player.PlayerHandler;
+import com.jabyftw.lobstercraft_old.player.chat.ChatProfile;
+import com.jabyftw.lobstercraft_old.player.util.Permissions;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin

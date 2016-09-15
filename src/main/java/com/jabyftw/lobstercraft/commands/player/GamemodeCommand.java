@@ -3,8 +3,9 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
 
@@ -29,26 +30,26 @@ import org.bukkit.command.CommandSender;
 public class GameModeCommand extends CommandExecutor {
 
     public GameModeCommand() {
-        super("gamemode", Permissions.PLAYER_GAMEMODE_CHANGE, "Permite ao jogador mudar de gamemode", "/gamemode (modo de jogo)");
+        super("gamemode", Permissions.PLAYER_GAME_MODE.toString(), "Permite ao jogador mudar de gamemode", "/gamemode (modo de jogo)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onGameMode(PlayerHandler playerHandler, GameMode gameMode) {
-        if (playerHandler.setGameMode(gameMode)) {
-            playerHandler.sendMessage("§6Seu modo de jogo foi alterado para " + gameMode.name());
+    private boolean onGameMode(OnlinePlayer onlinePlayer, GameMode gameMode) {
+        if (onlinePlayer.setGameMode(gameMode)) {
+            onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6Seu modo de jogo foi alterado para ", gameMode.name()));
         } else {
-            playerHandler.sendMessage("§cSeu modo de jogo já é este!");
+            onlinePlayer.getPlayer().sendMessage("§cSeu modo de jogo já é este!");
         }
         return true;
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GAMEMODE_CHANGE_OTHERS)
-    public boolean onGameModeOther(CommandSender commandSender, PlayerHandler target, GameMode gameMode) {
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GAME_MODE_OTHERS)
+    private boolean onGameModeOther(CommandSender commandSender, OnlinePlayer target, GameMode gameMode) {
         if (target.setGameMode(gameMode)) {
-            target.sendMessage("§6Seu modo de jogo foi alterado para " + gameMode.name());
-            commandSender.sendMessage("§6O modo de jogo de §c" + target.getPlayer().getName() + "§6 foi alterado para " + gameMode.name());
+            target.getPlayer().sendMessage(Util.appendStrings("§6Seu modo de jogo foi alterado para ", gameMode.name()));
+            commandSender.sendMessage(Util.appendStrings("§6O modo de jogo de §c", target.getPlayer().getName(), "§6 foi alterado para ", gameMode.name()));
         } else {
-            commandSender.sendMessage("§cO modo de jogo de " + target.getPlayer().getName() + " já é este!");
+            commandSender.sendMessage(Util.appendStrings("§cO modo de jogo de ", target.getPlayer().getName(), " já é este!"));
         }
         return true;
     }

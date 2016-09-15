@@ -4,11 +4,13 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryInteractEvent;
@@ -40,11 +42,12 @@ public class InventorySpyCommand extends CommandExecutor implements Listener {
     // TODO register
 
     public InventorySpyCommand() {
-        super("spyinv", Permissions.PLAYER_INVENTORY_SPY, "Permite ao jogador bisbilhotar o inventário de outros", "/spyinv (jogador)");
+        super("spyinv", Permissions.PLAYER_INVENTORY_SPY.toString(), "Permite ao jogador bisbilhotar o inventário de outros", "/spyinv (jogador)");
+        Bukkit.getPluginManager().registerEvents(this, LobsterCraft.plugin);
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onInventorySpy(PlayerHandler senderHandler, PlayerHandler targetHandler) {
+    private boolean onInventorySpy(OnlinePlayer senderHandler, OnlinePlayer targetHandler) {
         PlayerInventory inventory = targetHandler.getPlayer().getInventory();
 
         // Close current inventory (if any) and open player's inventory
@@ -56,13 +59,13 @@ public class InventorySpyCommand extends CommandExecutor implements Listener {
         return true;
     }
 
-    @EventHandler(ignoreCancelled = false)
-    public void onInventoryChange(InventoryInteractEvent event) {
+    @EventHandler()
+    private void onInventoryChange(InventoryInteractEvent event) {
         // If player is watching inventory
         if (event.getWhoClicked() instanceof Player && watchingInventory.contains(event.getWhoClicked())) {
 
             // If player doesn't have the permission to modify, cancel event; otherwise update inventory for the holder
-            if (!LobsterCraft.permission.has(event.getWhoClicked(), Permissions.PLAYER_INVENTORY_SPY_MODIFY)) {
+            if (!LobsterCraft.permission.has(event.getWhoClicked(), Permissions.PLAYER_INVENTORY_SPY_MODIFY.toString())) {
                 event.setResult(Event.Result.DENY);
                 event.getWhoClicked().sendMessage("§cVocê não tem permissão para alterar o inventário!");
             } else if (event.getInventory().getHolder() instanceof Player) {
@@ -71,8 +74,8 @@ public class InventorySpyCommand extends CommandExecutor implements Listener {
         }
     }
 
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
+    @EventHandler(priority = EventPriority.MONITOR)
+    private void onInventoryClose(InventoryCloseEvent event) {
         // Remove player that was possibly watching any
         if (event.getPlayer() instanceof Player)
             watchingInventory.remove(event.getPlayer());

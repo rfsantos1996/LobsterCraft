@@ -3,7 +3,7 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
@@ -29,25 +29,25 @@ import org.bukkit.inventory.ItemStack;
 public class RepairCommand extends CommandExecutor {
 
     public RepairCommand() {
-        super("repair", Permissions.PLAYER_REPAIR, "Permite ao jogador reparar seus itens", "/repair");
+        super("repair", Permissions.PLAYER_REPAIR.toString(), "Permite ao jogador reparar seus itens", "/repair");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onRepair(PlayerHandler playerHandler) {
-        ItemStack itemInHand = playerHandler.getPlayer().getItemInHand();
+    private boolean onRepair(OnlinePlayer onlinePlayer) {
+        ItemStack itemInHand = onlinePlayer.getPlayer().getInventory().getItemInMainHand();
 
         // Check if item exists
         if (itemInHand == null || itemInHand.getType() == Material.AIR) {
-            playerHandler.sendMessage("§cVocê não tem item na sua mão!");
+            onlinePlayer.getPlayer().sendMessage("§cVocê não tem item na sua mão!");
             return true;
         }
 
         // Check if it is possible to be repaired
         if (itemInHand.getType().isBlock() || itemInHand.getType().getMaxDurability() == 0) {
-            playerHandler.sendMessage("§cEste item não pode ser reparado!");
+            onlinePlayer.getPlayer().sendMessage("§cEste item não pode ser reparado!");
         } else {
             itemInHand.setDurability((short) 0);
-            playerHandler.sendMessage("§6Item reparado! <3");
+            onlinePlayer.getPlayer().sendMessage("§6Item reparado! §4<3");
         }
         return true;
     }

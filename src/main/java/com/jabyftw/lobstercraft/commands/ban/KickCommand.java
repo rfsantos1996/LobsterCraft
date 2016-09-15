@@ -5,11 +5,11 @@ import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.util.BannedPlayerEntry;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.PlayerHandlerService;
 import com.jabyftw.lobstercraft.player.util.Permissions;
-import com.jabyftw.lobstercraft.util.BukkitScheduler;
 import com.jabyftw.lobstercraft.util.Util;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -34,32 +34,36 @@ import org.bukkit.entity.Player;
 public class KickCommand extends CommandExecutor {
 
     public KickCommand() {
-        super("kick", Permissions.BAN_KICK_PLAYER, "Permite ao moderador expulsar jogadores", "/kick (jogador) (motivo)");
+        super("kick", Permissions.BAN_PLAYER_KICK.toString(), "Permite ao moderador expulsar jogadores", "/kick (jogador) (motivo)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public HandleResponse onKickPlayer(CommandSender commandSender, PlayerHandler playerHandler, String... reasonArray) {
-        if (!(commandSender instanceof Player) && LobsterCraft.permission.has(playerHandler.getPlayer(), Permissions.BAN_KICK_EXCEPTION))
+    private HandleResponse onKickPlayer(CommandSender commandSender, OnlinePlayer onlinePlayer, String... reasonArray) {
+        // Check if a not-op is trying to ban a player that have the permission
+        if (!commandSender.isOp() && onlinePlayer != null && LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.BAN_EXCEPTION.toString()))
             return HandleResponse.RETURN_NO_PERMISSION;
 
-        BukkitScheduler.runTaskAsynchronously(() -> {
+        // Kick asynchronously
+        Bukkit.getScheduler().runTaskAsynchronously(LobsterCraft.plugin, () -> {
             String reason = Util.retrieveMessage(reasonArray);
 
-            switch (LobsterCraft.playerHandlerService.kickPlayer(
-                    playerHandler.getOfflinePlayer(),
-                    commandSender instanceof Player ? LobsterCraft.playerHandlerService.getPlayerHandler((Player) commandSender).getPlayerId() : null,
-                    BannedPlayerEntry.BanType.PLAYER_KICKED,
+            switch (LobsterCraft.servicesManager.playerHandlerService.kickPlayer(
+                    onlinePlayer.getOfflinePlayer(),
+                    PlayerHandlerService.BanType.PLAYER_KICKED,
                     reason,
+                    commandSender instanceof Player ?
+                            LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) commandSender, null).getOfflinePlayer().getPlayerId() : null,
                     null
             )) {
-                case SUCCESSFULLY_BANNED:
-                    commandSender.sendMessage("§6Jogador " + playerHandler.getPlayer().getDisplayName() + " §6foi expulso.");
+                case SUCCESSFULLY_EXECUTED:
+                    commandSender.sendMessage(Util.appendStrings("§6Jogador §c", onlinePlayer.getPlayer().getDisplayName(), " §6foi expulso."));
                     break;
                 case INVALID_REASON_LENGTH:
-                    commandSender.sendMessage("§cMotivo inválido (muito curto ou longo)");
+                    commandSender.sendMessage("§cMotivo inválido: texto muito curto ou muito longo");
                     break;
                 case PLAYER_NOT_REGISTERED:
-                case INVALID_BAN_TYPE:
+                    commandSender.sendMessage("§cJogador não registrado.");
+                    break;
                 case ERROR_OCCURRED:
                     commandSender.sendMessage("§4Ocorreu um erro!");
                     break;

@@ -1,5 +1,6 @@
 package com.jabyftw.easiercommands;
 
+import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.sun.istack.internal.NotNull;
 
 import java.lang.annotation.ElementType;
@@ -31,6 +32,6 @@ public @interface CommandHandler {
 
     SenderType senderType();
 
-    @NotNull String[] additionalPermissions() default {""};
+    @NotNull Permissions[] additionalPermissions() default {};
 
 }

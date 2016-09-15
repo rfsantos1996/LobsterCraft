@@ -13,7 +13,7 @@ import com.jabyftw.lobstercraft.commands.login.RegisterCommand;
 import com.jabyftw.lobstercraft.commands.player.*;
 import com.jabyftw.lobstercraft.commands.protection.BuildModeCommand;
 import com.jabyftw.lobstercraft.commands.util.ExitCommand;
-import com.jabyftw.lobstercraft.util.Service;
+import com.jabyftw.lobstercraft.services.Service;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 
@@ -37,10 +37,10 @@ import org.bukkit.Server;
  */
 public class CommandService extends Service {
 
+    // Used on SpawnCommand
     public static WorldCommand worldCommand;
 
-    @Override
-    public boolean onEnable() {
+    public CommandService() {
         Server server = Bukkit.getServer();
         {
             // ban
@@ -98,11 +98,9 @@ public class CommandService extends Service {
             // util
             server.getPluginCommand("exit").setExecutor(new ExitCommand());
         }
-        return true;
     }
 
     @Override
     public void onDisable() {
-
     }
 }

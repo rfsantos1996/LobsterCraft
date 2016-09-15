@@ -67,7 +67,7 @@ public enum ArgumentType {
             return Util.parseToWeatherType(string);
         }
     },
-    GAMEMODE_TYPE(GameMode.class) {
+    GAME_MODE_TYPE(GameMode.class) {
         @Override
         protected Object isPossible(CommandSender commandSender, String string) {
             return Util.parseToGameMode(string);

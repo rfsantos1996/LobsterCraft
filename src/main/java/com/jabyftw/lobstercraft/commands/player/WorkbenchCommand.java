@@ -3,8 +3,9 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 
 /**
@@ -28,21 +29,21 @@ import org.bukkit.command.CommandSender;
 public class WorkbenchCommand extends CommandExecutor {
 
     public WorkbenchCommand() {
-        super("workbench", Permissions.PLAYER_WORKBENCH, "Permite ao jogador acessar um workbench", "/workbench");
+        super("workbench", Permissions.PLAYER_WORKBENCH.toString(), "Permite ao jogador acessar um workbench", "/workbench");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onWorkbench(PlayerHandler playerHandler) {
-        playerHandler.getPlayer().closeInventory();
-        playerHandler.getPlayer().openWorkbench(null, true);
+    private boolean onWorkbench(OnlinePlayer onlinePlayer) {
+        onlinePlayer.getPlayer().closeInventory();
+        onlinePlayer.getPlayer().openWorkbench(null, true);
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_WORKBENCH_OTHERS)
-    public boolean onWorkbenchOthers(CommandSender commandSender, PlayerHandler playerHandler) {
-        onWorkbench(playerHandler);
-        commandSender.sendMessage("§6Você abriu um workbench para " + playerHandler.getPlayer().getDisplayName());
-        playerHandler.sendMessage("§6" + commandSender.getName() + " abriu um workbench para você");
+    private boolean onWorkbenchOthers(CommandSender commandSender, OnlinePlayer onlinePlayer) {
+        onWorkbench(onlinePlayer);
+        commandSender.sendMessage(Util.appendStrings("§6Você abriu um workbench para ", onlinePlayer.getPlayer().getDisplayName()));
+        onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6", commandSender.getName(), " abriu um workbench para você"));
         return true;
     }
 }

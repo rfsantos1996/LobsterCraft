@@ -3,8 +3,9 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -29,38 +30,39 @@ import org.bukkit.entity.Player;
 public class LevelCommand extends CommandExecutor {
 
     public LevelCommand() {
-        super("level", Permissions.PLAYER_LEVEL_CHANGE, "Permite ao jogador mudar seu level", "/level (quantidade)");
+        super("level", Permissions.PLAYER_LEVEL_CHANGE.toString(), "Permite ao jogador mudar seu level", "/level (quantidade)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onLevel(PlayerHandler playerHandler, int amount) {
+    private boolean onLevel(OnlinePlayer onlinePlayer, int amount) {
         if (amount <= 0) {
-            playerHandler.sendMessage("§cA quantidade deve ser maior que zero.");
+            onlinePlayer.getPlayer().sendMessage("§cA quantidade deve ser maior que zero.");
             return true;
         }
 
         // Store values, update level and warn players
-        int level = playerHandler.getPlayer().getLevel();
-        playerHandler.getPlayer().setLevel(amount);
-        playerHandler.sendMessage("§6Você tem agora §c" + amount + "§6 leveis (§c" + level + " §6-> §c" + playerHandler.getPlayer().getLevel() + ")");
+        int level = onlinePlayer.getPlayer().getLevel();
+        onlinePlayer.getPlayer().setLevel(amount);
+        onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6Você tem agora §c", amount, "§6 leveis (§c", level, " §6-> §c", onlinePlayer.getPlayer().getLevel(), "§6)"));
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_LEVEL_CHANGE_OTHERS)
-    public boolean onExpOthers(CommandSender commandSender, PlayerHandler playerHandler, int amount) {
+    private boolean onExpOthers(CommandSender commandSender, OnlinePlayer onlinePlayer, int amount) {
         if (amount <= 0) {
             commandSender.sendMessage("§cA quantidade deve ser maior que zero.");
             return true;
         }
-        Player player = playerHandler.getPlayer();
+        Player player = onlinePlayer.getPlayer();
 
         // Store value and update level
         int level = player.getLevel();
         player.setLevel(level + amount);
 
         // Warn players
-        playerHandler.sendMessage("§c" + commandSender.getName() + "§6 mudou seus leveis para §c" + amount + "§6 (§c" + level + " §6-> §c" + player.getLevel() + ")");
-        commandSender.sendMessage(player.getDisplayName() + "§6 tem agora §c" + amount + "§6 leveis (§c" + level + " §6-> §c" + player.getLevel() + ")");
+        onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§c", commandSender.getName(), "§6 mudou seus leveis para §c", amount, "§6 (§c", level, " §6-> §c",
+                player.getLevel(), "§6)"));
+        commandSender.sendMessage(Util.appendStrings(player.getDisplayName(), "§6 tem agora §c", amount, "§6 leveis (§c", level, " §6-> §c", player.getLevel(), "§6)"));
         return true;
     }
 }

@@ -5,7 +5,7 @@ import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.util.Permissions;
-import com.jabyftw.lobstercraft.util.BukkitScheduler;
+import com.jabyftw.lobstercraft.services.services_event.ServerClosingEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -31,7 +31,7 @@ import org.bukkit.entity.Player;
 public class ExitCommand extends CommandExecutor {
 
     public ExitCommand() {
-        super("exit", Permissions.UTIL_EXIT_SERVER, "Permite ao jogador fechar o servidor", "/exit");
+        super("exit", Permissions.EXIT_COMMAND.toString(), "Permite ao jogador fechar o servidor", "/exit");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
@@ -42,13 +42,13 @@ public class ExitCommand extends CommandExecutor {
         // Kick every player
         for (Player player : Bukkit.getServer().getOnlinePlayers())
             // Here the events are still called, shutting down players correctly
-            player.kickPlayer("§cServidor sendo reiniciado.");
+            player.kickPlayer("§cServidor está sendo reiniciado :'(");
 
-        // Remove all dropped items that are safe
-        LobsterCraft.playerService.playerListener.removeAllSafeItems();
+        // Call event
+        Bukkit.getPluginManager().callEvent(new ServerClosingEvent());
 
-        // Shutdown server after 1 tick;
-        BukkitScheduler.runTask(() -> {
+        // Shutdown server;
+        Bukkit.getScheduler().runTask(LobsterCraft.plugin, () -> {
             Bukkit.broadcastMessage("Starting to shutdown...");
             Bukkit.getServer().shutdown();
         });

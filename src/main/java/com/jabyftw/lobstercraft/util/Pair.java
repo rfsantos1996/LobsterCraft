@@ -1,10 +1,9 @@
 package com.jabyftw.lobstercraft.util;
 
-import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 
 /**
- * Copyright (C) 2016  Rafael Sartori for PacocaCraft Plugin
+ * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
  * <p/>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,28 +22,14 @@ import com.sun.istack.internal.Nullable;
  */
 public class Pair<A, B> {
 
-    private final A a;
-    private B b;
+    public A a;
+    public B b;
 
-    public Pair(@NotNull A a, @Nullable B b) {
+    public Pair() {
+    }
+
+    public Pair(@Nullable A a, @Nullable B b) {
         this.a = a;
         this.b = b;
-    }
-
-    public A getA() {
-        return a;
-    }
-
-    public B getB() {
-        return b;
-    }
-
-    public void setB(@Nullable B b) {
-        this.b = b;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return (obj instanceof Pair && ((Pair) obj).a.equals(a)) || (a.equals(obj));
     }
 }

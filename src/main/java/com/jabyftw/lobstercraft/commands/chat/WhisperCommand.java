@@ -4,9 +4,9 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.chat.ChatProfile;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft_old.player.PlayerHandler;
+import com.jabyftw.lobstercraft_old.player.chat.ChatProfile;
+import com.jabyftw.lobstercraft_old.player.util.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 

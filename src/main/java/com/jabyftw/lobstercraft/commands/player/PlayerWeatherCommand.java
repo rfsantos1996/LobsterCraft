@@ -3,7 +3,7 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.WeatherType;
 
@@ -28,20 +28,20 @@ import org.bukkit.WeatherType;
 public class PlayerWeatherCommand extends CommandExecutor {
 
     public PlayerWeatherCommand() {
-        super("pweather", Permissions.PLAYER_PLAYER_WEATHER, "Permite ao jogador mudar o clima individual", "/pweather (tipo de clima)");
+        super("pweather", Permissions.PLAYER_PLAYER_WEATHER.toString(), "Permite ao jogador mudar o clima individual", "/pweather (tipo de clima)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onChangeWeather(PlayerHandler playerHandler) {
-        playerHandler.getPlayer().resetPlayerWeather();
-        playerHandler.sendMessage("§cClima restaurado!");
+    public boolean onChangeWeather(OnlinePlayer onlinePlayer) {
+        onlinePlayer.getPlayer().resetPlayerWeather();
+        onlinePlayer.getPlayer().sendMessage("§cClima restaurado!");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onChangeWeather(PlayerHandler playerHandler, WeatherType weatherType) {
-        playerHandler.getPlayer().setPlayerWeather(weatherType);
-        playerHandler.sendMessage("§6Clima atualizado! Use §c/pweather§6 para restaurar.");
+    public boolean onChangeWeather(OnlinePlayer onlinePlayer, WeatherType weatherType) {
+        onlinePlayer.getPlayer().setPlayerWeather(weatherType);
+        onlinePlayer.getPlayer().sendMessage("§6Clima atualizado! Use §c/pweather§6 para restaurar.");
         return true;
     }
 }

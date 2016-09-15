@@ -3,8 +3,8 @@ package com.jabyftw.lobstercraft.commands.location;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.TeleportBuilder;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Location;
@@ -31,14 +31,13 @@ import org.bukkit.command.CommandSender;
 public class TeleportCommand extends CommandExecutor {
 
     public TeleportCommand() {
-        super("teleport", Permissions.LOCATION_TELEPORT, "Permite ao jogador teleportar a lugares e outros jogadores", "/tp (jogador) §6ou §c/tp (localização)");
+        super("teleport", null, "Permite ao jogador teleportar a lugares e outros jogadores", "/tp (jogador) §6ou §c/tp (localização)");
     }
 
-    @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_PLAYERS)
-    public boolean onTeleport(PlayerHandler playerHandler, PlayerHandler target) {
-        TeleportBuilder.getBuilder(playerHandler)
+    @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_PLAYER)
+    private boolean onTeleportToPlayer(OnlinePlayer teleportingPlayer, OnlinePlayer target) {
+        TeleportBuilder.getBuilder(teleportingPlayer)
                 .setPlayerLocation(target)
-                .registerLastLocation(true)
                 .warnTargetPlayer(true)
                 .warnTeleportingPlayer(true)
                 .waitBeforeListenerTriggers(true)
@@ -46,11 +45,10 @@ public class TeleportCommand extends CommandExecutor {
         return true;
     }
 
-    @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onTeleport(PlayerHandler playerHandler, Location location) {
-        TeleportBuilder.getBuilder(playerHandler)
+    @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_LOCATION)
+    private boolean onTeleportToLocation(OnlinePlayer teleportingPlayer, Location location) {
+        TeleportBuilder.getBuilder(teleportingPlayer)
                 .setLocation(location)
-                .registerLastLocation(true)
                 .warnTargetPlayer(true)
                 .warnTeleportingPlayer(true)
                 .waitBeforeListenerTriggers(true)
@@ -58,27 +56,25 @@ public class TeleportCommand extends CommandExecutor {
         return true;
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_TELEPORT_OTHERS)
-    public boolean onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, Location location) {
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_LOCATION_OTHERS)
+    private boolean onTeleportOthersToPlayer(CommandSender commandSender, OnlinePlayer teleporting, Location location) {
         TeleportBuilder.getBuilder(teleporting)
                 .setLocation(location)
-                .registerLastLocation(true)
                 .warnTargetPlayer(true)
                 .setInstantaneousTeleport(true)
                 .execute();
-        commandSender.sendMessage(teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + Util.locationToString(location));
+        commandSender.sendMessage(Util.appendStrings(teleporting.getPlayer().getDisplayName(), "§6 foi teleportado para §c", Util.locationToString(location)));
         return true;
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_TELEPORT_OTHERS)
-    public boolean onTeleportOthersToLocation(CommandSender commandSender, PlayerHandler teleporting, PlayerHandler target) {
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_PLAYER_OTHERS)
+    private boolean onTeleportOthersToLocation(CommandSender commandSender, OnlinePlayer teleporting, OnlinePlayer target) {
         TeleportBuilder.getBuilder(teleporting)
                 .setPlayerLocation(target)
-                .registerLastLocation(true)
                 .warnTargetPlayer(true)
                 .setInstantaneousTeleport(true)
                 .execute();
-        commandSender.sendMessage(teleporting.getPlayer().getDisplayName() + "§6 foi teleportado para " + target.getPlayer().getDisplayName());
+        commandSender.sendMessage(Util.appendStrings(teleporting.getPlayer().getDisplayName(), "§6 foi teleportado para ", target.getPlayer().getDisplayName()));
         return true;
     }
 }

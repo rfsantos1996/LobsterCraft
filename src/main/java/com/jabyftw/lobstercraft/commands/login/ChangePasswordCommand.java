@@ -3,8 +3,11 @@ package com.jabyftw.lobstercraft.commands.login;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.util.Util;
+
+import java.security.NoSuchAlgorithmException;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -31,30 +34,36 @@ public class ChangePasswordCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onChangePassword(PlayerHandler playerHandler, String oldPassword, String password1, String password2) {
+    public boolean onChangePassword(OnlinePlayer onlinePlayer, String oldPassword, String password1, String password2) {
         // Check if passwords match
         if (!password1.equals(password2)) {
-            playerHandler.sendMessage("§cAs novas senhas não coincidem.");
+            onlinePlayer.getPlayer().sendMessage("§cAs novas senhas não coincidem.");
             return true;
         }
 
         // Check password length
         if (!Util.checkStringLength(password1, 3, 16)) {
-            playerHandler.sendMessage("§cSenha inválida: tamanho inapropriado");
+            onlinePlayer.getPlayer().sendMessage("§cSenha inválida: tamanho inapropriado");
             return true;
         }
 
-        switch (playerHandler.changePlayerPassword(oldPassword, password1)) {
-            case WRONG_OLD_PASSWORD:
-                playerHandler.sendMessage("§cSenha atual incorreta!");
+        try {
+            if (!onlinePlayer.getOfflinePlayer().getEncryptedPassword().equals(Util.encryptString(oldPassword))) {
+                onlinePlayer.getPlayer().sendMessage("§4Senha antiga não coincide!");
                 return true;
-            case ERROR_OCCURRED:
-                playerHandler.sendMessage("§4Ocorreu um erro! §cTente novamente mais tarde.");
-                return true;
-            case SUCCESSFULLY_CHANGED:
-                playerHandler.sendMessage("§6Sua senha foi alterada!");
-                return true;
+            }
+        } catch (NoSuchAlgorithmException exception) {
+            exception.printStackTrace();
+            onlinePlayer.getPlayer().sendMessage("§4Ocorreu um erro! §cTente novamente mais tarde.");
+            return true;
         }
-        throw new IllegalStateException("Didn't handled a case at password change");
+
+        if (LobsterCraft.servicesManager.playerHandlerService.changePlayerPassword(onlinePlayer.getOfflinePlayer(), password1)) {
+            onlinePlayer.getPlayer().sendMessage("§6Sua senha foi alterada!");
+            return true;
+        } else {
+            onlinePlayer.getPlayer().sendMessage("§4Jogador não registrado!");
+            return true;
+        }
     }
 }

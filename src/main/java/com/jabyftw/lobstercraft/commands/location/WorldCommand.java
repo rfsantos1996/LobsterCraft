@@ -3,9 +3,10 @@ package com.jabyftw.lobstercraft.commands.location;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.TeleportBuilder;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -33,11 +34,11 @@ import java.util.List;
 public class WorldCommand extends CommandExecutor {
 
     public WorldCommand() {
-        super("world", Permissions.LOCATION_CHANGE_WORLD, "Permite ao jogador mudar de mundo", "/world (jogador) (nome)");
+        super("world", Permissions.LOCATION_CHANGE_WORLD.toString(), "Permite ao jogador mudar de mundo", "/world (jogador) (nome)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public boolean onWorldList(CommandSender commandSender) {
+    private boolean onWorldList(CommandSender commandSender) {
         StringBuilder stringBuilder = new StringBuilder("§6Mundos: ");
         List<World> worlds = Bukkit.getWorlds();
 
@@ -52,10 +53,9 @@ public class WorldCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onWorldTeleport(PlayerHandler playerHandler, World world) {
-        TeleportBuilder.getBuilder(playerHandler)
+    protected boolean onWorldTeleport(OnlinePlayer onlinePlayer, World world) {
+        TeleportBuilder.getBuilder(onlinePlayer)
                 .setLocation(world.getSpawnLocation())
-                .registerLastLocation(true)
                 .warnTeleportingPlayer(true)
                 .waitBeforeListenerTriggers(true)
                 .execute();
@@ -63,10 +63,13 @@ public class WorldCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_CHANGE_WORLD_OTHERS)
-    public boolean onWorldTeleportOther(CommandSender commandSender, PlayerHandler playerHandler, World world) {
-        TeleportBuilder.getBuilder(playerHandler).setLocation(world.getSpawnLocation()).registerLastLocation(true).setInstantaneousTeleport(true).execute();
+    protected boolean onWorldTeleportOther(CommandSender commandSender, OnlinePlayer onlinePlayer, World world) {
+        TeleportBuilder.getBuilder(onlinePlayer)
+                .setLocation(world.getSpawnLocation())
+                .setInstantaneousTeleport(true)
+                .execute();
 
-        commandSender.sendMessage(playerHandler.getPlayer().getDisplayName() + "§6 foi teleportado para §c" + world.getName());
+        commandSender.sendMessage(Util.appendStrings(onlinePlayer.getPlayer().getDisplayName(), "§6 foi teleportado para §c", world.getName()));
         return true;
     }
 }

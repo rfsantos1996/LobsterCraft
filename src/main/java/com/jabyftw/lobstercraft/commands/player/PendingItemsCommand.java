@@ -3,8 +3,8 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.inventory.InventoryProfile;
+import com.jabyftw.lobstercraft.player.InventoryProfile;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.inventory.ItemStack;
 
@@ -32,16 +32,16 @@ import java.util.Iterator;
 public class PendingItemsCommand extends CommandExecutor {
 
     public PendingItemsCommand() {
-        super("itens", Permissions.PLAYER_PENDING_ITEMS, "Permite ao jogador receber os itens pendentes", "/itens");
+        super("itens", Permissions.PLAYER_PENDING_ITEMS.toString(), "Permite ao jogador receber os itens pendentes", "/itens");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onPendingItems(PlayerHandler playerHandler) {
-        InventoryProfile inventoryProfile = playerHandler.getProfile(InventoryProfile.class);
+    private boolean onPendingItems(OnlinePlayer onlinePlayer) {
+        InventoryProfile inventoryProfile = onlinePlayer.getProfile(InventoryProfile.class);
 
         // Copy the list
-        ArrayList<ItemStack> itemStacks = new ArrayList<>(inventoryProfile.getRemainingContents());
-        inventoryProfile.getRemainingContents().clear();
+        ArrayList<ItemStack> itemStacks = new ArrayList<>(inventoryProfile.getRemainingItems());
+        inventoryProfile.getRemainingItems().clear();
 
         // Iterate through all items
         Iterator<ItemStack> iterator = itemStacks.iterator();
@@ -56,9 +56,10 @@ public class PendingItemsCommand extends CommandExecutor {
         }
 
         // If there are remaining items, it should be back here
-        inventoryProfile.getRemainingContents().addAll(itemStacks);
+        inventoryProfile.getRemainingItems().addAll(itemStacks);
 
-        playerHandler.sendMessage(inventoryProfile.getRemainingContents().isEmpty() ? "§6Todos os itens foram entregues!" : "§cAinda restam itens a serem entregues!");
+        onlinePlayer.getPlayer().sendMessage(inventoryProfile.getRemainingItems().isEmpty() ? "§6Todos os itens foram entregues!" :
+                "§cAinda restam itens a serem entregues!");
         return true;
     }
 }

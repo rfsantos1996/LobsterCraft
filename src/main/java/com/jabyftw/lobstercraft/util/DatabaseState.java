@@ -27,7 +27,7 @@ public enum DatabaseState {
     NOT_ON_DATABASE;
 
     /**
-     * Check the object, on its current state, needs synchronization with the database
+     * Check the object, on its current state, needs synchronization with the database (insert, update or delete)
      *
      * @return true if object needs to be saved.
      */

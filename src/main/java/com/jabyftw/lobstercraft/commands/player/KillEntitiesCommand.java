@@ -4,6 +4,7 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -35,11 +36,11 @@ import java.util.Iterator;
 public class KillEntitiesCommand extends CommandExecutor {
 
     public KillEntitiesCommand() {
-        super("killall", Permissions.PLAYER_KILL_ENTITIES, "Permite ao jogador matar entidades", "/killall (tipo de criatura)");
+        super("killall", Permissions.PLAYER_KILL_ENTITIES.toString(), "Permite ao jogador matar entidades", "/killall (tipo de criatura)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public boolean onKillAll(CommandSender commandSender, EntityType entityType) {
+    private boolean onKillAll(CommandSender commandSender, EntityType entityType) {
         if (entityType == EntityType.PLAYER || !entityType.isAlive()) {
             commandSender.sendMessage("§cVocê não pode matar este tipo de entidade.");
         }
@@ -63,7 +64,7 @@ public class KillEntitiesCommand extends CommandExecutor {
             iterator.remove();
         }
 
-        commandSender.sendMessage("§cVocê matou §4" + entities + "§c de §4" + entityType.name().toLowerCase().replaceAll("_", " "));
+        commandSender.sendMessage(Util.appendStrings("§cVocê matou §4", entities, " ", entityType.name().toLowerCase().replaceAll("_", " ")));
         return true;
     }
 }

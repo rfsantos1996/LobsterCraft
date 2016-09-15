@@ -4,8 +4,8 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.commands.CommandService;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.location.TeleportBuilder;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.TeleportBuilder;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -31,14 +31,13 @@ import org.bukkit.command.CommandSender;
 public class SpawnCommand extends CommandExecutor {
 
     public SpawnCommand() {
-        super("spawn", Permissions.LOCATION_SPAWN, "Permite ao jogador voltar ao spawn", "/spawn (jogador) (mundo)");
+        super("spawn", Permissions.LOCATION_TELEPORT_TO_SPAWN.toString(), "Permite ao jogador voltar ao spawn", "/spawn (jogador) (mundo)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onSpawn(PlayerHandler playerHandler) {
-        TeleportBuilder.getBuilder(playerHandler)
-                .setLocation(playerHandler.getPlayer().getWorld().getSpawnLocation())
-                .registerLastLocation(true)
+    private boolean onSpawn(OnlinePlayer onlinePlayer) {
+        TeleportBuilder.getBuilder(onlinePlayer)
+                .setLocation(onlinePlayer.getPlayer().getWorld().getSpawnLocation())
                 .warnTeleportingPlayer(true)
                 .waitBeforeListenerTriggers(true)
                 .execute();
@@ -46,23 +45,22 @@ public class SpawnCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.LOCATION_CHANGE_WORLD)
-    public boolean onSpawnAtWorld(PlayerHandler playerHandler, World world) {
-        return CommandService.worldCommand.onWorldTeleport(playerHandler, world);
+    private boolean onSpawnAtWorld(OnlinePlayer onlinePlayer, World world) {
+        return CommandService.worldCommand.onWorldTeleport(onlinePlayer, world);
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_SPAWN_OTHERS)
-    public boolean onSpawnOther(CommandSender commandSender, PlayerHandler playerHandler) {
-        TeleportBuilder.getBuilder(playerHandler)
-                .setLocation(playerHandler.getPlayer().getWorld().getSpawnLocation())
-                .registerLastLocation(true)
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_SPAWN_OTHERS)
+    private boolean onSpawnOther(CommandSender commandSender, OnlinePlayer onlinePlayer) {
+        TeleportBuilder.getBuilder(onlinePlayer)
+                .setLocation(onlinePlayer.getPlayer().getWorld().getSpawnLocation())
                 .setInstantaneousTeleport(true)
                 .execute();
         return true;
     }
 
-    // Hope I don't have to {""} on every additional permissions
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = {Permissions.LOCATION_SPAWN_OTHERS, Permissions.LOCATION_CHANGE_WORLD, Permissions.LOCATION_CHANGE_WORLD_OTHERS})
-    public boolean onSpawnOtherAtWorld(CommandSender commandSender, PlayerHandler playerHandler, World world) {
-        return CommandService.worldCommand.onWorldTeleportOther(commandSender, playerHandler, world);
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = {Permissions.LOCATION_TELEPORT_TO_SPAWN_OTHERS, Permissions.LOCATION_CHANGE_WORLD,
+            Permissions.LOCATION_CHANGE_WORLD_OTHERS})
+    private boolean onSpawnOtherAtWorld(CommandSender commandSender, OnlinePlayer onlinePlayer, World world) {
+        return CommandService.worldCommand.onWorldTeleportOther(commandSender, onlinePlayer, world);
     }
 }

@@ -1,8 +1,8 @@
 package com.jabyftw.easiercommands;
 
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.OfflinePlayerHandler;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OfflinePlayer;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -31,12 +31,12 @@ public abstract class READ_ME {
 
     public static final boolean DEBUG = false;
 
-    public static final JavaPlugin PLUGIN = LobsterCraft.lobsterCraft;
+    public static final JavaPlugin PLUGIN = LobsterCraft.plugin;
     public static final Logger LOGGER = LobsterCraft.logger;
 
     public static final Class<?>
-            PLAYER_CLASS = PlayerHandler.class,
-            OFFLINE_PLAYER_CLASS = OfflinePlayerHandler.class;
+            PLAYER_CLASS = OnlinePlayer.class,
+            OFFLINE_PLAYER_CLASS = OfflinePlayer.class;
 
     public static final String
             DESCRIPTION_HEADER = "§6",
@@ -45,19 +45,19 @@ public abstract class READ_ME {
             DEBUG_HEADER = "[DEBUG] ";
 
     public static Object getPlayerThatMatches(String string) {
-        return com.jabyftw.lobstercraft.util.Util.getPlayerThatMatches(string);
+        return LobsterCraft.servicesManager.playerHandlerService.matchOnlinePlayer(string, OnlinePlayer.OnlineState.LOGGED_IN);
+    }
+
+    public static Object getOfflinePlayerThatMatches(String string) {
+        return LobsterCraft.servicesManager.playerHandlerService.matchOfflinePlayer(string);
     }
 
     public static Object getPlayerClassInstance(Player player) {
         // Must be without restrictions, as we use a command to login
-        return LobsterCraft.playerHandlerService.getPlayerHandlerNoRestrictions(player);
+        return LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer(player, null);
     }
 
     public static void sendCommandSenderMessage(CommandSender commandSender, String coloredMessage) {
         commandSender.sendMessage(coloredMessage);
-    }
-
-    public static Object getOfflinePlayerThatMatches(String string) {
-        return LobsterCraft.playerHandlerService.getOfflinePlayer(string);
     }
 }

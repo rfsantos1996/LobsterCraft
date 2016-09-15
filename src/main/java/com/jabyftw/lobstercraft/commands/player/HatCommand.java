@@ -3,9 +3,10 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.inventory.InventoryProfile;
+import com.jabyftw.lobstercraft.player.InventoryProfile;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -31,46 +32,46 @@ import org.bukkit.inventory.ItemStack;
 public class HatCommand extends CommandExecutor {
 
     public HatCommand() {
-        super("hat", Permissions.PLAYER_HAT, "Permite ao jogador ficar bonito", "/hat");
+        super("hat", Permissions.PLAYER_HAT.toString(), "Permite ao jogador ficar bonito", "/hat");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onHat(PlayerHandler playerHandler) {
-        Player player = playerHandler.getPlayer();
+    public boolean onHat(OnlinePlayer onlinePlayer) {
+        Player player = onlinePlayer.getPlayer();
 
         ItemStack helmet = player.getInventory().getHelmet();
-        ItemStack itemInHand = player.getItemInHand();
+        ItemStack itemInHand = player.getInventory().getItemInMainHand();
 
         // Check if item in hand isn't air; if is, return
         if (itemInHand == null || itemInHand.getType() == Material.AIR) {
-            playerHandler.sendMessage("§cVocê não tem item na sua mão!");
+            onlinePlayer.getPlayer().sendMessage("§cVocê não tem item na sua mão!");
             return true;
         }
 
         // Check if helmet exists and store it
         if (helmet != null && helmet.getType() != Material.AIR)
-            playerHandler.getProfile(InventoryProfile.class).addItems(true, helmet);
+            onlinePlayer.getProfile(InventoryProfile.class).addItems(true, helmet);
 
         // Set helmet as item on hand isn't air
         itemInHand.setAmount(1);
         player.getInventory().remove(itemInHand);
         player.getInventory().setHelmet(itemInHand);
-        playerHandler.sendMessage("§6Aproveite seu novo chapéu!");
+        onlinePlayer.getPlayer().sendMessage("§6Aproveite seu novo chapéu!");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.PLAYER_HAT_OTHERS)
-    public boolean onHatOthers(PlayerHandler sender, PlayerHandler target) {
+    public boolean onHatOthers(OnlinePlayer sender, OnlinePlayer target) {
         Player targetPlayer = target.getPlayer();
         Player senderPlayer = sender.getPlayer();
 
         // We will set SENDER's item in hand as TARGET's hat
         ItemStack helmet = targetPlayer.getInventory().getHelmet();
-        ItemStack itemInHand = senderPlayer.getItemInHand();
+        ItemStack itemInHand = senderPlayer.getInventory().getItemInMainHand();
 
         // Check if item in hand isn't air; if is, return
         if (itemInHand == null || itemInHand.getType() == Material.AIR) {
-            sender.sendMessage("§cVocê não tem item na sua mão!");
+            sender.getPlayer().sendMessage("§cVocê não tem item na sua mão!");
             return true;
         }
 
@@ -82,8 +83,9 @@ public class HatCommand extends CommandExecutor {
         itemInHand.setAmount(1);
         senderPlayer.getInventory().remove(itemInHand);
         targetPlayer.getInventory().setHelmet(itemInHand);
-        target.sendMessage("§6Aproveite seu novo chapéu dado por " + senderPlayer.getDisplayName() + "§6!");
-        sender.sendMessage("§6O novo chapéu de " + targetPlayer.getDisplayName() + "§6 é um §c" + itemInHand.getType().name().toLowerCase().replaceAll("_", " "));
+        target.getPlayer().sendMessage(Util.appendStrings("§6Aproveite seu novo chapéu dado por ", senderPlayer.getDisplayName(), "§6!"));
+        sender.getPlayer().sendMessage(Util.appendStrings("§6O novo chapéu de ", targetPlayer.getDisplayName(), "§6 é um §c",
+                itemInHand.getType().name().toLowerCase().replaceAll("_", " ")));
         return true;
     }
 }

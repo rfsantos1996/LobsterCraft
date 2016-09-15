@@ -3,9 +3,10 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.util.ConditionController;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.TriggerController;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 
 /**
@@ -29,27 +30,27 @@ import org.bukkit.command.CommandSender;
 public class ClearInventoryCommand extends CommandExecutor {
 
     public ClearInventoryCommand() {
-        super("clear", Permissions.PLAYER_CLEAR_INVENTORY, "Permite ao jogador se livrar de itens", "/clear");
+        super("clear", Permissions.PLAYER_CLEAR_INVENTORY.toString(), "Permite ao jogador se livrar de itens", "/clear");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onClear(PlayerHandler playerHandler) {
+    private boolean onClear(OnlinePlayer onlinePlayer) {
 
-        if (playerHandler.getConditionController().sendMessageIfConditionReady(
-                ConditionController.Condition.PLAYER_CLEAR_INVENTORY_CHECK,
-                "§cVocê tem certeza de que quer limpar TODO o seu inventário? §6Se sim, use o comando novamente."
+        if (onlinePlayer.getTriggerController().sendMessageIfTriggered(
+                TriggerController.TemporaryTrigger.PLAYER_CLEAR_INVENTORY_CHECK,
+                "§cVocê tem certeza de que quer limpar §4TODO §co seu inventário? §6Se sim, use o comando novamente."
         )) return true;
 
-        playerHandler.getPlayer().getInventory().clear();
-        playerHandler.sendMessage("§6Inventário limpo!");
+        onlinePlayer.getPlayer().getInventory().clear();
+        onlinePlayer.getPlayer().sendMessage("§6Inventário limpo!");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_CLEAR_INVENTORY_OTHERS)
-    public boolean onClearOther(CommandSender commandSender, PlayerHandler playerHandler) {
-        playerHandler.getPlayer().getInventory().clear();
-        playerHandler.sendMessage("§6Inventário limpo por " + commandSender.getName() + "!");
-        commandSender.sendMessage("§6Inventário de " + playerHandler.getPlayer().getDisplayName() + "§6 foi limpo.");
+    private boolean onClearOther(CommandSender commandSender, OnlinePlayer onlinePlayer) {
+        onlinePlayer.getPlayer().getInventory().clear();
+        onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6Inventário limpo por ", commandSender.getName()));
+        commandSender.sendMessage(Util.appendStrings("§6Inventário de ", onlinePlayer.getPlayer().getDisplayName(), "§6 foi limpo."));
         return true;
     }
 }

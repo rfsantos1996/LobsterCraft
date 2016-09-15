@@ -1,23 +1,22 @@
 package com.jabyftw.lobstercraft.util;
 
-import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.Location;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.NumberConversions;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -37,13 +36,14 @@ import java.util.regex.Pattern;
  * <p>
  * Email address: rafael.sartori96@gmail.com
  */
-public abstract class Util {
+public final class Util {
 
-    private final static SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yy HH:mm");
+    // Note: check PlayerHandlerService.BannedPlayerEntry#getBaseKickMessage()
+    private final static SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
     private final static DecimalFormat
-            taxFormat = new DecimalFormat("##0'%"),
-            moneyFormat = new DecimalFormat("'$0.00"),
+            taxFormat = new DecimalFormat("##0%'%'"),
             decimalFormat = new DecimalFormat("0.000");
+//            moneyFormat = new DecimalFormat("'$0.00");
 
     /**
      * The number of chunks loaded is square((chunkSize * 2) + 1):
@@ -51,11 +51,11 @@ public abstract class Util {
      *
      * @param searchRange the search range
      * @return the number of chunks to be loaded
-     * @see Util#getMinimumChunkSize(double) about chunk size
+     * @see Util#getMinimumChunkRange(double) about chunk size
      */
-    public static int getNumberOfChunksLoaded(int searchRange) {
-        int i = searchRange * 2 + 1;
-        return i * i; // always equals -1, hihi
+    public static int getNumberOfChunksAround(int searchRange) {
+        int i = (searchRange * 2) + 1;
+        return i * i;
     }
 
     /**
@@ -63,11 +63,64 @@ public abstract class Util {
      *
      * @param searchBlockDistance block's search distance
      * @return our chunk range
-     * @see Util#getMinimumChunkSize(double) for more information about number of chunks loaded
+     * @see Util#getMinimumChunkRange(double) for more information about number of chunks loaded
      */
-    public static int getMinimumChunkSize(double searchBlockDistance) {
+    public static int getMinimumChunkRange(double searchBlockDistance) {
         return NumberConversions.ceil(searchBlockDistance / 16D);
     }
+
+    /**
+     * @param data byte array to be transformed into ItemStack array
+     * @return ItemStack array
+     * @throws IOException            in case something goes wrong
+     * @throws ClassNotFoundException in case something goes wrong
+     */
+    public static ItemStack[] byteArrayToItemStacks(@NotNull final byte[] data) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
+        BukkitObjectInputStream inputStream = new BukkitObjectInputStream(byteArrayInputStream);
+
+        // initialize array with the number of items
+        ItemStack[] itemStacks = new ItemStack[inputStream.readInt()];
+
+        // Re-create item array
+        for (int i = 0; i < itemStacks.length; i++) {
+            itemStacks[i] = (ItemStack) inputStream.readObject();
+        }
+
+        // Close stuff
+        inputStream.close();
+        byteArrayInputStream.close();
+
+        // Return the result
+        return itemStacks;
+    }
+
+    /**
+     * @param itemStacks ItemStack array to be transformed into bytes
+     * @return a byte array to be stored
+     * @throws IOException in case something goes wrong
+     */
+    public static byte[] itemStacksToByteArray(@NotNull final ItemStack[] itemStacks) throws IOException {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        BukkitObjectOutputStream outputStream = new BukkitObjectOutputStream(byteArrayOutputStream);
+
+        // Write the number of items
+        outputStream.writeInt(itemStacks.length);
+        // Write item stacks
+        for (ItemStack itemStack : itemStacks)
+            outputStream.writeObject(itemStack);
+
+        // Close stuff
+        outputStream.close();
+        byteArrayOutputStream.close();
+
+        // Return encoded lines
+        return byteArrayOutputStream.toByteArray();
+    }
+
+    /*
+     * String manipulation
+     */
 
     /**
      * Get an array of strings and return it without an index
@@ -130,32 +183,7 @@ public abstract class Util {
     }
 
     /**
-     * Smartely search for the equal name comparing to the string
-     *
-     * @param string almost equal player's name
-     * @return PlayerHandler that corresponds to the most equal given player name
-     */
-    public static PlayerHandler getPlayerThatMatches(@NotNull String string) {
-        if (string.length() < 3)
-            return null;
-
-        PlayerHandler mostEqual = null;
-        int equalSize = 3;
-
-        for (PlayerHandler online : LobsterCraft.playerHandlerService.getOnlinePlayers()) {
-            int thisSize = getEqualityOfNames(string.toCharArray(), online.getPlayer().getName().toCharArray());
-
-            if (thisSize >= equalSize) {
-                mostEqual = online;
-                equalSize = thisSize;
-            }
-        }
-
-        return mostEqual != null ? mostEqual : null;
-    }
-
-    /**
-     * Smartely checks for player names. Order of arguments is important here.
+     * Smartly checks for player names. Order of arguments is important here.
      *
      * @param nameSearched the string that the user searched for
      * @param realName     player's actual name to check
@@ -170,33 +198,33 @@ public abstract class Util {
         return realName.length > nameSearched.length ? equality - (realName.length - nameSearched.length) : equality;
     }
 
-    public static int equalityOfWords(@NotNull String sentence1, @NotNull String sentence2) {
-        int equality = equalityOfWordsIgnoringLength(sentence1, sentence2),
-                absoluteDifference = Math.abs(sentence1.length() - sentence2.length());
+//    public static int equalityOfWords(@NotNull String sentence1, @NotNull String sentence2) {
+//        int equality = equalityOfWordsIgnoringLength(sentence1, sentence2),
+//                absoluteDifference = Math.abs(sentence1.length() - sentence2.length());
+//
+//        return absoluteDifference > 0 ? equality - absoluteDifference : equality;
+//    }
 
-        return absoluteDifference > 0 ? equality - absoluteDifference : equality;
-    }
-
-    public static int equalityOfWordsIgnoringLength(@NotNull String sentence1, @NotNull String sentence2) {
-        String[] words1 = sentence1.split(" "),
-                words2 = sentence2.split(" ");
-        int equality = 0;
-
-        for (String wordsSentence1 : words1) {
-            int equalityOfWord = 0;
-
-            for (String worldSentence2 : words2) { // for all words
-                int thisEq = equalityOfChars(wordsSentence1.toCharArray(), worldSentence2.toCharArray()); // compare each word
-
-                if (thisEq > equalityOfWord)  // if world is equal than other word
-                    equalityOfWord = thisEq;
-            }
-
-            equality += equalityOfWord; // add most equal word to the equality
-        }
-
-        return equality;
-    }
+//    public static int equalityOfWordsIgnoringLength(@NotNull String sentence1, @NotNull String sentence2) {
+//        String[] words1 = sentence1.split(" "),
+//                words2 = sentence2.split(" ");
+//        int equality = 0;
+//
+//        for (String wordsSentence1 : words1) {
+//            int equalityOfWord = 0;
+//
+//            for (String worldSentence2 : words2) { // for all words
+//                int thisEq = equalityOfChars(wordsSentence1.toCharArray(), worldSentence2.toCharArray()); // compare each word
+//
+//                if (thisEq > equalityOfWord)  // if world is equal than other word
+//                    equalityOfWord = thisEq;
+//            }
+//
+//            equality += equalityOfWord; // add most equal word to the equality
+//        }
+//
+//        return equality;
+//    }
 
     /**
      * Returns a number that represents a value of identity between two array of characters
@@ -206,7 +234,7 @@ public abstract class Util {
      * @param string2 array of characters to compare
      * @return a number between -length and +length of the shortest array
      */
-    public static int equalityOfChars(char[] string1, char[] string2) {
+    private static int equalityOfChars(char[] string1, char[] string2) {
         int equality = 0;
 
         for (int i = 0; i < Math.min(string1.length, string2.length); i++)
@@ -234,110 +262,118 @@ public abstract class Util {
         return (long) (earthTimeInSeconds * 5.0d / 18.0d) - 6000L;
     }
 
-    /**
-     * Parse time to string given millisecond-stored time
-     *
-     * @param timeInMillis time in milliseconds
-     * @param dateFormat   SimpleDateFormat compatible format
-     * @return string matching the desired date format
-     */
-    public static String parseTimeInMillis(long timeInMillis, @NotNull String dateFormat) {
-        Date date = new Date();
-        date.setTime(timeInMillis);
-        return new SimpleDateFormat(dateFormat).format(date);
+//    /**
+//     * Parse time to string given millisecond-stored time
+//     *
+//     * @param timeInMillis time in milliseconds
+//     * @param dateFormat   SimpleDateFormat compatible format
+//     * @return string matching the desired date format
+//     */
+//    public static String parseTimeInMillis(long timeInMillis, @NotNull String dateFormat) {
+//        Date date = new Date();
+//        date.setTime(timeInMillis);
+//        return new SimpleDateFormat(dateFormat).format(date);
+//
+//    }
 
-    }
+//    /**
+//     * Parse time to string given millisecond time
+//     *
+//     * @param timeInMillis time in milliseconds
+//     * @return string matching 0h00m00s format
+//     */
+//    public static String parseTimeInMillis(long timeInMillis) {
+//        return String.format(
+//                "%dh" + "%02dm" + "%02ds", // 0h00m00s
+//                TimeUnit.MILLISECONDS.toHours(timeInMillis),
+//                TimeUnit.MILLISECONDS.toMinutes(timeInMillis) % TimeUnit.HOURS.toMinutes(1),
+//                TimeUnit.MILLISECONDS.toSeconds(timeInMillis) % TimeUnit.MINUTES.toSeconds(1)
+//        );
+//    }
 
-    /**
-     * Parse time to string given millisecond time
-     *
-     * @param timeInMillis time in milliseconds
-     * @return string matching 0h00m00s format
-     */
-    public static String parseTimeInMillis(long timeInMillis) {
-        return String.format(
-                "%dh" + "%02dm" + "%02ds", // 0h00m00s
-                TimeUnit.MILLISECONDS.toHours(timeInMillis),
-                TimeUnit.MILLISECONDS.toMinutes(timeInMillis) % TimeUnit.HOURS.toMinutes(1),
-                TimeUnit.MILLISECONDS.toSeconds(timeInMillis) % TimeUnit.MINUTES.toSeconds(1)
-        );
-    }
+//    /**
+//     * Source: Essentials (found through Ban-Management)
+//     * <b>Letters used:</b> y mo w d h m s
+//     *
+//     * @param time string with the time, eg: "3w4h" - three weeks and four hours
+//     * @return the time in milliseconds
+//     * @see <a href=https://github.com/BanManagement/BanManager/blob/master/src/main/java/me/confuser/banmanager/util/DateUtils.java>Credits to Essentials</a>
+//     */
+//    public static long parseTimeDifference(@NotNull String time) {
+//        Pattern timePattern = Pattern.compile("(?:([0-9]+)\\s*y[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*mo[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*w[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*d[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*h[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*m[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*(?:s[a-z]*)?)?", Pattern.CASE_INSENSITIVE);
+//        Matcher matcher = timePattern.matcher(time);
+//
+//        int years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
+//        boolean found = false;
+//
+//        while (matcher.find()) {
+//            if (matcher.group() == null || matcher.group().isEmpty())
+//                continue;
+//
+//            for (int i = 0; i < matcher.groupCount(); i++) {
+//                if (matcher.group(i) != null && !matcher.group(i).isEmpty()) {
+//                    found = true;
+//                    break;
+//                }
+//            }
+//
+//            if (found) {
+//                if (matcher.group(1) != null && !matcher.group(1).isEmpty())
+//                    years = Integer.parseInt(matcher.group(1));
+//                if (matcher.group(2) != null && !matcher.group(2).isEmpty())
+//                    months = Integer.parseInt(matcher.group(2));
+//                if (matcher.group(3) != null && !matcher.group(3).isEmpty())
+//                    weeks = Integer.parseInt(matcher.group(3));
+//                if (matcher.group(4) != null && !matcher.group(4).isEmpty())
+//                    days = Integer.parseInt(matcher.group(4));
+//                if (matcher.group(5) != null && !matcher.group(5).isEmpty())
+//                    hours = Integer.parseInt(matcher.group(5));
+//                if (matcher.group(6) != null && !matcher.group(6).isEmpty())
+//                    minutes = Integer.parseInt(matcher.group(6));
+//                if (matcher.group(7) != null && !matcher.group(7).isEmpty())
+//                    seconds = Integer.parseInt(matcher.group(7));
+//                break;
+//            }
+//        }
+//
+//        if (!found)
+//            throw new IllegalArgumentException("Date can't be parsed");
+//        if (years > 20)
+//            throw new IllegalArgumentException("Date is too big");
+//
+//        Calendar calendar = new GregorianCalendar();
+//
+//        if (years > 0)
+//            calendar.add(Calendar.YEAR, years);
+//        if (months > 0)
+//            calendar.add(Calendar.MONTH, months);
+//        if (weeks > 0)
+//            calendar.add(Calendar.WEEK_OF_YEAR, weeks);
+//        if (days > 0)
+//            calendar.add(Calendar.DAY_OF_MONTH, days);
+//        if (hours > 0)
+//            calendar.add(Calendar.HOUR_OF_DAY, hours);
+//        if (minutes > 0)
+//            calendar.add(Calendar.MINUTE, minutes);
+//        if (seconds > 0)
+//            calendar.add(Calendar.SECOND, seconds);
+//
+//        return calendar.getTimeInMillis() - System.currentTimeMillis();
+//    }
 
-    /**
-     * Source: Essentials (found through Ban-Management)
-     * <b>Letters used:</b> y mo w d h m s
-     *
-     * @param time string with the time, eg: "3w4h" - three weeks and four hours
-     * @return the time in milliseconds
-     * @see <a href=https://github.com/BanManagement/BanManager/blob/master/src/main/java/me/confuser/banmanager/util/DateUtils.java>Credits to Essentials</a>
-     */
-    public static long parseTimeDifference(@NotNull String time) {
-        Pattern timePattern = Pattern.compile("(?:([0-9]+)\\s*y[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*mo[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*w[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*d[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*h[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*m[a-z]*[,\\s]*)?" + "(?:([0-9]+)\\s*(?:s[a-z]*)?)?", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = timePattern.matcher(time);
-
-        int years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0;
-        boolean found = false;
-
-        while (matcher.find()) {
-            if (matcher.group() == null || matcher.group().isEmpty())
-                continue;
-
-            for (int i = 0; i < matcher.groupCount(); i++) {
-                if (matcher.group(i) != null && !matcher.group(i).isEmpty()) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (found) {
-                if (matcher.group(1) != null && !matcher.group(1).isEmpty())
-                    years = Integer.parseInt(matcher.group(1));
-                if (matcher.group(2) != null && !matcher.group(2).isEmpty())
-                    months = Integer.parseInt(matcher.group(2));
-                if (matcher.group(3) != null && !matcher.group(3).isEmpty())
-                    weeks = Integer.parseInt(matcher.group(3));
-                if (matcher.group(4) != null && !matcher.group(4).isEmpty())
-                    days = Integer.parseInt(matcher.group(4));
-                if (matcher.group(5) != null && !matcher.group(5).isEmpty())
-                    hours = Integer.parseInt(matcher.group(5));
-                if (matcher.group(6) != null && !matcher.group(6).isEmpty())
-                    minutes = Integer.parseInt(matcher.group(6));
-                if (matcher.group(7) != null && !matcher.group(7).isEmpty())
-                    seconds = Integer.parseInt(matcher.group(7));
-                break;
-            }
-        }
-
-        if (!found)
-            throw new IllegalArgumentException("Date can't be parsed");
-        if (years > 20)
-            throw new IllegalArgumentException("Date is too big");
-
-        Calendar calendar = new GregorianCalendar();
-
-        if (years > 0)
-            calendar.add(Calendar.YEAR, years);
-        if (months > 0)
-            calendar.add(Calendar.MONTH, months);
-        if (weeks > 0)
-            calendar.add(Calendar.WEEK_OF_YEAR, weeks);
-        if (days > 0)
-            calendar.add(Calendar.DAY_OF_MONTH, days);
-        if (hours > 0)
-            calendar.add(Calendar.HOUR_OF_DAY, hours);
-        if (minutes > 0)
-            calendar.add(Calendar.MINUTE, minutes);
-        if (seconds > 0)
-            calendar.add(Calendar.SECOND, seconds);
-
-        return calendar.getTimeInMillis() - System.currentTimeMillis();
+    public static String appendStrings(@NotNull final Object... objects) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Object object : objects) stringBuilder.append(object);
+        return stringBuilder.toString();
     }
 
     public static String locationToString(@NotNull final Location location) {
-        return "x=" + location.getBlockX() + ", " +
-                "y=" + location.getBlockY() + ", " +
-                "z=" + location.getBlockZ() + ", " +
-                "world=" + location.getWorld().getName();
+        return Util.appendStrings(
+                "x=", location.getBlockX(), ", ",
+                "y=", location.getBlockY(), ", ",
+                "z=", location.getBlockZ(), ", ",
+                "world=", location.getWorld().getName()
+        );
     }
 
     public static String retrieveMessage(String... strings) {
@@ -363,9 +399,9 @@ public abstract class Util {
         return decimalFormat.format(decimal);
     }
 
-    public static String formatMoney(double decimal) {
-        return moneyFormat.format(decimal);
-    }
+//    public static String formatMoney(double decimal) {
+//        return moneyFormat.format(decimal);
+//    }
 
     public static String formatTaxes(double taxFee) {
         return taxFormat.format(taxFee);

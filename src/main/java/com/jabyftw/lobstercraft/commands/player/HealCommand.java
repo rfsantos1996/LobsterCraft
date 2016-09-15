@@ -3,8 +3,9 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -29,21 +30,21 @@ import org.bukkit.entity.Player;
 public class HealCommand extends CommandExecutor {
 
     public HealCommand() {
-        super("heal", Permissions.PLAYER_HEAL, "Permite ao jogador recuperar sua vida", "/heal");
+        super("heal", Permissions.PLAYER_HEAL.toString(), "Permite ao jogador recuperar sua vida", "/heal");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onHeal(PlayerHandler playerHandler) {
-        Player player = playerHandler.getPlayer();
+    public boolean onHeal(OnlinePlayer onlinePlayer) {
+        Player player = onlinePlayer.getPlayer();
         player.setHealth(player.getMaxHealth());
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_HEAL_OTHERS)
-    public boolean onHealOthers(CommandSender commandSender, PlayerHandler playerHandler) {
-        onHeal(playerHandler);
-        commandSender.sendMessage(playerHandler.getPlayer().getDisplayName() + "§6 foi curado.");
-        playerHandler.sendMessage("§c" + commandSender.getName() + "§6 te curou.");
+    public boolean onHealOthers(CommandSender commandSender, OnlinePlayer onlinePlayer) {
+        onHeal(onlinePlayer);
+        commandSender.sendMessage(Util.appendStrings(onlinePlayer.getPlayer().getDisplayName(), "§6 foi curado."));
+        onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§c", commandSender.getName(), "§6 te curou."));
         return true;
     }
 }

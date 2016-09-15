@@ -4,9 +4,10 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.util.ConditionController;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.player.TriggerController;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
@@ -34,11 +35,12 @@ import org.bukkit.inventory.ItemStack;
 public class EnchantCommand extends CommandExecutor {
 
     public EnchantCommand() {
-        super("enchant", Permissions.PLAYER_ENCHANTMENT, "Permite ao jogador encantar um item", "/enchant (tipo de encantamento) (level) (seguro - true/false)");
+        super("enchant", Permissions.PLAYER_ENCHANTMENT.toString(), "Permite ao jogador encantar um item",
+                "/enchant (tipo de encantamento) (level) (seguro - true/false)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public boolean onEnchantmentList(CommandSender commandSender) {
+    private boolean onEnchantmentList(CommandSender commandSender) {
         StringBuilder stringBuilder = new StringBuilder();
 
         // Add a header
@@ -55,47 +57,47 @@ public class EnchantCommand extends CommandExecutor {
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onEnchantment(PlayerHandler playerHandler, Enchantment enchantment) {
-        return onEnchantment(playerHandler, enchantment, enchantment.getMaxLevel(), false);
+    private boolean onEnchantment(OnlinePlayer onlinePlayer, Enchantment enchantment) {
+        return onEnchantment(onlinePlayer, enchantment, enchantment.getMaxLevel(), false);
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onEnchantment(PlayerHandler playerHandler, Enchantment enchantment, int level) {
-        return onEnchantment(playerHandler, enchantment, level, false);
+    private boolean onEnchantment(OnlinePlayer onlinePlayer, Enchantment enchantment, int level) {
+        return onEnchantment(onlinePlayer, enchantment, level, false);
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onEnchantment(PlayerHandler playerHandler, Enchantment enchantment, int level, boolean unsafeEnchantment) {
-        Player player = playerHandler.getPlayer();
-        ItemStack itemInHand = player.getItemInHand();
+    private boolean onEnchantment(OnlinePlayer onlinePlayer, Enchantment enchantment, int level, boolean unsafeEnchantment) {
+        Player player = onlinePlayer.getPlayer();
+        ItemStack itemInHand = player.getInventory().getItemInMainHand();
 
         // Check item (there must be one)
         if (itemInHand == null || itemInHand.getType() == Material.AIR) {
-            playerHandler.sendMessage("§cVocê não tem item nas mãos!");
+            onlinePlayer.getPlayer().sendMessage("§cVocê não tem item nas mãos!");
             return true;
         }
 
         // Check amount (must be a lonely item if not unsafe)
         if (itemInHand.getAmount() > 1 && !unsafeEnchantment) {
-            playerHandler.sendMessage("§cVocê deve ter apenas UM item na mão!");
+            onlinePlayer.getPlayer().sendMessage("§cVocê deve ter apenas §4UM §citem na mão!");
             return true;
         }
 
         // Some widely used variables
         boolean canEnchantItem = enchantment.canEnchantItem(itemInHand);
-        String playerName = player.getName().toLowerCase();
 
         // Check if its not possible to enchant it AND (player don't want unsafe OR player doesn't have permission to do so)
-        if (!canEnchantItem && (!unsafeEnchantment || !LobsterCraft.permission.has(player, Permissions.PLAYER_ENCHANTMENT_UNSAFE))) {
-            playerHandler.sendMessage("§cO item em suas mãos não é válido para este encantamento!");
+        if (!canEnchantItem && (!unsafeEnchantment || !LobsterCraft.permission.has(player, Permissions.PLAYER_ENCHANTMENT_UNSAFE.toString()))) {
+            onlinePlayer.getPlayer().sendMessage("§cO item em suas mãos não é válido para este encantamento!");
             return true;
         }
 
         // Ask player's confirmation if enchantment need to be unsafe
-        if (unsafeEnchantment && !canEnchantItem && playerHandler.getConditionController().insertConditionIfReady(ConditionController.Condition.PROTECTION_CHECK)) {
-            playerHandler.sendMessage("§4AVISO:§c se pretende encantar um item no§l modo inseguro§r§c, digite o comando novamente.");
+        if (unsafeEnchantment && !canEnchantItem &&
+                onlinePlayer.getTriggerController().sendMessageIfTriggered(TriggerController.TemporaryTrigger.PLAYER_UNSAFE_ENCHANTMENT_CHECK,
+                        "§4AVISO:§c se pretende encantar um item no§l modo inseguro§r§c, digite o comando novamente."))
             return true;
-        }
+
 
         // Enchant item
         if (unsafeEnchantment && !canEnchantItem)
@@ -104,7 +106,8 @@ public class EnchantCommand extends CommandExecutor {
             itemInHand.addEnchantment(enchantment, level);
 
         // Send response to player
-        playerHandler.sendMessage("§6Encantamento realizado: §c" + enchantment.getName().toLowerCase().replaceAll("_", " ") + "§6 level §c" + level + (unsafeEnchantment ? " §6(§4INSEGURO§6)" : ""));
+        onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6Encantamento realizado: §c", enchantment.getName().toLowerCase().replaceAll("_", " "), "§6 level §c",
+                level, (unsafeEnchantment ? " §6(§4INSEGURO§6)" : "")));
         return true;
     }
 }

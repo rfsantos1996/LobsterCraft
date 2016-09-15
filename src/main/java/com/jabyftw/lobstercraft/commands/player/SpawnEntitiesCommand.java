@@ -3,8 +3,9 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -45,25 +46,25 @@ public class SpawnEntitiesCommand extends CommandExecutor {
     }
 
     public SpawnEntitiesCommand() {
-        super("spawnmob", Permissions.PLAYER_SPAWN_MOBS, "Permite ao jogador obter animais e monstros", "/spawnmob (tipo de criatura) (quantidade)");
+        super("spawnmob", Permissions.PLAYER_SPAWN_MOBS.toString(), "Permite ao jogador obter animais e monstros", "/spawnmob (tipo de criatura) (quantidade)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onSpawnEntities(PlayerHandler playerHandler, EntityType entityType) {
-        return onSpawnEntities(playerHandler, entityType, 1);
+    private boolean onSpawnEntities(OnlinePlayer onlinePlayer, EntityType entityType) {
+        return onSpawnEntities(onlinePlayer, entityType, 1);
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onSpawnEntities(PlayerHandler playerHandler, EntityType entityType, int amount) {
+    private boolean onSpawnEntities(OnlinePlayer onlinePlayer, EntityType entityType, int amount) {
         if (amount <= 0) {
-            playerHandler.sendMessage("§cQuantidade inadequada!");
+            onlinePlayer.getPlayer().sendMessage("§cQuantidade inadequada!");
             return true;
         }
 
-        List<Block> lineOfSight = playerHandler.getPlayer().getLineOfSight(nonSolidMaterials, 100);
+        List<Block> lineOfSight = onlinePlayer.getPlayer().getLineOfSight(nonSolidMaterials, 100);
 
         // Check for the closer
-        Location playerLocation = playerHandler.getPlayer().getLocation();
+        Location playerLocation = onlinePlayer.getPlayer().getLocation();
         Block closerBlock = null;
         double closerDistance = Double.MAX_VALUE;
 
@@ -83,33 +84,36 @@ public class SpawnEntitiesCommand extends CommandExecutor {
 
             // Spawn mobs and warn player
             if (spawnMob(spawnLocation, entityType, amount))
-                playerHandler.sendMessage("§c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", " ") + (amount > 1 ? "§6 foi criado." : "§6 foram criados"));
+                onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§c", amount, "§6 de §c", entityType.name().toLowerCase().replaceAll("_", " "),
+                        (amount > 1 ? "§6 foi criado." : "§6 foram criados")));
             else
-                playerHandler.sendMessage("§cNão foi possível criar.");
+                onlinePlayer.getPlayer().sendMessage("§cNão foi possível criar.");
         } else {
-            playerHandler.sendMessage("§cNão foi encontrado nenhum bloco!");
+            onlinePlayer.getPlayer().sendMessage("§cNão foi encontrado nenhum bloco!");
         }
         return true;
     }
 
-    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_SPAWN_MOBS_ON_OTHERS)
-    public boolean onSpawnEntitiesOnOthers(CommandSender commandSender, PlayerHandler playerHandler, EntityType entityType) {
-        return onSpawnEntitiesOnOthers(commandSender, playerHandler, entityType, 1);
+    @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_SPAWN_MOBS_OTHERS)
+    private boolean onSpawnEntitiesOnOthers(CommandSender commandSender, OnlinePlayer onlinePlayer, EntityType entityType) {
+        return onSpawnEntitiesOnOthers(commandSender, onlinePlayer, entityType, 1);
     }
 
-    public boolean onSpawnEntitiesOnOthers(CommandSender commandSender, PlayerHandler playerHandler, EntityType entityType, int amount) {
+    private boolean onSpawnEntitiesOnOthers(CommandSender commandSender, OnlinePlayer onlinePlayer, EntityType entityType, int amount) {
         if (amount <= 0) {
             commandSender.sendMessage("§cQuantidade inadequada!");
             return true;
         }
 
-        if (spawnMob(playerHandler.getPlayer().getLocation().add(0, 1, 0), entityType, amount)) {
-            playerHandler.sendMessage("§6" + commandSender.getName() + " criou §c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", "") + "§6 na sua localização");
-            commandSender.sendMessage(
-                    "§6Foi criado §c" + amount + "§6 de §c" + entityType.name().toLowerCase().replaceAll("_", "") + "§6 na localização de " + playerHandler.getPlayer().getDisplayName()
-            );
+        if (spawnMob(onlinePlayer.getPlayer().getLocation().add(0, 1, 0), entityType, amount)) {
+
+            onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6", commandSender.getName(), " criou §c", amount, "§6 de §c",
+                    entityType.name().toLowerCase().replaceAll("_", ""), "§6 na sua localização"));
+
+            commandSender.sendMessage(Util.appendStrings("§6Foi criado §c", amount, "§6 de §c", entityType.name().toLowerCase().replaceAll("_", ""),
+                    "§6 na localização de ", onlinePlayer.getPlayer().getDisplayName()));
         } else {
-            commandSender.sendMessage("§cNão foi possível criar " + entityType.name().toLowerCase().replaceAll("_", " ") + ".");
+            commandSender.sendMessage(Util.appendStrings("§cNão foi possível criar ", entityType.name().toLowerCase().replaceAll("_", " "), "."));
         }
         return true;
     }

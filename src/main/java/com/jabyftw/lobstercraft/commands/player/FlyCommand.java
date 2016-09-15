@@ -3,7 +3,7 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.command.CommandSender;
 
@@ -28,30 +28,30 @@ import org.bukkit.command.CommandSender;
 public class FlyCommand extends CommandExecutor {
 
     public FlyCommand() {
-        super("fly", Permissions.PLAYER_FLY, "Permite ao jogador a permissão de voar", "/fly");
+        super("fly", Permissions.PLAYER_FLY.toString(), "Permite ao jogador a permissão de voar", "/fly");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onFly(PlayerHandler playerHandler, boolean fly) {
-        playerHandler.getPlayer().setAllowFlight(fly);
-        playerHandler.sendMessage(fly ? "§6Vôo ativado." : "§cVôo desativado.");
+    private boolean onFly(OnlinePlayer onlinePlayer, boolean fly) {
+        onlinePlayer.getPlayer().setAllowFlight(fly);
+        onlinePlayer.getPlayer().sendMessage(fly ? "§6Vôo ativado." : "§cVôo desativado.");
         return true;
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onFly(PlayerHandler playerHandler) {
-        return onFly(playerHandler, !playerHandler.getPlayer().getAllowFlight());
+    private boolean onFly(OnlinePlayer onlinePlayer) {
+        return onFly(onlinePlayer, !onlinePlayer.getPlayer().getAllowFlight());
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FLY_OTHERS)
-    public boolean onFlyOthers(CommandSender commandSender, PlayerHandler target, boolean fly) {
+    private boolean onFlyOthers(CommandSender commandSender, OnlinePlayer target, boolean fly) {
         onFly(target, fly);
         commandSender.sendMessage((fly ? "§6" : "§c") + target.getPlayer().getDisplayName() + (fly ? "§6 está voando" : "§c não está voando."));
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_FLY_OTHERS)
-    public boolean onFlyOthers(CommandSender commandSender, PlayerHandler target) {
+    private boolean onFlyOthers(CommandSender commandSender, OnlinePlayer target) {
         return onFlyOthers(commandSender, target, !target.getPlayer().getAllowFlight());
     }
 }

@@ -3,8 +3,8 @@ package com.jabyftw.lobstercraft.commands.player;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft.player.PlayerHandler;
-import com.jabyftw.lobstercraft.player.inventory.InventoryProfile;
+import com.jabyftw.lobstercraft.player.InventoryProfile;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
@@ -31,47 +31,47 @@ import org.bukkit.inventory.ItemStack;
 public class GiveCommand extends CommandExecutor {
 
     public GiveCommand() {
-        super("give", Permissions.PLAYER_GIVE, "Permite ao jogador obter itens", "/give (material) (quantidade) (damage)");
+        super("give", Permissions.PLAYER_GIVE.toString(), "Permite ao jogador obter itens", "/give (material) (quantidade) (damage)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onGive(PlayerHandler playerHandler, Material material) {
-        return onGive(playerHandler, material, 1);
+    private boolean onGive(OnlinePlayer onlinePlayer, Material material) {
+        return onGive(onlinePlayer, material, 1);
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onGive(PlayerHandler playerHandler, Material material, int amount) {
-        return onGive(playerHandler, material, amount, (short) 0);
+    private boolean onGive(OnlinePlayer onlinePlayer, Material material, int amount) {
+        return onGive(onlinePlayer, material, amount, (short) 0);
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onGive(PlayerHandler playerHandler, Material material, int amount, short damage) {
+    private boolean onGive(OnlinePlayer playerHandler, Material material, int amount, short damage) {
         playerHandler.getProfile(InventoryProfile.class).addItems(true, new ItemStack(material, amount, damage));
         return true;
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
-    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material) {
-        return onGive(commandSender, playerHandler, material, 1, true, (short) 0);
+    private boolean onGive(CommandSender commandSender, OnlinePlayer onlinePlayer, Material material) {
+        return onGive(commandSender, onlinePlayer, material, 1, true, (short) 0);
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
-    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, boolean warnPlayer) {
-        return onGive(commandSender, playerHandler, material, 1, warnPlayer, (short) 0);
+    private boolean onGive(CommandSender commandSender, OnlinePlayer onlinePlayer, Material material, boolean warnPlayer) {
+        return onGive(commandSender, onlinePlayer, material, 1, warnPlayer, (short) 0);
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
-    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, int amount, boolean warnPlayer) {
-        return onGive(commandSender, playerHandler, material, amount, warnPlayer, (short) 0);
+    private boolean onGive(CommandSender commandSender, OnlinePlayer onlinePlayer, Material material, int amount, boolean warnPlayer) {
+        return onGive(commandSender, onlinePlayer, material, amount, warnPlayer, (short) 0);
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.PLAYER_GIVE_OTHERS)
-    public boolean onGive(CommandSender commandSender, PlayerHandler playerHandler, Material material, int amount, boolean warnPlayer, short damage) {
+    private boolean onGive(CommandSender commandSender, OnlinePlayer onlinePlayer, Material material, int amount, boolean warnPlayer, short damage) {
         ItemStack itemStack = new ItemStack(material, amount, damage);
-        playerHandler.getProfile(InventoryProfile.class).addItems(warnPlayer, itemStack);
+        onlinePlayer.getProfile(InventoryProfile.class).addItems(warnPlayer, itemStack);
 
         commandSender.sendMessage(
-                "§c" + amount + "§6 de §c" + material.name().toLowerCase().replaceAll("_", " ") + ":" + damage + "§6 entregue a " + playerHandler.getPlayer().getDisplayName()
+                "§c" + amount + "§6 de §c" + material.name().toLowerCase().replaceAll("_", " ") + ":" + damage + "§6 entregue a " + onlinePlayer.getPlayer().getDisplayName()
         );
         return true;
     }
