@@ -90,6 +90,7 @@ public enum Permissions {
     LOCATION_CHANGE_WORLD_OTHERS("location", "change_world", "others"),
 
     WORLD_CREATE_PORTALS("world", "create_portals"),
+    WORLD_PROTECTION_USE_TOOL("world", "protection", "use_tool"),
     WORLD_PROTECTION_IGNORE_PLAYER_BLOCKS("world", "protection", "ignore_player_blocks"),
     WORLD_PROTECTION_IGNORE_CITY_HOUSES_BLOCKS("world", "protection", "ignore_city_houses_blocks"),
     WORLD_PROTECTION_IGNORE_ADMIN_BLOCKS("world", "protection", "ignore_administrator_blocks"),

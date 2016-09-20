@@ -2,6 +2,7 @@ package com.jabyftw.lobstercraft.world;
 
 import com.jabyftw.lobstercraft.util.Util;
 import com.sun.istack.internal.NotNull;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.util.NumberConversions;
@@ -122,7 +123,7 @@ public class BlockLocation {
 
     @Override
     public int hashCode() {
-        return new org.apache.commons.lang3.builder.HashCodeBuilder(5, 19)
+        return new HashCodeBuilder(5, 19)
                 .append(chunkLocation.hashCode()) // This will make each block unique even with the same relative coordinates
                 .append(x)
                 .append(y)

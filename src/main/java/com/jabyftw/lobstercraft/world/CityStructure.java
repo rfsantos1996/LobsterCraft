@@ -54,8 +54,6 @@ public class CityStructure {
             NUMBER_OF_ITEMS_STORE_PER_LEVEL = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_LEVELING_STORE_ITEMS_PER_LEVEL.toString()),
             NUMBER_OF_ITEMS_INVENTORY_PER_LEVEL = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_LEVELING_INVENTORY_ITEMS_PER_LEVEL.toString()),
             NUMBER_OF_CITIZENS_PER_LEVEL = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_LEVELING_PLAYER_PER_LEVEL.toString()),
-            INITIAL_PROTECTION_RANGE = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_LEVELING_INITIAL_RANGE.toString()),
-            ADDITIONAL_RANGE_PER_LEVEL = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_LEVELING_RANGE_PER_LEVEL.toString()),
             INITIAL_UPGRADE_COST = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_LEVELING_INITIAL_COST.toString()),
             FACTOR_OF_INCREASE_OF_COST = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_LEVELING_COST_MULTIPLIER.toString());
 
@@ -63,7 +61,6 @@ public class CityStructure {
      * Configuration constants
      */
     protected final static double
-            HOUSE_PROTECTION_RADIUS_SQUARED = NumberConversions.square(LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_HOUSE_PROTECTION_DISTANCE.toString())),
             BUILDER_MAXIMUM_RATIO = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_BUILDER_RATIO.toString()),
             MAXIMUM_TAX = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_MAXIMUM_TAX.toString()),
             MINIMUM_TAX = LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_MINIMUM_TAX.toString());
@@ -71,7 +68,7 @@ public class CityStructure {
     /*
      * Database information
      */
-    private final short cityId;
+    private final int cityId;
     private final String cityName;
     protected byte cityLevel;
     protected double moneyAmount;
@@ -133,7 +130,7 @@ public class CityStructure {
      * @param cityStoreItems     city's store items
      * @throws IllegalStateException in case we can't
      */
-    public CityStructure(short cityId, @NotNull String cityName, byte cityLevel, double moneyAmount, long lastTaxPayDate, double taxFee,
+    public CityStructure(int cityId, @NotNull String cityName, byte cityLevel, double moneyAmount, long lastTaxPayDate, double taxFee,
                          @NotNull BlockLocation centerLocation, @Nullable ItemStack[] cityInventoryItems, @Nullable ItemStack[] cityStoreItems)
             throws IllegalStateException {
         this.cityId = cityId;
@@ -191,16 +188,22 @@ public class CityStructure {
         if (cityHouses.size() >= getMaximumNumberOfCitizens() + (cityLevel == MAXIMUM_CITY_LEVEL ? 0 : 2))
             return HouseCreationResponse.TOO_MANY_HOUSES_REGISTERED;
 
+        // Check minimum height
+        if (blockLocation.getY() - BlockProtectionType.CITY_HOUSES.getProtectionDistance() < WorldService.MINIMUM_PROTECTION_HEIGHT)
+            return HouseCreationResponse.HOUSE_COORDINATE_Y_TOO_LOW;
+
         // Check minimum and maximum distance between city center
+        // Note: this should use the protection distance of the CITY_BLOCKS because this would make the center on the "same height" as the block if checkY is enabled on
+        // CITY_HOUSES but not on CITY_BLOCKS
         // Note: the corner of the house should be the corner of current protection range
-        if (blockLocation.distanceSquared(centerLocation) > (getProtectionRange() - HOUSE_PROTECTION_RADIUS_SQUARED))
+        if (BlockProtectionType.CITY_BLOCKS.protectionDistanceSquared(blockLocation, centerLocation) < getProtectionRangeSquared() - BlockProtectionType.CITY_HOUSES.getProtectionDistanceSquared())
             return HouseCreationResponse.TOO_FAR_FROM_CENTER;
-        else if (blockLocation.distanceSquared(centerLocation) < HOUSE_PROTECTION_RADIUS_SQUARED)
+        else if (BlockProtectionType.CITY_BLOCKS.protectionDistanceSquared(blockLocation, centerLocation) < BlockProtectionType.CITY_HOUSES.getProtectionDistanceSquared())
             return HouseCreationResponse.TOO_CLOSE_TO_THE_CENTER;
 
         // Check minimum distance between other houses
         for (BlockLocation existingBlockLocation : cityHouses.keySet())
-            if (blockLocation.distanceSquared(existingBlockLocation) <= HOUSE_PROTECTION_RADIUS_SQUARED)
+            if (BlockProtectionType.CITY_HOUSES.protectionDistanceSquared(blockLocation, existingBlockLocation) <= BlockProtectionType.CITY_HOUSES.getProtectionDistanceSquared())
                 return HouseCreationResponse.TOO_CLOSE_TO_OTHER_HOUSE;
 
         int houseId;
@@ -215,7 +218,7 @@ public class CityStructure {
             );
 
             // Set variables
-            preparedStatement.setShort(1, cityId);
+            preparedStatement.setInt(1, cityId);
             preparedStatement.setByte(2, blockLocation.getChunkLocation().getWorldId());
             preparedStatement.setInt(3, blockLocation.getChunkLocation().getChunkX());
             preparedStatement.setInt(4, blockLocation.getChunkLocation().getChunkZ());
@@ -422,10 +425,11 @@ public class CityStructure {
     }
 
     public double getProtectionRange() {
-        return Math.min(
-                INITIAL_PROTECTION_RANGE + NumberConversions.ceil(ADDITIONAL_RANGE_PER_LEVEL * (cityLevel - 1)),
-                ProtectionType.CITY_HOUSES_PROTECTION.getSearchDistance()
-        );
+        return BlockProtectionType.CITY_BLOCKS.getProtectionRange(cityLevel);
+    }
+
+    public double getProtectionRangeSquared() {
+        return BlockProtectionType.CITY_BLOCKS.getProtectionRangeSquared(cityLevel);
     }
 
     public double getLevelingCost() {
@@ -452,7 +456,7 @@ public class CityStructure {
      * Getters
      */
 
-    public short getCityId() {
+    public int getCityId() {
         return cityId;
     }
 
@@ -516,6 +520,7 @@ public class CityStructure {
 
     public enum HouseCreationResponse {
         SUCCESSFULLY_CREATED_HOUSE,
+        HOUSE_COORDINATE_Y_TOO_LOW,
         TOO_MANY_HOUSES_REGISTERED,
         TOO_FAR_FROM_CENTER,
         TOO_CLOSE_TO_THE_CENTER,
@@ -609,7 +614,7 @@ public class CityStructure {
 
         // Database primary key
         private final int houseId;
-        private final short cityId;
+        private final int cityId;
 
         // Other variables
         protected Integer playerId;
@@ -624,7 +629,7 @@ public class CityStructure {
             this.databaseState = DatabaseState.ON_DATABASE;
         }
 
-        public CityHouse(int houseId, short cityId, @NotNull BlockLocation blockLocation) {
+        public CityHouse(int houseId, int cityId, @NotNull BlockLocation blockLocation) {
             super(blockLocation);
             this.houseId = houseId;
             this.cityId = cityId;
@@ -640,7 +645,7 @@ public class CityStructure {
             return playerId;
         }
 
-        public short getCityId() {
+        public int getCityId() {
             return cityId;
         }
 

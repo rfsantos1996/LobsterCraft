@@ -13,6 +13,9 @@ import org.bukkit.util.NumberConversions;
 import java.io.IOException;
 import java.sql.*;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
@@ -45,12 +48,6 @@ public class CityService extends Service {
     private final static long SERVER_TAX_PERIOD_MILLIS = TimeUnit.DAYS.toMillis(
             LobsterCraft.configuration.getLong(ConfigurationValues.CITY_SERVER_TAX_PERIOD_DAYS.toString())
     );
-    private final static double MINIMUM_DISTANCE_BETWEEN_CITIES_SQUARED = Math.max(ProtectionType.CITY_HOUSES_PROTECTION.getSearchDistanceSquared() * 1.05D,
-            NumberConversions.square(LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_MINIMUM_DISTANCE_BETWEEN_CITIES.toString()))
-    );
-    private final static double MAXIMUM_DISTANCE_BETWEEN_CITIES_SQUARED = NumberConversions.square(
-            LobsterCraft.configuration.getDouble(ConfigurationValues.CITY_MAXIMUM_DISTANCE_BETWEEN_CITIES.toString())
-    );
 
     // This Set is used to delete blocks from deleted houses
     protected final ConcurrentSkipListSet<Integer> deletedHouses = new ConcurrentSkipListSet<>();
@@ -58,7 +55,7 @@ public class CityService extends Service {
     /*
      * City storage
      */
-    private final ConcurrentHashMap<Short, CityStructure> cityStorage_id = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, CityStructure> cityStorage_id = new ConcurrentHashMap<>();
 
     public CityService() throws SQLException, IOException, ClassNotFoundException {
         cacheCityStorage();
@@ -89,7 +86,7 @@ public class CityService extends Service {
      * City handling
      */
 
-    public CityStructure getCity(short cityId) {
+    public CityStructure getCity(int cityId) {
         return cityStorage_id.get(cityId);
     }
 
@@ -137,27 +134,29 @@ public class CityService extends Service {
         // TODO need more checking?
 
         // Check distance between cities (or between city and spawn, in case there is no city)
-        if (cityStorage_id.isEmpty()) {
-            BlockLocation blockLocation = new BlockLocation(cityCenterLocation.getWorld().getSpawnLocation());
-            double distanceSquared = cityCenterLocation.distanceSquared(blockLocation);
-            // Check for minimum and maximum distance
-            if (distanceSquared < MINIMUM_DISTANCE_BETWEEN_CITIES_SQUARED)
-                return CreateCityResponse.TOO_CLOSE_TO_NEAREST_CITY;
-            else if (distanceSquared > MAXIMUM_DISTANCE_BETWEEN_CITIES_SQUARED)
-                return CreateCityResponse.TOO_FAR_FROM_NEAREST_CITY;
-        } else {
-            for (CityStructure cityStructure : cityStorage_id.values()) {
-                double distanceSquared = cityCenterLocation.distanceSquared(cityStructure.getCenterLocation());
+        {
+            Set<BlockLocation> blockLocations = cityStorage_id.isEmpty() ?
+                    // If there is no city, we must check the distance from the spawn location
+                    Collections.singleton(new BlockLocation(cityCenterLocation.getWorld().getSpawnLocation())) : new HashSet<>();
+
+            // Add all city centers since we need to insert to the set
+            if (!cityStorage_id.isEmpty())
+                for (CityStructure cityStructure : cityStorage_id.values())
+                    blockLocations.add(cityStructure.getCenterLocation());
+
+            // Check all blocks
+            for (BlockLocation blockLocation : blockLocations) {
+                double distanceSquared = BlockProtectionType.CITY_BLOCKS.protectionDistanceSquared(blockLocation, cityCenterLocation);
                 // Check for minimum and maximum distance
-                if (distanceSquared < MINIMUM_DISTANCE_BETWEEN_CITIES_SQUARED)
+                if (distanceSquared < BlockProtectionType.CITY_BLOCKS.getMinimumDistanceBetweenCities())
                     return CreateCityResponse.TOO_CLOSE_TO_NEAREST_CITY;
-                else if (distanceSquared > MAXIMUM_DISTANCE_BETWEEN_CITIES_SQUARED)
+                else if (distanceSquared > BlockProtectionType.CITY_BLOCKS.getMaximumDistanceBetweenCities())
                     return CreateCityResponse.TOO_FAR_FROM_NEAREST_CITY;
             }
         }
 
         // Default values
-        short cityId;
+        int cityId;
         byte cityLevel = 1;
         double cityMoneyAmount = CITY_BUILD_COST * (1.0D - SERVER_TAX_FEE); // receive tax from server
         long lastTaxPayDate = System.currentTimeMillis(); // creation date, so the city don't need to pay taxes on their first minute alive
@@ -196,7 +195,7 @@ public class CityService extends Service {
             if (!generatedKeys.next()) throw new SQLException("Key not generated.");
 
             // Set variable
-            cityId = generatedKeys.getShort("cityId");
+            cityId = generatedKeys.getInt("cityId");
             if (cityId <= 0) throw new SQLException("Invalid cityId! Can't be less or equal zero");
 
             // Close everything
@@ -240,7 +239,7 @@ public class CityService extends Service {
             // Iterate through results
             while (resultSet.next()) {
                 String cityNameLowered = resultSet.getString("cityName").toLowerCase();
-                short cityId = resultSet.getShort("cityId");
+                int cityId = resultSet.getInt("cityId");
 
                 ChunkLocation chunkLocation = new ChunkLocation(
                         resultSet.getByte("worlds_worldId"),
@@ -370,7 +369,7 @@ public class CityService extends Service {
                 preparedStatement.setDouble(4, cityStructure.taxFee);
                 preparedStatement.setBytes(5, Util.itemStacksToByteArray(cityStructure.getCityInventory().getItemStackArray()));
                 preparedStatement.setBytes(6, Util.itemStacksToByteArray(cityStructure.getCityStore().getItemStackArray()));
-                preparedStatement.setShort(7, cityStructure.getCityId());
+                preparedStatement.setInt(7, cityStructure.getCityId());
 
                 // Add batch
                 preparedStatement.addBatch();
@@ -384,7 +383,7 @@ public class CityService extends Service {
                     // Set variables
                     houseUpdateStatement.setObject(1, cityHouse.getPlayerId(), Types.INTEGER);
                     houseUpdateStatement.setInt(2, cityHouse.getHouseId());
-                    houseUpdateStatement.setShort(3, cityHouse.getCityId());
+                    houseUpdateStatement.setInt(3, cityHouse.getCityId());
 
                     // Add batch
                     houseUpdateStatement.addBatch();

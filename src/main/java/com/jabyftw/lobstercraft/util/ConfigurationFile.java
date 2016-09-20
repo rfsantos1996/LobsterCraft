@@ -1,6 +1,6 @@
 package com.jabyftw.lobstercraft.util;
 
-import com.jabyftw.lobstercraft_old.ConfigValue;
+import com.jabyftw.lobstercraft.ConfigurationValues;
 import com.sun.istack.internal.NotNull;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -51,9 +51,9 @@ public class ConfigurationFile extends YamlConfiguration {
             load(configurationFile);
 
         // Insert non-present default configurations
-        for (ConfigValue configValue : ConfigValue.values())
-            if (!contains(configValue.getPath()))
-                set(configValue.getPath(), configValue.getDefaultValue());
+        for (ConfigurationValues configurationValue : ConfigurationValues.values())
+            if (!contains(configurationValue.toString()))
+                set(configurationValue.toString(), configurationValue.getDefaultValue());
 
         // Save changes and load file
         saveFile();

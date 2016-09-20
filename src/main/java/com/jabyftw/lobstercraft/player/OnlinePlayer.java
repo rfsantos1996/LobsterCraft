@@ -5,9 +5,8 @@ import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.player.Profile.ProfileType;
 import com.jabyftw.lobstercraft.util.DatabaseState;
-import com.jabyftw.lobstercraft.util.Pair;
 import com.jabyftw.lobstercraft.util.Util;
-import com.jabyftw.lobstercraft.world.ProtectionType;
+import com.jabyftw.lobstercraft.world.BuildingMode;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.Bukkit;
@@ -73,6 +72,7 @@ public class OnlinePlayer {
     private boolean godMode = false;
     protected TeleportBuilder.Teleport pendingTeleport = null;
     private TriggerController triggerController;
+    protected BuildingMode buildingMode = null;
     protected final ArrayDeque<XrayListener.OreBlockLocation> oreLocationHistory = new ArrayDeque<>();
 
     /**
@@ -405,6 +405,10 @@ public class OnlinePlayer {
         return triggerController;
     }
 
+    public BuildingMode getBuildingMode() {
+        return buildingMode;
+    }
+
     public boolean isGodMode() {
         return godMode;
     }
@@ -463,6 +467,10 @@ public class OnlinePlayer {
     public int hashCode() {
         return offlinePlayer.hashCode();
     }
+
+    /*
+     * Some classes
+     */
 
     public class PlayerState {
 

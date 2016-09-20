@@ -39,7 +39,7 @@ public class TriggerController {
      * @param message          message to send the player if trigger wasn't triggered ("first time used" on the past minutes)
      * @return true if it wasn't triggered (last use was greater than the threshold)
      */
-    public boolean sendMessageIfNotTriggered(@NotNull final TemporaryTrigger temporaryTrigger, @Nullable final String message) {
+    public boolean sendMessageIfNotTriggered(@NotNull final TemporaryTrigger temporaryTrigger, @Nullable final String... message) {
         if (!insertTriggerIfReady(temporaryTrigger)) {
             if (message != null && player.isOnline()) player.sendMessage(message);
             return true;
@@ -79,12 +79,14 @@ public class TriggerController {
         PLAYER_UNSAFE_ENCHANTMENT_CHECK(TimeUnit.SECONDS.toMillis(10)),
         PLAYER_CLEAR_INVENTORY_CHECK(TimeUnit.SECONDS.toMillis(10)),
         PLAYER_SUICIDE_CHECK(TimeUnit.SECONDS.toMillis(15)),
+        PROTECTION_CHECK(TimeUnit.MILLISECONDS.toMillis(500)),
+        PROTECTION_BUILD_MODE_WARNING(TimeUnit.MINUTES.toMillis(2)),
+        PROTECTION_BEING_LOADED(TimeUnit.SECONDS.toMillis(3)),
+        PROTECTION_RESPONSE(TimeUnit.SECONDS.toMillis(5)),
+        PROTECTION_MINIMUM_HEIGHT(TimeUnit.MINUTES.toMillis(4)),
 
         DELETE_CONSTRUCTION_CHECK(TimeUnit.SECONDS.toMillis(15)),
-        WORLD_EDIT_PLAYER_PROTECTION_WARNING(TimeUnit.SECONDS.toMillis(30)),
-        PROTECTION_CHECK(TimeUnit.MILLISECONDS.toMillis(500)),
-        PROTECTION_BEING_LOADED(TimeUnit.SECONDS.toMillis(3)),
-        PROTECTION_NEAR_BLOCKS(TimeUnit.SECONDS.toMillis(5));
+        WORLD_EDIT_PLAYER_PROTECTION_WARNING(TimeUnit.SECONDS.toMillis(30));
 
         private final long conditionTime;
 

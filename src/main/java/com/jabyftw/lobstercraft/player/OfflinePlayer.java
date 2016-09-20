@@ -5,6 +5,7 @@ import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Util;
 import com.jabyftw.lobstercraft.world.CityOccupation;
+import com.jabyftw.lobstercraft.world.CityStructure;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -36,7 +37,7 @@ public class OfflinePlayer {
     protected String playerName;
     protected String encryptedPassword = null;
     protected double moneyAmount = DEFAULT_MONEY_AMOUNT;
-    protected Short cityId = null;
+    protected Integer cityId = null;
     protected CityOccupation cityOccupation = null;
     protected Long lastTimeOnline = null;
     protected long timePlayed = 0;
@@ -72,7 +73,7 @@ public class OfflinePlayer {
      * @see com.jabyftw.lobstercraft.util.Util#encryptString(String)
      * @see System#currentTimeMillis()
      */
-    OfflinePlayer(int playerId, @NotNull final String playerName, @NotNull final String encryptedPassword, double moneyAmount, @Nullable Short cityId,
+    OfflinePlayer(int playerId, @NotNull final String playerName, @NotNull final String encryptedPassword, double moneyAmount, @Nullable Integer cityId,
                   @Nullable CityOccupation cityOccupation, @NotNull Long lastTimeOnline, long timePlayed, @NotNull String lastIp) {
         this.playerId = playerId;
         this.playerName = playerName.toLowerCase();
@@ -138,8 +139,15 @@ public class OfflinePlayer {
     /**
      * @return null if player isn't on a city
      */
-    public Short getCityId() {
+    public Integer getCityId() {
         return cityId;
+    }
+
+    /**
+     * @return null if player isn't on a city or if player isn't registered
+     */
+    public CityStructure getCity() {
+        return isRegistered() ? LobsterCraft.servicesManager.cityService.getCity(cityId) : null;
     }
 
     /**
@@ -147,6 +155,13 @@ public class OfflinePlayer {
      */
     public CityOccupation getCityOccupation() {
         return cityOccupation;
+    }
+
+    /**
+     * @return null if player isn't on a city or if player isn't registered
+     */
+    public CityStructure.CityHouse getCityHouse() {
+        return getCityId() != null && isRegistered() ? getCity().getHouseFromPlayer(playerId) : null;
     }
 
     /**

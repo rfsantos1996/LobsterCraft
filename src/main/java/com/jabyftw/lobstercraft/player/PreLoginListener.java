@@ -38,7 +38,7 @@ import java.util.List;
  * Email address: rafael.sartori96@gmail.com
  */
 @SuppressWarnings("DefaultAnnotationParam")
-public class PreLoginListener implements Listener {
+class PreLoginListener implements Listener {
 
     // Some configurations
     private final List<String> allowedCommands = LobsterCraft.configuration.getStringList(ConfigurationValues.LOGIN_PRE_SIGN_IN_ALLOWED_COMMANDS.toString());

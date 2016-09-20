@@ -26,7 +26,7 @@ import java.sql.SQLException;
  * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
-public abstract class Profile {
+abstract class Profile {
 
     protected final ProfileType profileType;
 

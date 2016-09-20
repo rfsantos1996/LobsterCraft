@@ -63,8 +63,9 @@ public enum ConfigurationValues {
     WORLD_LIST("world.world_list", new String[]{"world"}),
     WORLD_HANDLING("world.world_list_should_be_handled", true),
 
-    WORLD_PROTECTION_PLAYER_DISTANCE("world.protection.player.protection_distance", 13.0D),
-    WORLD_PROTECTION_PLAYER_CHECK_Y("world.protection.player.protection_check_y_axis", true),
+    WORLD_PROTECTION_MINIMUM_HOUSE_HEIGHT("world.protection.minimum_house_height", 32),
+    WORLD_PROTECTION_TOOL_HAND_MATERIAL("world.protection.tool_material_for_protection_check", "STICK"),
+
     WORLD_PROTECTION_PLAYER_NEAR_BLOCKS_SEARCH_RADIUS("world.protection.player.maximum_radius_for_near_protected_blocks_search", 1.5D),
     WORLD_PROTECTION_PLAYER_REQUIRED_NEAR_BLOCKS_AMOUNT("world.protection.player.minimum_protected_blocks_for_protection", 7),
 
@@ -77,20 +78,11 @@ public enum ConfigurationValues {
     WORLD_PROTECTION_PLAYER_UNLOADER_PERIOD_TICKS("world.protection.player.chunk_unloader.period_ticks", 3),
     WORLD_PROTECTION_PLAYER_UNLOADER_BLOCKS_RESTORED("world.protection.player.chunk_unloader.blocks_restored", 90),
 
-    WORLD_PROTECTION_ADMIN_DISTANCE("world.protection.admin.protection_distance", 150.0D),
-    WORLD_PROTECTION_ADMIN_CHECK_Y("world.protection.admin.protection_check_y_axis", false),
-
-    WORLD_PROTECTION_CITY_MAX_DISTANCE_FROM_CENTER("world.protection.city.protection_distance", 125.0D),
-    WORLD_PROTECTION_CITY_CHECK_Y("world.protection.city.protection_check_y_axis", false),
-
     /*
      * City
      */
-    CITY_MINIMUM_DISTANCE_BETWEEN_CITIES("city.minimum_distance_between_cities", 150.0D),
-    CITY_MAXIMUM_DISTANCE_BETWEEN_CITIES("city.maximum_distance_between_cities", 1_500.0D),
     CITY_CREATION_COST("city.creation_cost", 7_500.0D),
     CITY_BUILDER_RATIO("city.builders_players_maximum_ratio", 0.30D), // for 21 players, it'll result in 7 builders,
-    CITY_HOUSE_PROTECTION_DISTANCE("city.house_protection_radius", 13.0D), // on the minimum radius (60), you "can" fit 20 houses (one is the center)
 
     CITY_MAXIMUM_TAX("city.taxes.maximum_tax_rate", 0.35D),
     CITY_MINIMUM_TAX("city.taxes.minimum_tax_rate", 0.05D),
@@ -99,9 +91,6 @@ public enum ConfigurationValues {
 
     CITY_LEVELING_INITIAL_COST("city.leveling_initial_cost", 10_000.0D),
     CITY_LEVELING_COST_MULTIPLIER("city.leveling_cost_multiplier", 1.75D), // level 9->10 will cost 879.638,82
-
-    CITY_LEVELING_INITIAL_RANGE("city.leveling.initial_protection_range", 60.0D),
-    CITY_LEVELING_RANGE_PER_LEVEL("city.leveling.range_per_level", 7.10D), // 124 in total
 
     CITY_LEVELING_INITIAL_PLAYER_AMOUNT("city.leveling.initial_player_amount", 3),
     CITY_LEVELING_PLAYER_PER_LEVEL("city.leveling.player_per_level", 2), // 21 in total
@@ -117,11 +106,11 @@ public enum ConfigurationValues {
     XRAY_TIME_TO_CONSIDER_SAME_MINING_SECONDS("xray.time_to_consider_same_mining_session_seconds", 5 * 60L),
     XRAY_DISTANCE_CONSIDER_SAME_MINE("xray.distance_to_consider_same_mining_session", 50.0D);
 
-    private final String string;
+    private final String path;
     private final Object defaultValue;
 
-    ConfigurationValues(final String string, final Object defaultValue) {
-        this.string = string;
+    ConfigurationValues(final String path, final Object defaultValue) {
+        this.path = path;
         this.defaultValue = defaultValue;
     }
 
@@ -131,6 +120,6 @@ public enum ConfigurationValues {
 
     @Override
     public String toString() {
-        return string;
+        return path;
     }
 }

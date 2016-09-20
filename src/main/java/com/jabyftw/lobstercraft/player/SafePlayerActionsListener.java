@@ -42,7 +42,7 @@ import java.util.UUID;
  * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
-public class SafePlayerActionsListener implements Listener {
+class SafePlayerActionsListener implements Listener {
 
     private final HashMap<Integer, HashSet<UUID>> safeItems_player = new HashMap<>();
     private final HashSet<UUID>

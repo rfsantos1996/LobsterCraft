@@ -36,7 +36,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
  * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
-public class TeleportListener implements Listener {
+class TeleportListener implements Listener {
 
     private static TeleportBuilder.Teleport getPlayerTeleport(@NotNull Player player) {
         return LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer(player, null).pendingTeleport;

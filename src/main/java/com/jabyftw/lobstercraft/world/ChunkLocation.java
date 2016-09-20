@@ -45,28 +45,6 @@ class ChunkLocation {
     }
 
     /**
-     * The furthest chunk center occurs when we thing about the block being on the border of a chunk:<br>
-     * C C C<br>
-     * C X C<br>
-     * C C C<br>
-     * If the block is on the border of X, a distance of 16 will always be on this range (1). But on a distance of 17, we will need to load (considering that the
-     * block is on the right border of the chunk.
-     * A C C C<br>
-     * C X C C<br>
-     * C C C C<br>
-     * So, the secure range will be 2 (and this can be optimized). Since the secure range is calculated through the ceil of the distance divided by 16, and A, for
-     * example, is (X.x - 1, X.y - 1) being on the range = 1, we can say:<br>
-     * <i>[(|X.x - C.x| + |X.z - C.z|) / 2] > (secure range)</i> implies that the chunk should be ignored
-     *
-     * @param chunkLocation  chunk location to check
-     * @param searchDistance search distance so we can exclude some chunks
-     * @return true if the chunk should not even be searched
-     */
-    public boolean shouldBeIgnored(@NotNull ChunkLocation chunkLocation, double searchDistance) {
-        return ((Math.abs(chunkLocation.getChunkX() - getChunkX()) + Math.abs(chunkLocation.getChunkZ() - getChunkZ())) / 2.0D) > Util.getMinimumChunkRange(searchDistance);
-    }
-
-    /**
      * We are getting an array of chunks centered on the given chunk location:<br>
      * A C C<br>
      * C X C<br>

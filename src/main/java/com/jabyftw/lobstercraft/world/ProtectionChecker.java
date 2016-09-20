@@ -8,7 +8,6 @@ import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.Location;
 
-import java.util.Collection;
 import java.util.HashSet;
 
 /**
@@ -34,12 +33,12 @@ class ProtectionChecker {
     private final BlockLocation blockLocation;
 
     // Checker variables
-    private final HashSet<ProtectionType> blockProtectionTypesCheck = new HashSet<>();
-    private final HashSet<Short> ignoredNearCities = new HashSet<>();
+    private final HashSet<BlockProtectionType> blockProtectionTypesCheck = new HashSet<>();
     private final HashSet<Integer>
             ignoredPlayers = new HashSet<>(),
             ignoredConstructions = new HashSet<>(),
-            ignoredCityHouses = new HashSet<>();
+            ignoredCityHouses = new HashSet<>(),
+            ignoredCities = new HashSet<>();
     private OnlinePlayer onlinePlayer;
     private boolean
             loadExtraChunks = false,
@@ -75,7 +74,7 @@ class ProtectionChecker {
     }
 
     public ProtectionChecker checkAdministratorBlocksNearThisBlock() {
-        this.blockProtectionTypesCheck.add(ProtectionType.ADMIN_PROTECTION);
+        this.blockProtectionTypesCheck.add(BlockProtectionType.ADMINISTRATOR_BLOCKS);
         return this;
     }
 
@@ -86,7 +85,7 @@ class ProtectionChecker {
 
     public ProtectionChecker checkPlayerBlocksNearThisBlock(boolean loadExtraChunks) {
         this.loadExtraChunks = loadExtraChunks;
-        this.blockProtectionTypesCheck.add(ProtectionType.PLAYER_PROTECTION);
+        this.blockProtectionTypesCheck.add(BlockProtectionType.PLAYER_BLOCKS);
         return this;
     }
 
@@ -96,7 +95,12 @@ class ProtectionChecker {
     }
 
     public ProtectionChecker checkCityHousesBlocksNearThisBlock() {
-        this.blockProtectionTypesCheck.add(ProtectionType.CITY_HOUSES_PROTECTION);
+        this.blockProtectionTypesCheck.add(BlockProtectionType.CITY_HOUSES);
+        return this;
+    }
+
+    public ProtectionChecker checkCityBlocksNearThisBlock() {
+        this.blockProtectionTypesCheck.add(BlockProtectionType.CITY_BLOCKS);
         return this;
     }
 
@@ -110,8 +114,8 @@ class ProtectionChecker {
         return this;
     }
 
-    public ProtectionChecker excludeCity(short cityId) {
-        this.ignoredNearCities.add(cityId);
+    public ProtectionChecker excludeCity(int cityId) {
+        this.ignoredCities.add(cityId);
         return this;
     }
 
@@ -131,13 +135,13 @@ class ProtectionChecker {
         if (checkNearCities)
             for (CityStructure cityStructure : LobsterCraft.servicesManager.cityService.getCityStructures())
                 // Check if the block is near a stranger city
-                if (!ignoredNearCities.contains(cityStructure.getCityId()) &&
-                        cityStructure.getCenterLocation().distanceSquared(blockLocation) <= ProtectionType.CITY_HOUSES_PROTECTION.getSearchDistanceSquared())
+                if (!ignoredCities.contains(cityStructure.getCityId()) &&
+                        BlockProtectionType.CITY_BLOCKS.protectionDistanceSquared(blockLocation, cityStructure.getCenterLocation()) <=
+                                BlockProtectionType.CITY_BLOCKS.getMinimumDistanceBetweenCities())
                     return ProtectionCheckerResponse.CITY_NEAR_BLOCK;
 
         // Check if we need to load near chunks
-        if ((blockProtectionTypesCheck.contains(ProtectionType.PLAYER_PROTECTION) || checkThisBlock) &&
-                !LobsterCraft.servicesManager.worldService.loadNearChunks(blockLocation.getChunkLocation(), loadExtraChunks))
+        if (!LobsterCraft.servicesManager.worldService.loadNearChunks(blockLocation.getChunkLocation(), loadExtraChunks))
             return ProtectionCheckerResponse.REGION_NEAR_BLOCK_NOT_LOADED;
 
         // Check current block if we're checking near blocks
@@ -147,7 +151,7 @@ class ProtectionChecker {
 
         if (checkThisBlock) {
             WorldService.ProtectedBlockLocation protectedBlock = LobsterCraft.servicesManager.worldService.getBlock(blockLocation);
-            // Check if block exists and is protected
+            // Check if block exists and is protected (should we check protection type?)
             if (protectedBlock != null && protectedBlock.hasOwner() && checkIfBlockIsProtected(protectedBlock))
                 return ProtectionCheckerResponse.CURRENT_BLOCK_IS_PROTECTED;
         }
@@ -155,46 +159,30 @@ class ProtectionChecker {
         if (!blockProtectionTypesCheck.isEmpty()) {
             int loadSize = -1;
             // Calculate the safest search size
-            for (ProtectionType searchType : blockProtectionTypesCheck)
-                loadSize = Math.max(Util.getMinimumChunkRange(searchType.getSearchDistance()), loadSize);
+            for (BlockProtectionType searchType : blockProtectionTypesCheck)
+                loadSize = Math.max(Util.getMinimumChunkRange(searchType.getProtectionDistance()), loadSize);
 
-            if (loadSize > 0 && blockLocation.getChunkLocation().getNearChunks(loadSize).parallelStream().anyMatch(chunkLocation -> {
-                // Iterate using the priority order (administrator > city houses > player blocks) - it'll iterate using the number of blocks
-                for (ProtectionType searchType : ProtectionType.getPriorityOrder()) {
-                    // Check if search type is not required
-                    if (!blockProtectionTypesCheck.contains(searchType)) continue;
-                    Collection<WorldService.ProtectedBlockLocation> protectedBlockLocations = null;
+            final Holder holder = new Holder();
+            if (loadSize > 0)
+                blockLocation.getChunkLocation().getNearChunks(loadSize).parallelStream().forEach(chunkLocation -> {
+                    // Iterate through all blocks
+                    for (WorldService.ProtectedBlockLocation protectedBlock : LobsterCraft.servicesManager.worldService.protectedBlocks.get(chunkLocation).values()) {
+                        if (holder.hasResponse()) return;
 
-                    // Check if we should skip this chunk for this searchType
-                    if (!blockLocation.getChunkLocation().shouldBeIgnored(chunkLocation, searchType.getSearchDistance()))
-                        switch (searchType) {
-                            case PLAYER_PROTECTION:
-                                // Won't throw NullPointerException because we ignore far away chunks that doesn't need to be loaded
-                                protectedBlockLocations = LobsterCraft.servicesManager.worldService.playerProtectedBlocks.get(chunkLocation).values();
-                                break;
-                            case ADMIN_PROTECTION:
-                                protectedBlockLocations = LobsterCraft.servicesManager.worldService.adminProtectedBlocks.get(chunkLocation).values();
-                                break;
-                            case CITY_HOUSES_PROTECTION:
-                                protectedBlockLocations = LobsterCraft.servicesManager.worldService.cityHousesProtectedBlocks.get(chunkLocation).values();
-                                break;
+                        // If block is protected AND...
+                        if (protectedBlock.hasOwner() && blockProtectionTypesCheck.contains(protectedBlock.getCurrentType()) &&
+                                // ...the distance between this blocks are less or equal the protection distance AND...
+                                protectedBlock.getCurrentType().protectionDistanceSquared(blockLocation, protectedBlock) <= protectedBlock.getCurrentType().getProtectionDistanceSquared() &&
+                                // ... the block is protected
+                                checkIfBlockIsProtected(protectedBlock)) {
+                            holder.setResponse(protectedBlock.getCurrentType());
+                            return;
                         }
-
-                    // If we didn't skip, lets check all the blocks until we find one
-                    if (protectedBlockLocations != null)
-                        for (WorldService.ProtectedBlockLocation protectedBlock : protectedBlockLocations)
-                            // If block is protected AND...
-                            if (protectedBlock.hasOwner() &&
-                                    // ...the distance between this blocks are less or equal the protection distance AND...
-                                    protectedBlock.distanceSquared(blockLocation) <= searchType.getSearchDistanceSquared() &&
-                                    // ... the block is protected
-                                    checkIfBlockIsProtected(protectedBlock))
-                                return true;
-                }
-                // Return will close this stream
-                return true;
-            }))
-                return ProtectionCheckerResponse.PROTECTED_REGION_NEAR_BLOCK;
+                    }
+                });
+            // If there is a response
+            if (holder.hasResponse())
+                return holder.getResponse();
         }
 
         // No protection close, block is safe to be broken
@@ -211,50 +199,113 @@ class ProtectionChecker {
         if (playerId != null) {
             // Ignore player blocks
             if (LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_PLAYER_BLOCKS.toString()))
-                blockProtectionTypesCheck.remove(ProtectionType.PLAYER_PROTECTION);
+                blockProtectionTypesCheck.remove(BlockProtectionType.PLAYER_BLOCKS);
             else
                 ignoredPlayers.add(playerId);
 
             // Ignore administrator blocks
             if (LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_ADMIN_BLOCKS.toString()))
-                blockProtectionTypesCheck.remove(ProtectionType.ADMIN_PROTECTION);
+                blockProtectionTypesCheck.remove(BlockProtectionType.ADMINISTRATOR_BLOCKS);
 
             // Get player's city
-            Short cityId = onlinePlayer.getOfflinePlayer().getCityId();
+            Integer cityId = onlinePlayer.getOfflinePlayer().getCityId();
             if (cityId != null) {
                 // Ignore near cities
-                if (LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_CITY_STRUCTURES.toString()))
+                if (LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_CITY_STRUCTURES.toString())) {
                     this.checkNearCities = false;
-                else
-                    ignoredNearCities.add(cityId);
+                    blockProtectionTypesCheck.remove(BlockProtectionType.CITY_BLOCKS);
+                } else {
+                    ignoredCities.add(cityId);
+                }
 
                 // Ignore city houses
                 if (LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_CITY_HOUSES_BLOCKS.toString())) {
-                    blockProtectionTypesCheck.remove(ProtectionType.CITY_HOUSES_PROTECTION);
+                    blockProtectionTypesCheck.remove(BlockProtectionType.CITY_HOUSES);
                 } else {
                     // Check if player has a house
-                    CityStructure.CityHouse cityHouse = LobsterCraft.servicesManager.cityService.getCity(cityId).getHouseFromPlayer(playerId);
+                    CityStructure.CityHouse cityHouse = onlinePlayer.getOfflinePlayer().getCity().getHouseFromPlayer(playerId);
                     if (cityHouse != null)
                         ignoredCityHouses.add(cityHouse.getHouseId());
                 }
             }
+
+            // Ignore player's build mode
+            BuildingMode buildingMode;
+            if ((buildingMode = onlinePlayer.getBuildingMode()) != null && (blockProtectionTypesCheck.contains(buildingMode.getBlockProtectionType()) || checkThisBlock))
+                switch (buildingMode.getBlockProtectionType()) {
+                    case PLAYER_BLOCKS:
+                        ignoredPlayers.add(buildingMode.getProtectionId());
+                        break;
+                    case ADMINISTRATOR_BLOCKS:
+                        ignoredConstructions.add(buildingMode.getProtectionId());
+                        break;
+                    case CITY_BLOCKS:
+                        ignoredCities.add(buildingMode.getProtectionId());
+                        break;
+                    case CITY_HOUSES:
+                        ignoredCityHouses.add(buildingMode.getProtectionId());
+                        break;
+                }
         }
     }
 
     private boolean checkIfBlockIsProtected(@NotNull final WorldService.ProtectedBlockLocation protectedBlock) {
         // Check if the block shouldn't be ignored
-        return blockProtectionTypesCheck.contains(protectedBlock.getCurrentType()) &&
-                (protectedBlock.getCurrentType() == ProtectionType.ADMIN_PROTECTION && !ignoredConstructions.contains(protectedBlock.getCurrentId())) ||
-                (protectedBlock.getCurrentType() == ProtectionType.CITY_HOUSES_PROTECTION && !ignoredCityHouses.contains(protectedBlock.getCurrentId())) ||
-                (protectedBlock.getCurrentType() == ProtectionType.PLAYER_PROTECTION && !ignoredPlayers.contains(protectedBlock.getCurrentId()));
+        return (protectedBlock.getCurrentType() == BlockProtectionType.ADMINISTRATOR_BLOCKS && !ignoredConstructions.contains(protectedBlock.getCurrentId())) ||
+                (protectedBlock.getCurrentType() == BlockProtectionType.CITY_HOUSES && !ignoredCityHouses.contains(protectedBlock.getCurrentId())) ||
+                (protectedBlock.getCurrentType() == BlockProtectionType.CITY_BLOCKS && !ignoredCities.contains(protectedBlock.getCurrentId())) ||
+                (protectedBlock.getCurrentType() == BlockProtectionType.PLAYER_BLOCKS && !ignoredPlayers.contains(protectedBlock.getCurrentId()));
     }
 
     public enum ProtectionCheckerResponse {
-        BLOCK_IS_SAFE,
-        CURRENT_BLOCK_IS_PROTECTED,
-        CITY_NEAR_BLOCK,
-        PROTECTED_REGION_NEAR_BLOCK,
-        REGION_NEAR_BLOCK_NOT_LOADED,
-        PLAYER_NOT_LOGGED_IN
+
+        BLOCK_IS_SAFE("§aBloco seguro para ser modificado!"),
+
+        ADMINISTRATOR_BLOCK_NEAR("§cBloco protegido por administradores por perto..."),
+        CITY_HOUSE_BLOCK_NEAR("§cBloco protegido pela casa por perto..."),
+        CITY_BLOCK_NEAR("§cBloco protegido pela cidade por perto..."),
+        PLAYER_BLOCK_NEAR("§cBloco protegido por jogadores por perto..."),
+
+        CURRENT_BLOCK_IS_PROTECTED("§6Esse bloco está protegido!"),
+        CITY_NEAR_BLOCK("§cHá outras cidades por perto..."),
+        REGION_NEAR_BLOCK_NOT_LOADED("§7Carregando blocos..."),
+        PLAYER_NOT_LOGGED_IN("§cVocê não entrou no servidor!");
+
+        private final String playerMessage;
+
+        ProtectionCheckerResponse(String playerMessage) {
+            this.playerMessage = playerMessage;
+        }
+
+        public String getPlayerMessage() {
+            return playerMessage;
+        }
+    }
+
+    private class Holder {
+
+        private ProtectionCheckerResponse response = null;
+
+        protected synchronized boolean hasResponse() {
+            return response != null;
+        }
+
+        protected synchronized ProtectionCheckerResponse getResponse() {
+            return response;
+        }
+
+        protected synchronized void setResponse(@NotNull final BlockProtectionType protectionType) {
+            if (hasResponse()) return;
+            if (protectionType == BlockProtectionType.ADMINISTRATOR_BLOCKS)
+                this.response = ProtectionCheckerResponse.ADMINISTRATOR_BLOCK_NEAR;
+            else if (protectionType == BlockProtectionType.CITY_HOUSES)
+                this.response = ProtectionCheckerResponse.CITY_HOUSE_BLOCK_NEAR;
+            else if (protectionType == BlockProtectionType.CITY_BLOCKS)
+                this.response = ProtectionCheckerResponse.CITY_BLOCK_NEAR;
+            else if (protectionType == BlockProtectionType.PLAYER_BLOCKS)
+                this.response = ProtectionCheckerResponse.PLAYER_BLOCK_NEAR;
+            else
+                throw new IllegalStateException(Util.appendStrings("Protection type unknown for protection check response: ", protectionType));
+        }
     }
 }

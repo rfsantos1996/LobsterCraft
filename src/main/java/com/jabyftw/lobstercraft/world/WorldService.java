@@ -5,9 +5,9 @@ import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.TriggerController;
 import com.jabyftw.lobstercraft.player.custom_events.EntityDamageEntityEvent;
-import com.jabyftw.lobstercraft.player.custom_events.PlayerDamageEntityEvent;
 import com.jabyftw.lobstercraft.player.util.Permissions;
 import com.jabyftw.lobstercraft.services.Service;
+import com.jabyftw.lobstercraft.services.services_event.PlayerChangesBuildingModeEvent;
 import com.jabyftw.lobstercraft.util.DatabaseState;
 import com.jabyftw.lobstercraft.util.Util;
 import com.sun.istack.internal.NotNull;
@@ -59,25 +59,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class WorldService extends Service {
 
     private final static double
+            BUILD_MODE_THRESHOLD_DISTANCE_SQUARED = NumberConversions.square(32.0D),
             NEAR_BLOCKS_SEARCH_RADIUS_SQUARED = NumberConversions.square(LobsterCraft.configuration.getDouble(ConfigurationValues.WORLD_PROTECTION_PLAYER_NEAR_BLOCKS_SEARCH_RADIUS.toString()));
+    public final static int MINIMUM_PROTECTION_HEIGHT = LobsterCraft.configuration.getInt(ConfigurationValues.WORLD_PROTECTION_MINIMUM_HOUSE_HEIGHT.toString());
     private final static int
             MAXIMUM_BLOCKS_RESTORED = LobsterCraft.configuration.getInt(ConfigurationValues.WORLD_PROTECTION_PLAYER_UNLOADER_BLOCKS_RESTORED.toString()),
             NEAR_BLOCKS_REQUIRED = LobsterCraft.configuration.getInt(ConfigurationValues.WORLD_PROTECTION_PLAYER_REQUIRED_NEAR_BLOCKS_AMOUNT.toString()),
             CHUNK_UNLOADER_CHUNKS_PER_RUN = LobsterCraft.configuration.getInt(ConfigurationValues.WORLD_PROTECTION_PLAYER_UNLOADER_CHUNKS_PER_RUN.toString()),
             CHUNK_LOADER_CHUNKS_PER_RUN = LobsterCraft.configuration.getInt(ConfigurationValues.WORLD_PROTECTION_PLAYER_LOADER_CHUNKS_PER_RUN.toString()),
-            MINIMUM_LOAD_CHUNK_RANGE = Util.getMinimumChunkRange(ProtectionType.PLAYER_PROTECTION.getSearchDistance()),
+            MINIMUM_LOAD_CHUNK_RANGE = Util.getMinimumChunkRange(BlockProtectionType.PLAYER_BLOCKS.getProtectionDistance()),
             DEFAULT_LOAD_CHUNK_RANGE = NumberConversions.ceil(MINIMUM_LOAD_CHUNK_RANGE * LobsterCraft.configuration.getDouble(ConfigurationValues.WORLD_PROTECTION_PLAYER_LOADER_RANGE_MULTIPLIER.toString()));
-    private final static long CHUNK_UNLOADER_PERIOD = LobsterCraft.configuration.getLong(ConfigurationValues.WORLD_PROTECTION_PLAYER_UNLOADER_PERIOD_TICKS.toString());
-
-    // Search types used for protection
-    private final static ProtectionType[] DEFAULT_SEARCH_TYPES = new ProtectionType[]{
-            // easiest to search
-            ProtectionType.CITY_HOUSES_PROTECTION,
-            // lowest block amount
-            ProtectionType.ADMIN_PROTECTION,
-            // high block amount
-            ProtectionType.PLAYER_PROTECTION
-    };
+    private final static long
+            BUILD_MODE_THRESHOLD_TIME = TimeUnit.MINUTES.toMillis(10),
+            CHUNK_UNLOADER_PERIOD = LobsterCraft.configuration.getLong(ConfigurationValues.WORLD_PROTECTION_PLAYER_UNLOADER_PERIOD_TICKS.toString());
+    private final static Material TOOL_HAND_MATERIAL = com.jabyftw.easiercommands.Util.parseToMaterial(LobsterCraft.configuration.getString(ConfigurationValues.WORLD_PROTECTION_TOOL_HAND_MATERIAL.toString()));
 
     // Run-time MySQL connection
     private Connection connection;
@@ -108,13 +103,13 @@ public class WorldService extends Service {
     /*
      * Block manipulation
      */
-    protected final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, ProtectedBlockLocation>>
-            playerProtectedBlocks = new ConcurrentHashMap<>(),
-            cityHousesProtectedBlocks = new ConcurrentHashMap<>(),
-            adminProtectedBlocks = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<ChunkLocation, ConcurrentHashMap<BlockLocation, ProtectedBlockLocation>> protectedBlocks = new ConcurrentHashMap<>();
 
     public WorldService() throws SQLException {
         super();
+
+        // Check if we support tool hand
+        if (TOOL_HAND_MATERIAL == null) throw new IllegalStateException("Tool hand material from configuration is null!");
 
         // Add all ignored worlds with lower-cased names
         for (String worldName : LobsterCraft.configuration.getStringList(ConfigurationValues.WORLD_LIST.toString()))
@@ -123,17 +118,13 @@ public class WorldService extends Service {
         // Initialize some variables
         checkConnection();
 
-        // Update world cache
+        // Update world cache and administrator constructions
         updateWorldCache(connection);
-        loadAdministratorBlocks(connection);
-        // This will load city houses' blocks
-        // The City service will link houseId <-> City <-> House Structure: city and its houses will be loaded/created/updated there, we will check any changes to the
-        // house and pass it to our blocks (such as deleted houses => delete blocks of same houseId)
-        loadCityHousesBlocks(connection);
-        // Since every block from deleted houses was removed:
-        LobsterCraft.servicesManager.cityService.deletedHouses.clear();
+        loadAdministratorConstructions(connection);
 
         // Set ChunkUnloader
+        // The City service will link houseId <-> City <-> House Structure: city and its houses will be loaded/created/updated there, we will check any changes to the
+        // house and pass it to our blocks (such as deleted houses => delete blocks of same houseId)
         Bukkit.getScheduler().runTaskTimerAsynchronously(
                 LobsterCraft.plugin,
                 (chunkUnloader = new ChunkUnloader()),
@@ -165,15 +156,13 @@ public class WorldService extends Service {
                 for (Chunk chunk : world.getLoadedChunks())
                     unloadChunk(chunk);
 
-            // Unload all chunks
+            // Unload all chunks (will remove houses, save administrator, player city blocks and city houses)
             synchronized (chunkUnloadingLock) {
                 while (!chunksUnloadingQueue.isEmpty())
                     chunkUnloader.run();
             }
 
             // Save everything
-            saveCityHousesCache(connection);
-            saveAdministratorCache(connection);
             updateWorldCache(connection);
             connection.close();
             connection = null;
@@ -384,10 +373,10 @@ public class WorldService extends Service {
 
         // Remove blocks since everything was all right
         {
-            for (ConcurrentHashMap<BlockLocation, ProtectedBlockLocation> map : adminProtectedBlocks.values())
+            for (ConcurrentHashMap<BlockLocation, ProtectedBlockLocation> map : protectedBlocks.values())
                 for (ProtectedBlockLocation blockLocation : map.values())
                     // Check if block was protected in this construction
-                    if (blockLocation.hasOwner() && blockLocation.getCurrentType() == ProtectionType.ADMIN_PROTECTION && blockLocation.getCurrentId() == constructionId)
+                    if (blockLocation.hasOwner() && blockLocation.getCurrentType() == BlockProtectionType.ADMINISTRATOR_BLOCKS && blockLocation.getCurrentId() == constructionId)
                         blockLocation.setOwner(null, null);
         }
         return true;
@@ -432,29 +421,38 @@ public class WorldService extends Service {
      * @throws NullPointerException if chunk isn't loaded
      */
     protected ProtectedBlockLocation getBlock(@NotNull final BlockLocation blockLocation) throws NullPointerException {
-        ChunkLocation chunkLocation = blockLocation.getChunkLocation();
+        // Insert chunk if none present
+        if (!protectedBlocks.containsKey(blockLocation.getChunkLocation()))
+            protectedBlocks.put(blockLocation.getChunkLocation(), new ConcurrentHashMap<>(64, 1.0f));
 
-        // Check admin protection
-        if (adminProtectedBlocks.containsKey(chunkLocation)) {
-            ProtectedBlockLocation adminProtection = adminProtectedBlocks.get(chunkLocation).get(blockLocation);
-            if (adminProtection != null) return adminProtection;
-        }
-
-        // Check city houses protection
-        if (cityHousesProtectedBlocks.containsKey(chunkLocation)) {
-            ProtectedBlockLocation cityHousesProtection = cityHousesProtectedBlocks.get(chunkLocation).get(blockLocation);
-            if (cityHousesProtection != null) return cityHousesProtection;
-        }
-
-        // Check player protection
-        ProtectedBlockLocation playerProtection = playerProtectedBlocks.get(chunkLocation).get(blockLocation);
-        if (playerProtection != null) return playerProtection;
-
-        return null;
+        // Insert block if none present or return existing
+        ProtectedBlockLocation insertingBlockLocation = new ProtectedBlockLocation(blockLocation);
+        ProtectedBlockLocation blockLocationPresent = protectedBlocks.get(blockLocation.getChunkLocation()).putIfAbsent(blockLocation, insertingBlockLocation);
+        return blockLocationPresent != null ? blockLocationPresent : insertingBlockLocation;
     }
 
     private ProtectedBlockLocation getBlock(@NotNull final Location location) {
         return getBlock(new BlockLocation(location));
+    }
+
+    private RelativeBlockPosition getBlockPosition(OnlinePlayer onlinePlayer, BlockLocation blockLocation) {
+        // If the player has a city
+        CityStructure cityStructure;
+        if ((cityStructure = onlinePlayer.getOfflinePlayer().getCity()) != null) {
+            CityStructure.CityHouse cityHouse = cityStructure.getHouseFromPlayer(onlinePlayer.getOfflinePlayer().getPlayerId());
+
+            // Check if player is inside his city house
+            if (cityHouse != null &&
+                    BlockProtectionType.CITY_HOUSES.protectionDistanceSquared(cityHouse, blockLocation) < BlockProtectionType.CITY_HOUSES.getProtectionDistanceSquared())
+                return RelativeBlockPosition.INSIDE_CITY_HOUSE;
+            else
+                // Check if player is inside city
+                if (BlockProtectionType.CITY_BLOCKS.protectionDistanceSquared(cityStructure.getCenterLocation(), blockLocation) < cityStructure.getProtectionRangeSquared())
+                    return RelativeBlockPosition.INSIDE_CITY_STRUCTURE;
+        }
+
+        // Since we didn't returned: player doesn't have a city and is building for himself or is outside his city
+        return RelativeBlockPosition.OUTSIDE_STRUCTURES;
     }
 
     /*
@@ -513,27 +511,147 @@ public class WorldService extends Service {
             return;
         }
 
+        // Check if we're going to check for protection
+        if (event.getBlock().getLocation().getBlockY() < MINIMUM_PROTECTION_HEIGHT) {
+            onlinePlayer.getTriggerController().sendMessageIfNotTriggered(
+                    TriggerController.TemporaryTrigger.PROTECTION_MINIMUM_HEIGHT,
+                    "§cAltitude muito baixa para proteção! Os blocos não serão protegidos :("
+            );
+            return;
+        }
+
         List<BlockState> blockStates = event instanceof BlockMultiPlaceEvent ?
                 ((BlockMultiPlaceEvent) event).getReplacedBlockStates()
                 : Collections.singletonList(event.getBlock().getState());
 
         // Iterate through all blocks
         for (BlockState blockState : blockStates) {
-            // Check near blocks
-            if (ProtectionChecker.init(blockState.getLocation())
-                    // Check this block
-                    .checkThisBlock(true, true)
-                    // Check for city houses' blocks near location
-                    .checkCityHousesBlocksNearThisBlock()
-                    // Check near cities
-                    .checkCitiesNearThisBlock(true)
-                    // Check for administrator blocks near location
-                    .checkAdministratorBlocksNearThisBlock()
-                    // Check for near player's blocks
-                    .checkPlayerBlocksNearThisBlock(true)
-                    .automatizePlayer(onlinePlayer)
-                    .getResponse() != ProtectionChecker.ProtectionCheckerResponse.BLOCK_IS_SAFE)
+            // Check protection
+            BlockLocation blockLocation = new BlockLocation(blockState.getLocation());
+            ProtectionChecker protectionChecker = ProtectionChecker.init(blockLocation).automatizePlayer(onlinePlayer);
+
+            // Check for city houses' blocks if (player is a citizen or doesn't have an occupation) AND player doesn't have the permission to ignore
+            if ((onlinePlayer.getOfflinePlayer().getCityOccupation() == null || onlinePlayer.getOfflinePlayer().getCityOccupation() == CityOccupation.CITIZEN) &&
+                    !LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_CITY_HOUSES_BLOCKS.toString()))
+                protectionChecker.checkCityHousesBlocksNearThisBlock();
+
+            // Note: construction's build mode are ignored by automatizePlayer(OnlinePlayer)
+            protectionChecker.checkAdministratorBlocksNearThisBlock();
+
+            // Check near cities if player doesn't have the permission to ignore
+            if (!LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_CITY_STRUCTURES.toString()))
+                protectionChecker.checkCitiesNearThisBlock(true);
+
+            // Check near player blocks if player doesn't have the permission to ignore
+            if (!LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.WORLD_PROTECTION_IGNORE_PLAYER_BLOCKS.toString()))
+                protectionChecker.checkPlayerBlocksNearThisBlock(true);
+
+            ProtectionChecker.ProtectionCheckerResponse response = protectionChecker.getResponse();
+            // Check if near blocks are protected
+            if (response != ProtectionChecker.ProtectionCheckerResponse.BLOCK_IS_SAFE) {
+                // Warn player if not triggered (past trigger was a long time ago)
+                onlinePlayer.getTriggerController().sendMessageIfNotTriggered(
+                        TriggerController.TemporaryTrigger.PROTECTION_RESPONSE,
+                        response.getPlayerMessage()
+                );
                 event.setCancelled(true);
+            } else {
+                RelativeBlockPosition blockPosition = getBlockPosition(onlinePlayer, blockLocation);
+                BuildingMode currentBuildingMode;
+                boolean
+                        shouldChange = (currentBuildingMode = onlinePlayer.getBuildingMode()) == null,
+                        willRequireCommand = false;
+
+                // Check if current build mode exists
+                if (!shouldChange) {
+                    // Check if protection type isn't ideal
+                    shouldChange = blockPosition.getIdealType() != currentBuildingMode.getBlockProtectionType();
+
+                    // Check if building mode will require the "build mode" command:
+                    // We can't determinate which block protection type the player wants AND...
+                    if (blockPosition.getPossibleProtectionTypes().contains(currentBuildingMode.getBlockProtectionType()) &&
+                            // ...location is near (we can't consider different types of build mode) AND...
+                            blockLocation.distanceXZSquared(currentBuildingMode.getBlockLocation()) <= BUILD_MODE_THRESHOLD_DISTANCE_SQUARED &&
+                            // ...time since last block build is short
+                            (System.currentTimeMillis() - currentBuildingMode.getDate()) <= BUILD_MODE_THRESHOLD_TIME)
+                        willRequireCommand = true;
+                }
+
+                // Check if we should change building mode
+                if (shouldChange)
+                    if (willRequireCommand) {
+                        onlinePlayer.getTriggerController().sendMessageIfNotTriggered(
+                                TriggerController.TemporaryTrigger.PROTECTION_BUILD_MODE_WARNING,
+                                "§6Para mudar de proteção, use o comando §c/buildmode §6ou §c/bm"
+                        );
+                    } else {
+                        Integer protectionId = null;
+                        switch (blockPosition.getIdealType()) {
+                            case PLAYER_BLOCKS:
+                                protectionId = onlinePlayer.getOfflinePlayer().getPlayerId();
+                                break;
+                            case ADMINISTRATOR_BLOCKS:
+                                // Do not automatize administrator blocks!
+                                break;
+                            case CITY_HOUSES:
+                                CityStructure.CityHouse cityHouse;
+                                protectionId = (cityHouse = onlinePlayer.getOfflinePlayer().getCityHouse()) != null ? cityHouse.getHouseId() : null;
+                                break;
+                            case CITY_BLOCKS:
+                                protectionId = onlinePlayer.getOfflinePlayer().getCityId();
+                                break;
+                        }
+
+                        if (protectionId == null && currentBuildingMode == null) {
+                            event.setCancelled(true);
+                            onlinePlayer.getPlayer().sendMessage("§4Você não pode colocar blocos:§c modo de proteção não foi detectado. Use §6/bm");
+                            return;
+                        }
+
+                        // Build future building mode
+                        BuildingMode futureBuildingMode = new BuildingMode(
+                                blockPosition.getIdealType(),
+                                protectionId,
+                                blockLocation
+                        );
+
+                        // Call event
+                        PlayerChangesBuildingModeEvent changesBuildingModeEvent = new PlayerChangesBuildingModeEvent(onlinePlayer, futureBuildingMode, blockLocation, blockPosition);
+                        Bukkit.getPluginManager().callEvent(changesBuildingModeEvent);
+
+                        // Check if we should not change build mode (player should use command)
+                        if (changesBuildingModeEvent.isCancelled()) {
+                            // Cancel and return
+                            event.setCancelled(true);
+                            onlinePlayer.getPlayer().sendMessage("§4Você não pode colocar blocos:§c modo de proteção não foi alterado. Use §6/bm");
+                            return;
+                        }
+                    }
+                else
+                    currentBuildingMode.setBlockLocation(blockLocation);
+                // Since everything was checked and build mode was updated, let the event go to the next priority so we can protect it
+            }
+
+            /*
+             * - If the player is inside the city:
+             *      * building away from his house
+             *              * [builder/manager] Started now: build mode for city
+             *              * [builder/manager] Didn't started now (was building house): warn player that he must use the command to change to city
+             *              * [builder/manager] Didn't started now (was building outside city): warn player that he must use the command to change to city
+             *              * [citizen] Deny
+             *      * building on his house
+             *              * [all] Started now: build mode for house
+             *              * [builder/manager] Didn't started now (was building city): warn player that he must use the command to change to house
+             *              * [all] Didn't started now (was building outside city): build mode for house
+             * - If the player is outside the city:
+             *      * is a administrator builder?
+             *              * if started building ON a construction => execute buildMode automatically
+             *              * if started building on the world => he will need to execute the command manually
+             *      * is a simple player?
+             *              * simple player blocks since he is outside his city
+             *
+             * Note: "started building" => time since last build is greater than some minutes
+             */
         }
     }
 
@@ -542,10 +660,16 @@ public class WorldService extends Service {
         // Ignore ignored worlds
         if (isWorldIgnored(event.getBlock().getWorld())) return;
 
+        // Player is always online (ignoreCancelled is true)
         OnlinePlayer onlinePlayer = LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer(event.getPlayer(), OnlinePlayer.OnlineState.LOGGED_IN);
-        // Cancel not logged in players
-        if (onlinePlayer == null) {
+
+        BuildingMode buildingMode = onlinePlayer.getBuildingMode();
+        // Check if building mode is null
+        if (buildingMode == null) {
+            // Emergency, we need to cancel the event
             event.setCancelled(true);
+            LobsterCraft.logger.warning(Util.appendStrings("MONITOR priority cancelled the blockPlace at ", Util.locationToString(event.getBlock().getLocation()),
+                    " from player ", event.getPlayer().getDisplayName()));
             return;
         }
 
@@ -553,90 +677,101 @@ public class WorldService extends Service {
                 ((BlockMultiPlaceEvent) event).getReplacedBlockStates()
                 : Collections.singletonList(event.getBlock().getState());
 
-        // TODO: automatize player build mode
         // Iterate through all blocks
-        //for (BlockState blockState : blockStates)
-        // Insert block
-        //LobsterCraft.blockController.addBlock(blockState.getLocation(), onlinePlayer.getProtectionType(), onlinePlayer.getBuildModeId());
-        event.setCancelled(true);
+        for (BlockState blockState : blockStates)
+            // Protect all blocks
+            getBlock(blockState.getLocation()).setOwner(buildingMode.getBlockProtectionType(), buildingMode.getProtectionId());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     private void onPistonExtendHighest(BlockPistonExtendEvent event) {
-        if (event.isCancelled() || LobsterCraft.worldService.isWorldIgnored(event.getBlock().getWorld()))
-            return;
+        // Ignore ignored worlds
+        if (isWorldIgnored(event.getBlock().getWorld())) return;
 
-        // Iterate through all modified blocks
-        for (Block block : event.getBlocks()) {
+        // Iterate through all pushed blocks
+        for (Block expandingBlock : event.getBlocks()) {
             // Check if worlds need to load protection
-            if (!LobsterCraft.blockController.loadNearChunks(block.getLocation()))
+            if (!loadNearChunks(expandingBlock.getLocation(), false))
                 event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void onPistonExtendMonitor(BlockPistonExtendEvent event) {
-        if (event.isCancelled() || LobsterCraft.worldService.isWorldIgnored(event.getBlock().getWorld()))
-            return;
+        // Ignore ignored worlds
+        if (isWorldIgnored(event.getBlock().getWorld())) return;
+        // debug: I don't know what is "getBlock"
+        LobsterCraft.logger.config(Util.appendStrings("piston extent's getBlock = ", Util.locationToString(event.getBlock().getLocation())));
 
         // Iterate through all blocks
-        for (Block block : event.getBlocks()) {
-            Block futureBlock = block.getRelative(event.getDirection());
+        for (Block expandingBlock : event.getBlocks()) {
+            Block futureBlock = expandingBlock.getRelative(event.getDirection());
+            ProtectedBlockLocation oldProtection = getBlock(expandingBlock.getLocation());
 
-            ProtectedBlockLocation oldProtection = LobsterCraft.blockController.getBlock(block.getLocation());
+            // Ignore unprotected blocks
+            if (oldProtection == null || !oldProtection.hasOwner()) continue;
 
-            if (oldProtection == null) continue;
-
-            if (!oldProtection.isUndefined())
-                LobsterCraft.blockController.addBlock(futureBlock.getLocation(), oldProtection.getType(), oldProtection.getCurrentId());
+            // Protect new block
+            getBlock(futureBlock.getLocation()).setOwner(oldProtection.getCurrentType(), oldProtection.getCurrentId());
         }
 
-        ProtectedBlockLocation firstBlockProtection = LobsterCraft.blockController.getBlock(event.getBlock().getRelative(event.getDirection()).getLocation());
+        // Unprotect the fist block (the block closest to the piston)
+        ProtectedBlockLocation firstBlockProtection = getBlock(event.getBlock().getRelative(event.getDirection()).getLocation());
 
         // Remove protection from first block
-        if (firstBlockProtection != null) firstBlockProtection.setUndefinedOwner();
+        if (firstBlockProtection != null) firstBlockProtection.setOwner(null, null);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     private void onPistonRetractHighest(BlockPistonRetractEvent event) {
-        if (event.isCancelled() || LobsterCraft.worldService.isWorldIgnored(event.getBlock().getWorld()))
-            return;
+        // Ignore ignored worlds
+        if (isWorldIgnored(event.getBlock().getWorld())) return;
 
-        // Iterate through all modified blocks
-        for (Block block : event.getBlocks()) {
-            // Check if worlds need to load protection
-            if (!LobsterCraft.blockController.loadNearChunks(block.getLocation()))
+        // Iterate through all retracting/pulled blocks
+        for (Block retractingBlock : event.getBlocks()) {
+            // Load protection, cancel if not loaded
+            if (!loadNearChunks(retractingBlock.getLocation(), false))
                 event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void onPistonRetractMonitor(BlockPistonRetractEvent event) {
-        if (event.isCancelled() || LobsterCraft.worldService.isWorldIgnored(event.getBlock().getWorld()))
-            return;
+        // Ignore ignored worlds
+        if (isWorldIgnored(event.getBlock().getWorld())) return;
+        LobsterCraft.logger.config(Util.appendStrings("piston retract's getBlock = ", Util.locationToString(event.getBlock().getLocation())));
 
-        // Iterate through all blocks
-        for (Block block : event.getBlocks()) {
-            Block futureBlock = block.getRelative(event.getDirection());
+        // Iterate through all retracting/pulled blocks
+        for (Block retractingBlock : event.getBlocks()) {
+            Block futureBlock = retractingBlock.getRelative(event.getDirection());
+            ProtectedBlockLocation retractingBlockProtection = getBlock(retractingBlock.getLocation());
 
-            ProtectedBlockLocation oldProtection = LobsterCraft.blockController.getBlock(block.getLocation());
+            // Ignore unprotected blocks
+            if (retractingBlockProtection == null || !retractingBlockProtection.hasOwner()) continue;
 
-            if (oldProtection == null) continue;
-
-            if (!oldProtection.isUndefined())
-                LobsterCraft.blockController.addBlock(futureBlock.getLocation(), oldProtection.getType(), oldProtection.getCurrentId());
+            // Protect new block
+            getBlock(futureBlock.getLocation()).setOwner(retractingBlockProtection.getCurrentType(), retractingBlockProtection.getCurrentId());
         }
 
-        // Remove protection of the last block on the list
-        for (Block block : event.getBlocks()) {
-            Block nextBlock = block.getRelative(event.getDirection());
+        // Remove protection of the last block on the block sequence (the first block is the closest to the piston)
+        for (Block retractingBlock : event.getBlocks()) {
+            // The direction of retract will be the direction that the block may be pulled, we want to get the opposed direction, so we can get the furthest block that
+            // is being pulled
+            Block furtherBlock = retractingBlock.getRelative(event.getDirection().getOppositeFace());
 
-            // It is the last block
-            if (!event.getBlocks().contains(nextBlock)) {
-                ProtectedBlockLocation firstBlockProtection = LobsterCraft.blockController.getBlock(block.getLocation());
+            // debug since the past method (before the re-coding) didn't used the furtherBlock but the futureBlock (wasn't the OppositeFace)
+            LobsterCraft.logger.config(Util.appendStrings(
+                    "Retracting block = ", Util.locationToString(retractingBlock.getLocation()), "\n",
+                    "Further block = ", Util.locationToString(furtherBlock.getLocation()), "\n",
+                    "Is our furthest? ", !event.getBlocks().contains(furtherBlock)
+            ));
+
+            // Check if block is furthest block to the piston
+            if (!event.getBlocks().contains(furtherBlock)) {
+                ProtectedBlockLocation furthestBlockProtection = getBlock(furtherBlock.getLocation());
 
                 // Remove protection from the last block
-                if (firstBlockProtection != null) firstBlockProtection.setUndefinedOwner();
+                if (furthestBlockProtection != null) furthestBlockProtection.setOwner(null, null);
             }
         }
     }
@@ -654,7 +789,7 @@ public class WorldService extends Service {
         // Check for falling block
         if (event.getEntity().getType() == EntityType.FALLING_BLOCK && ((FallingBlock) event.getEntity()).getMaterial().hasGravity()) {
             // Check if player protection is loaded
-            if (!loadNearChunks(new ChunkLocation(event.getBlock().getChunk()), false)) {
+            if (!loadNearChunks(event.getBlock().getChunk(), false)) {
                 event.setCancelled(true);
                 return;
             }
@@ -686,39 +821,68 @@ public class WorldService extends Service {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     private void onToolInteractWithBlockNormal(PlayerInteractEvent event) {
-        // Conditions to trigger desired effect (clicked a block, material in hand is specific, world isn't ignored)
-        if (event.hasBlock() && event.getMaterial() == TOOL_HAND_MATERIAL && !isWorldIgnored(event.getClickedBlock().getWorld())) {
+        // Conditions to trigger desired effect (clicked a block, material in hand is specific, world isn't ignored, player has permission)
+        if (event.hasBlock() && event.getMaterial() == TOOL_HAND_MATERIAL && !isWorldIgnored(event.getClickedBlock().getWorld()) &&
+                LobsterCraft.permission.has(event.getPlayer(), Permissions.WORLD_PROTECTION_USE_TOOL.toString())) {
             Location bukkitBlockLocation;
 
-            if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            // Check event action
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK)
                 bukkitBlockLocation = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
-            } else if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+            else if (event.getAction() == Action.LEFT_CLICK_BLOCK)
                 bukkitBlockLocation = event.getClickedBlock().getLocation();
-            } else {
+            else
                 return;
-            }
 
-            PlayerHandler playerHandler = LobsterCraft.playerHandlerService.getPlayerHandler(event.getPlayer());
+            OnlinePlayer onlinePlayer = LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer(event.getPlayer(), OnlinePlayer.OnlineState.LOGGED_IN);
 
             // Check if player is spamming
-            if (playerHandler.getTriggerController().sendMessageIfNotReady(
-                    TriggerController.Condition.PROTECTION_CHECK, "§cAguarde! Não podemos conferir proteção muito constantemente."
+            if (onlinePlayer.getTriggerController().sendMessageIfTriggered(
+                    TriggerController.TemporaryTrigger.PROTECTION_CHECK, "§cAguarde! Não confira a proteção tão rápido!"
             )) return;
 
             // Check if player protection was loaded
-            if (!LobsterCraft.blockController.loadNearChunks(bukkitBlockLocation)) {
-                playerHandler.getTriggerController().sendMessageIfConditionReady(TriggerController.Condition.PROTECTION_BEING_LOADED, "§cProteção está sendo carregada...");
+            if (!loadNearChunks(bukkitBlockLocation, true)) {
+                onlinePlayer.getTriggerController().sendMessageIfTriggered(TriggerController.TemporaryTrigger.PROTECTION_BEING_LOADED, "§cProteção está sendo carregada...");
                 return;
             }
 
-            ProtectedBlockLocation blockLocation = LobsterCraft.blockController.getBlock(bukkitBlockLocation);
-
+            ProtectedBlockLocation protectedBlockLocation = getBlock(bukkitBlockLocation);
             // Check player block, warn player about its state
-            if (blockLocation != null)
-                playerHandler.sendMessage(getProtectedBlockMessage(blockLocation));
-            else
-                playerHandler.sendMessage("§cEste bloco não está protegido.");
+            if (protectedBlockLocation != null) {
+                StringBuilder stringBuilder = new StringBuilder();
 
+                // Append information
+                if (protectedBlockLocation.hasOwner()) {
+                    stringBuilder.append("§6Protegido ");
+
+                    // "protegido temporariamente para" or "protegido para"
+                    if (protectedBlockLocation.isTemporaryBlock()) stringBuilder.append("temporariamente ");
+
+                    stringBuilder.append("para ");
+
+                    // Get type and id
+                    if (protectedBlockLocation.getCurrentType() == BlockProtectionType.ADMINISTRATOR_BLOCKS)
+                        stringBuilder.append("administrador §c");
+                    else if (protectedBlockLocation.getCurrentType() == BlockProtectionType.PLAYER_BLOCKS)
+                        stringBuilder.append("jogador §c#");
+                    else if (protectedBlockLocation.getCurrentType() == BlockProtectionType.CITY_HOUSES)
+                        stringBuilder.append("casa §c#");
+                    else if (protectedBlockLocation.getCurrentType() == BlockProtectionType.CITY_BLOCKS)
+                        stringBuilder.append("cidade §c#");
+                    else
+                        stringBuilder.append(protectedBlockLocation.getCurrentType().name()).append(" §c#");
+
+                    stringBuilder.append(getConstructionName(protectedBlockLocation.getCurrentId()));
+                } else {
+                    stringBuilder.append("§7Bloco desprotegido.");
+                }
+                onlinePlayer.getPlayer().sendMessage(stringBuilder.toString());
+            } else {
+                onlinePlayer.getPlayer().sendMessage("§cEste bloco não está protegido.");
+            }
+
+            // Cancel event
             event.setCancelled(true);
         }
     }
@@ -792,7 +956,7 @@ public class WorldService extends Service {
         if (isWorldIgnored(event.getEntity().getLocation().getWorld())) return;
 
         // Do not even prime when protection isn't loaded
-        if (!loadNearChunks(new ChunkLocation(event.getEntity().getLocation().getChunk()), false))
+        if (!loadNearChunks(event.getEntity().getLocation(), false))
             event.setCancelled(true);
     }
 
@@ -811,7 +975,7 @@ public class WorldService extends Service {
         }
 
         // Load player chunks for next protection step
-        if (!loadNearChunks(new ChunkLocation(event.getLocation().getChunk()), false)) {
+        if (!loadNearChunks(event.getLocation(), false)) {
             event.setCancelled(true);
             return;
         }
@@ -926,7 +1090,7 @@ public class WorldService extends Service {
         // Iterate through all blocks
         for (BlockState blockState : event.getBlocks())
             // Protect block
-            new ProtectedBlockLocation(blockState.getLocation()).setOwner(baseBlock.getCurrentType(), baseBlock.getCurrentId());
+            getBlock(blockState.getLocation()).setOwner(baseBlock.getCurrentType(), baseBlock.getCurrentId());
     }
 
     // DEBUGGING
@@ -962,7 +1126,7 @@ public class WorldService extends Service {
         if (baseBlock == null || !baseBlock.hasOwner()) return;
 
         // Protect new block
-        new ProtectedBlockLocation(event.getBlock().getLocation()).setOwner(baseBlock.getCurrentType(), baseBlock.getCurrentId());
+        getBlock(event.getBlock().getLocation()).setOwner(baseBlock.getCurrentType(), baseBlock.getCurrentId());
     }
 
     /*
@@ -984,7 +1148,7 @@ public class WorldService extends Service {
         // Check for not loaded ones
         for (ChunkLocation location : defaultSizeNearChunks)
             // Insert to set if it isn't loaded
-            if (!chunksUnloading.contains(location) && !playerProtectedBlocks.containsKey(location)) {
+            if (!chunksUnloading.contains(location) && !protectedBlocks.containsKey(location)) {
                 synchronized (chunkLoadingLock) {
                     if (!chunksLoading.contains(location)) {
                         if (minimumSizeNearChunks.contains(location))
@@ -1004,13 +1168,17 @@ public class WorldService extends Service {
 
         // Check if the minimum are required, return false if it is
         for (ChunkLocation location : minimumSizeNearChunks)
-            if (chunksLoading.contains(location) || chunksUnloading.contains(location) || !playerProtectedBlocks.containsKey(location))
+            if (chunksLoading.contains(location) || chunksUnloading.contains(location) || !protectedBlocks.containsKey(location))
                 return false;
         return true;
     }
 
     private boolean loadNearChunks(@NotNull final Location location, boolean loadExtra) {
         return loadNearChunks(new ChunkLocation(location.getChunk()), loadExtra);
+    }
+
+    private boolean loadNearChunks(@NotNull final Chunk chunk, boolean loadExtra) {
+        return loadNearChunks(new ChunkLocation(chunk), loadExtra);
     }
 
     /**
@@ -1020,7 +1188,7 @@ public class WorldService extends Service {
     private boolean unloadChunk(@NotNull ChunkLocation chunkLocation) {
         synchronized (chunkUnloadingLock) {
             // Insert to queue if isn't already unloading and if chunk is loaded
-            if (!chunksUnloading.contains(chunkLocation) && playerProtectedBlocks.containsKey(chunkLocation)) {
+            if (!chunksUnloading.contains(chunkLocation) && protectedBlocks.containsKey(chunkLocation)) {
                 this.chunksUnloadingQueue.add(chunkLocation);
                 this.chunksUnloading.add(chunkLocation);
                 return true;
@@ -1159,9 +1327,8 @@ public class WorldService extends Service {
         }
     }
 
-    private void loadAdministratorBlocks(@NotNull final Connection connection) throws SQLException {
+    private void loadAdministratorConstructions(@NotNull final Connection connection) throws SQLException {
         long start = System.nanoTime();
-        int blockSize = 0;
 
         // Load constructions
         {
@@ -1184,234 +1351,8 @@ public class WorldService extends Service {
             preparedStatement.close();
         }
 
-        // Load blocks
-        {
-            // Prepare statement and execute query => we're looking just for ADMINISTRATOR blocks
-            PreparedStatement preparedStatement = connection.prepareStatement(Util.appendStrings("SELECT * FROM minecraft.world_blocks WHERE ownerType = ",
-                    ProtectionType.ADMIN_PROTECTION.getTypeId(), ';'));
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            // Iterate through all blocks
-            while (resultSet.next()) {
-                // Create chunk
-                ChunkLocation chunkLocation = new ChunkLocation(
-                        resultSet.getByte("worlds_worldId"),
-                        resultSet.getInt("chunkX"),
-                        resultSet.getInt("chunkZ")
-                );
-
-                // Delete ignored worlds' blocks
-                if (chunkLocation.worldIsIgnored()) {
-                    resultSet.deleteRow();
-                    continue;
-                }
-
-                // Insert chunk if not there
-                if (!adminProtectedBlocks.containsKey(chunkLocation))
-                    adminProtectedBlocks.put(chunkLocation, new ConcurrentHashMap<>());
-
-                int constructionId = resultSet.getInt("ownerId");
-                ProtectedBlockLocation protectedBlockLocation = new ProtectedBlockLocation(
-                        ProtectionType.ADMIN_PROTECTION,
-                        constructionId,
-                        chunkLocation,
-                        resultSet.getByte("blockX"),
-                        resultSet.getShort("blockY"),
-                        resultSet.getByte("blockZ")
-                )
-                        // This will insert the block on the block map
-                        .setOwner(ProtectionType.ADMIN_PROTECTION, constructionId);
-                // If construction was deleted, remove block
-                // We can't check if the world is ignored here because we don't even listen to events from other world (for example, on unloading chunks that will save
-                // and update the blocks on database)
-                if (administrator_constructions_id.get(constructionId) == null)
-                    protectedBlockLocation.setOwner(null, null);
-                blockSize++;
-            }
-
-            // Close everything
-            resultSet.close();
-            preparedStatement.close();
-        }
-
-        if (blockSize > 0)
-            LobsterCraft.logger.info(Util.appendStrings("It took ", Util.formatDecimal((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)),
-                    "ms to search for ", blockSize, " administrator blocks."));
-    }
-
-    private void loadCityHousesBlocks(@NotNull final Connection connection) throws SQLException {
-        long start = System.nanoTime();
-        int blockSize = 0;
-
-        // Load blocks
-        {
-            // Prepare statement and execute query => we're looking just for ADMINISTRATOR blocks
-            PreparedStatement preparedStatement = connection.prepareStatement(Util.appendStrings("SELECT * FROM minecraft.world_blocks WHERE ownerType = ",
-                    ProtectionType.CITY_HOUSES_PROTECTION.getTypeId(), ';'));
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            // Iterate through all blocks
-            while (resultSet.next()) {
-                // Create chunk
-                ChunkLocation chunkLocation = new ChunkLocation(
-                        resultSet.getByte("worlds_worldId"),
-                        resultSet.getInt("chunkX"),
-                        resultSet.getInt("chunkZ")
-                );
-
-                // Delete ignored worlds' blocks
-                if (chunkLocation.worldIsIgnored()) {
-                    resultSet.deleteRow();
-                    continue;
-                }
-
-                // Insert chunk if not there
-                if (!cityHousesProtectedBlocks.containsKey(chunkLocation))
-                    cityHousesProtectedBlocks.put(chunkLocation, new ConcurrentHashMap<>());
-
-                int houseId = resultSet.getInt("ownerId");
-                ProtectedBlockLocation protectedBlockLocation = new ProtectedBlockLocation(
-                        ProtectionType.CITY_HOUSES_PROTECTION,
-                        houseId,
-                        chunkLocation,
-                        resultSet.getByte("blockX"),
-                        resultSet.getShort("blockY"),
-                        resultSet.getByte("blockZ")
-                )
-                        // This will insert the block on the block map
-                        .setOwner(ProtectionType.CITY_HOUSES_PROTECTION, houseId);
-
-                // If house (city) was deleted, remove block
-                if (LobsterCraft.servicesManager.cityService.deletedHouses.contains(houseId))
-                    protectedBlockLocation.setOwner(null, null);
-                blockSize++;
-            }
-
-            // Close everything
-            resultSet.close();
-            preparedStatement.close();
-
-            if (blockSize > 0)
-                LobsterCraft.logger.info(Util.appendStrings("It took ", Util.formatDecimal((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)),
-                        "ms to search for ", blockSize, " administrator blocks."));
-        }
-    }
-
-    private void saveAdministratorCache(@NotNull final Connection connection) throws SQLException {
-        int blockSize = 0;
-        long start = System.nanoTime();
-        final HashSet<ProtectedBlockLocation>
-                blocksToInsert = new HashSet<>(),
-                blocksToUpdate = new HashSet<>(),
-                blocksToDelete = new HashSet<>();
-
-        // Iterate through all blocks
-        for (ConcurrentHashMap<BlockLocation, ProtectedBlockLocation> map : adminProtectedBlocks.values()) {
-            for (ProtectedBlockLocation blockLocation : map.values()) {
-                // Skip non-changed blocks
-                if (!blockLocation.getDatabaseState().shouldSave()) continue;
-
-                // Detect action
-                switch (blockLocation.getDatabaseState()) {
-                    default:
-                        blockSize++;
-                    case INSERT_TO_DATABASE:
-                        blocksToInsert.add(blockLocation);
-                        break;
-                    case UPDATE_DATABASE:
-                        blocksToUpdate.add(blockLocation);
-                        break;
-                    case DELETE_FROM_DATABASE:
-                        blocksToDelete.add(blockLocation);
-                        break;
-                }
-            }
-        }
-
-        // Update database
-        try {
-            insertBlocks(connection, blocksToInsert);
-            updateBlocks(connection, blocksToUpdate);
-            deleteBlocks(connection, blocksToDelete);
-        } catch (SQLException exception) {
-            exception.printStackTrace();
-        }
-
-        if (blockSize > 0)
-            LobsterCraft.logger.info(Util.appendStrings("It took ", Util.formatDecimal((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)),
-                    "ms to update ", blockSize, " changed administrator blocks."));
-    }
-
-    private void saveCityHousesCache(@NotNull final Connection connection) throws SQLException {
-        int blockSize = 0;
-        long start = System.nanoTime();
-        final HashSet<ProtectedBlockLocation>
-                blocksToInsert = new HashSet<>(),
-                blocksToUpdate = new HashSet<>(),
-                blocksToDelete = new HashSet<>();
-
-        boolean hasDeletedHouses = LobsterCraft.servicesManager.cityService.deletedHouses.isEmpty();
-        // Iterate through all blocks
-        for (ConcurrentHashMap<BlockLocation, ProtectedBlockLocation> map : cityHousesProtectedBlocks.values()) {
-            for (ProtectedBlockLocation blockLocation : map.values()) {
-                // Check if house was deleted during run time
-                if (hasDeletedHouses && blockLocation.getCurrentId() != null &&
-                        LobsterCraft.servicesManager.cityService.deletedHouses.contains(blockLocation.getCurrentId()))
-                    // Unprotect house => it'll be delete from database
-                    blockLocation.setOwner(null, null);
-
-                // Skip non-changed blocks
-                if (!blockLocation.getDatabaseState().shouldSave()) continue;
-
-                // Detect action
-                switch (blockLocation.getDatabaseState()) {
-                    default:
-                        blockSize++;
-                    case INSERT_TO_DATABASE:
-                        blocksToInsert.add(blockLocation);
-                        break;
-                    case UPDATE_DATABASE:
-                        blocksToUpdate.add(blockLocation);
-                        break;
-                    case DELETE_FROM_DATABASE:
-                        blocksToDelete.add(blockLocation);
-                        break;
-                }
-            }
-        }
-
-        // Update database
-        try {
-            insertBlocks(connection, blocksToInsert);
-            updateBlocks(connection, blocksToUpdate);
-            deleteBlocks(connection, blocksToDelete);
-
-            // Delete houses
-            if (!LobsterCraft.servicesManager.cityService.deletedHouses.isEmpty()) {
-                // Prepare statement
-                PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM `minecraft`.`city_house_locations` WHERE `houseId` = ?;");
-                // Iterate through all deleted houses
-                for (Integer houseId : LobsterCraft.servicesManager.cityService.deletedHouses) {
-                    // Set variable
-                    preparedStatement.setInt(1, houseId);
-                    // Add batch
-                    preparedStatement.addBatch();
-                }
-                // Execute and close statement
-                preparedStatement.execute();
-                preparedStatement.close();
-
-                // Since all blocks and house entries were deleted, clear Set
-                LobsterCraft.servicesManager.cityService.deletedHouses.clear();
-            }
-        } catch (SQLException exception) {
-            exception.printStackTrace();
-        }
-
-
-        if (blockSize > 0)
-            LobsterCraft.logger.info(Util.appendStrings("It took ", Util.formatDecimal((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)),
-                    "ms to update ", blockSize, " changed city houses' blocks."));
+        LobsterCraft.logger.info(Util.appendStrings("It took ", Util.formatDecimal((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)),
+                "ms to load ", administrator_constructions_id.size(), " administrator constructions entries."));
     }
 
     private static void insertBlocks(@NotNull final Connection connection, @NotNull final Set<ProtectedBlockLocation> blocksToInsert) throws SQLException {
@@ -1551,6 +1492,31 @@ public class WorldService extends Service {
      * Some classes
      */
 
+    public enum RelativeBlockPosition {
+
+        INSIDE_CITY_HOUSE(BlockProtectionType.CITY_HOUSES, BlockProtectionType.CITY_BLOCKS), //, BlockProtectionType.ADMINISTRATOR_BLOCKS),
+        INSIDE_CITY_STRUCTURE(BlockProtectionType.CITY_BLOCKS), //, BlockProtectionType.ADMINISTRATOR_BLOCKS),
+        OUTSIDE_STRUCTURES(BlockProtectionType.PLAYER_BLOCKS, BlockProtectionType.ADMINISTRATOR_BLOCKS);
+
+        private final List<BlockProtectionType> possibleTypes;
+        private final BlockProtectionType idealType;
+
+        RelativeBlockPosition(BlockProtectionType ideal, BlockProtectionType... types) {
+            this.idealType = ideal;
+            this.possibleTypes = new ArrayList<>(types.length + 2);
+            this.possibleTypes.add(ideal);
+            this.possibleTypes.addAll(Arrays.asList(types));
+        }
+
+        public List<BlockProtectionType> getPossibleProtectionTypes() {
+            return possibleTypes;
+        }
+
+        public BlockProtectionType getIdealType() {
+            return idealType;
+        }
+    }
+
     public enum ConstructionCreationResponse {
         SUCCESSFULLY_CREATED,
         NAME_MATCHED_ANOTHER,
@@ -1564,8 +1530,7 @@ public class WorldService extends Service {
         @Override
         public void run() {
             // Create queries => we're here just to load PLAYER blocks!
-            StringBuilder stringBuilder = new StringBuilder("SELECT * FROM minecraft.world_blocks WHERE ownerType = ").append(ProtectionType.PLAYER_PROTECTION.getTypeId())
-                    .append(" AND (worlds_worldId, chunkX, chunkZ) IN (");
+            StringBuilder stringBuilder = new StringBuilder("SELECT * FROM minecraft.world_blocks WHERE (worlds_worldId, chunkX, chunkZ) IN (");
 
             synchronized (chunkLoadingLock) {
                 // Ignore empty loading queue (must be synchronized to the iterator we're using)
@@ -1627,21 +1592,23 @@ public class WorldService extends Service {
                         continue;
                     }
 
-                    // Insert chunk location so we don't need to putIfAbsent on every block through setOwner
-                    if (!playerProtectedBlocks.containsKey(chunkLocation))
-                        playerProtectedBlocks.put(chunkLocation, new ConcurrentHashMap<>());
+                    // Insert chunk location so we don't need to insert it on every setOwner for each chunk
+                    if (!protectedBlocks.containsKey(chunkLocation))
+                        protectedBlocks.put(chunkLocation, new ConcurrentHashMap<>(64, 1.0f));
 
+                    BlockProtectionType type = BlockProtectionType.valueOf(resultSet.getByte("ownerType"));
                     int ownerId = resultSet.getInt("ownerId");
                     // Create block and set owner => it'll insert him on block map
                     // Note: protection type is only player protection
-                    new ProtectedBlockLocation(
-                            ProtectionType.PLAYER_PROTECTION,
+                    ProtectedBlockLocation protectedBlockLocation = new ProtectedBlockLocation(
+                            type,
                             ownerId,
                             chunkLocation,
                             resultSet.getByte("blockX"),
                             resultSet.getShort("blockY"),
                             resultSet.getByte("blockZ")
-                    ).setOwner(ProtectionType.PLAYER_PROTECTION, ownerId);
+                    ).setOwner(type, ownerId);
+                    protectedBlocks.get(chunkLocation).put(protectedBlockLocation, protectedBlockLocation);
 
                     // Add protected block
                     blockSize++;
@@ -1650,9 +1617,10 @@ public class WorldService extends Service {
                 // Make sure chunk is loaded
                 synchronized (chunkLoadingLock) {
                     chunksLoading.removeAll(chunksProcessing);
-                    // Set as loaded
+                    // Set as loaded those who didn't contain blocks
                     for (ChunkLocation processingChunk : chunksProcessing)
-                        playerProtectedBlocks.put(processingChunk, new ConcurrentHashMap<>());
+                        if (!protectedBlocks.containsKey(processingChunk))
+                            protectedBlocks.put(processingChunk, new ConcurrentHashMap<>(64, 1.0f));
                     // Clear list
                     chunksProcessing.clear();
                 }
@@ -1693,7 +1661,7 @@ public class WorldService extends Service {
                     ChunkLocation chunkLocation = chunksUnloadingQueue.poll();
                     // Poll until limit of chunks
                     if (chunkLocation != null) {
-                        if (playerProtectedBlocks.get(chunkLocation) != null) {
+                        if (protectedBlocks.get(chunkLocation) != null) {
                             chunksToProcess.add(chunkLocation);
                             currentIndex++;
                         }
@@ -1728,10 +1696,18 @@ public class WorldService extends Service {
                     iterator.remove();
                 }
 
-                ConcurrentHashMap<BlockLocation, ProtectedBlockLocation> protectedBlocks = playerProtectedBlocks.get(processingChunk);
+                ConcurrentHashMap<BlockLocation, ProtectedBlockLocation> currentBlockMap = protectedBlocks.get(processingChunk);
                 // Process player blocks
-                if (protectedBlocks != null)
-                    for (ProtectedBlockLocation blockLocation : protectedBlocks.values()) {
+                if (currentBlockMap != null) {
+                    boolean hasDeletedHouses = !LobsterCraft.servicesManager.cityService.deletedHouses.isEmpty();
+                    for (ProtectedBlockLocation blockLocation : currentBlockMap.values()) {
+                        // Check if house is deleted
+                        if (hasDeletedHouses && blockLocation.getCurrentType() == BlockProtectionType.CITY_HOUSES &&
+                                LobsterCraft.servicesManager.cityService.deletedHouses.contains(blockLocation.getCurrentId())) {
+                            // Unprotect house => it'll be delete from database
+                            blockLocation.setOwner(null, null);
+                        }
+
                         // Skip neutral blocks
                         if (!blockLocation.getDatabaseState().shouldSave()) continue;
                         blocksChanged++;
@@ -1743,13 +1719,13 @@ public class WorldService extends Service {
                                 AtomicInteger numberOfProtectedBlocks = new AtomicInteger(0);
 
                                 blockLocation.getChunkLocation().getNearChunks(MINIMUM_LOAD_CHUNK_RANGE).parallelStream().forEach(chunkLocation -> {
-                                    for (ProtectedBlockLocation otherBlock : playerProtectedBlocks.get(chunkLocation).values()) {
+                                    for (ProtectedBlockLocation otherBlock : protectedBlocks.get(chunkLocation).values()) {
                                         // Skip if found enough
                                         if (numberOfProtectedBlocks.get() > NEAR_BLOCKS_REQUIRED) break;
 
                                         // Skip blocks not protected, this same block and far away blocks
                                         if (!otherBlock.hasOwner() || otherBlock.equals(blockLocation) ||
-                                                otherBlock.distanceSquared(blockLocation) > NEAR_BLOCKS_SEARCH_RADIUS_SQUARED)
+                                                BlockProtectionType.protectionDistanceSquared(otherBlock, blockLocation, false) > NEAR_BLOCKS_SEARCH_RADIUS_SQUARED)
                                             continue;
 
                                         // This is a valid block, increment and check if enough
@@ -1758,6 +1734,7 @@ public class WorldService extends Service {
                                     }
                                 });
 
+                                // If block shouldn't be protected
                                 if (numberOfProtectedBlocks.get() < NEAR_BLOCKS_REQUIRED) {
                                     // Remove block protection
                                     blockLocation.setOwner(null, null);
@@ -1779,6 +1756,7 @@ public class WorldService extends Service {
                             blocksToDelete.add(blockLocation);
                         }
                     }
+                }
             }
 
             try {
@@ -1796,7 +1774,7 @@ public class WorldService extends Service {
             // Unload chunks
             synchronized (chunkUnloadingLock) {
                 // First, remove blocks
-                chunksProcessing.forEach(playerProtectedBlocks::remove);
+                chunksProcessing.forEach(protectedBlocks::remove);
                 // Then remove from "chunksUnloading"
                 chunksUnloading.removeAll(chunksProcessing);
             }
@@ -1847,7 +1825,7 @@ public class WorldService extends Service {
 
     protected class ProtectedBlockLocation extends BlockLocation {
 
-        private ProtectionType currentType, originalType;
+        private BlockProtectionType currentType, originalType;
         private Integer originalId, currentId;
 
         private BlockState blockState = null;
@@ -1866,7 +1844,7 @@ public class WorldService extends Service {
          * Used for database.
          * This WON'T insert the block on storage map
          */
-        public ProtectedBlockLocation(@NotNull ProtectionType databaseProtectionType, @NotNull Integer databaseCurrentId, @NotNull ChunkLocation chunkLocation, byte x, short y, byte z) {
+        private ProtectedBlockLocation(@NotNull BlockProtectionType databaseProtectionType, @NotNull Integer databaseCurrentId, @NotNull ChunkLocation chunkLocation, byte x, short y, byte z) {
             super(chunkLocation, x, y, z);
             this.originalType = databaseProtectionType;
             this.originalId = databaseCurrentId;
@@ -1875,8 +1853,8 @@ public class WorldService extends Service {
         /*
          * Used for new blocks
          */
-        public ProtectedBlockLocation(@NotNull Location location) {
-            super(location);
+        private ProtectedBlockLocation(@NotNull BlockLocation blockLocation) {
+            super(blockLocation);
             this.originalType = null;
             this.originalId = null;
 
@@ -1884,45 +1862,10 @@ public class WorldService extends Service {
             this.currentId = null;
         }
 
-        public ProtectedBlockLocation setOwner(@Nullable ProtectionType protectionType, @Nullable Integer id) {
+        public ProtectedBlockLocation setOwner(@Nullable BlockProtectionType protectionType, @Nullable Integer id) {
             if ((protectionType != null && id == null) || (protectionType == null && id != null))
                 throw new IllegalArgumentException("Can't have a combination null/not-null.");
             this.currentId = id;
-            // Exchange block map if current type isn't null and future type isn't null too
-            if (id != null && protectionType != this.currentType) {
-                // If block was protected before, it was on storage and should be removed:
-                // Since the new not null protection type will replace the old one, remove the old
-                if (this.currentType != null)
-                    switch (this.currentType) {
-                        case ADMIN_PROTECTION:
-                            adminProtectedBlocks.get(getChunkLocation()).remove(this);
-                            break;
-                        case CITY_HOUSES_PROTECTION:
-                            cityHousesProtectedBlocks.get(getChunkLocation()).remove(this);
-                            break;
-                        case PLAYER_PROTECTION:
-                            playerProtectedBlocks.get(getChunkLocation()).remove(this);
-                            break;
-                    }
-                // Insert on storage (check if containsKey before, we don't want to create a new ConcurrentHashMap every time
-                switch (protectionType) {
-                    case ADMIN_PROTECTION:
-                        if (!adminProtectedBlocks.containsKey(getChunkLocation()))
-                            adminProtectedBlocks.put(getChunkLocation(), new ConcurrentHashMap<>());
-                        adminProtectedBlocks.get(getChunkLocation()).put(this, this);
-                        break;
-                    case CITY_HOUSES_PROTECTION:
-                        if (!cityHousesProtectedBlocks.containsKey(getChunkLocation()))
-                            cityHousesProtectedBlocks.put(getChunkLocation(), new ConcurrentHashMap<>());
-                        cityHousesProtectedBlocks.get(getChunkLocation()).put(this, this);
-                        break;
-                    case PLAYER_PROTECTION:
-                        if (!playerProtectedBlocks.containsKey(getChunkLocation()))
-                            playerProtectedBlocks.put(getChunkLocation(), new ConcurrentHashMap<>());
-                        playerProtectedBlocks.get(getChunkLocation()).put(this, this);
-                        break;
-                }
-            }
             this.currentType = id == null ? null : protectionType;
             return this;
         }
@@ -1985,7 +1928,7 @@ public class WorldService extends Service {
             return currentId;
         }
 
-        public ProtectionType getCurrentType() {
+        public BlockProtectionType getCurrentType() {
             return currentType;
         }
 

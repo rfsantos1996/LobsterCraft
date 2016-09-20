@@ -30,7 +30,7 @@ import org.bukkit.projectiles.ProjectileSource;
  * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
-public class CustomEventsListener implements Listener {
+class CustomEventsListener implements Listener {
 
     /**
      * Check damage for custom events (PlayerDamagePlayerEvent, PlayerDamageEntityEvent, EntityDamagePlayerEvent, EntityDamageEntityEvent)

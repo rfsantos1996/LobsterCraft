@@ -71,8 +71,8 @@ public class PlayerChangesCityOccupationEvent extends Event implements Cancellab
     }
 
     @Override
-    public HandlerList getHandlers() {
-        return handlers;
+    public void setCancelled(boolean cancel) {
+        throw new NotImplementedException("You should use setResult(CityStructure.ChangeOccupationResponse)");
     }
 
     @Override
@@ -81,7 +81,7 @@ public class PlayerChangesCityOccupationEvent extends Event implements Cancellab
     }
 
     @Override
-    public void setCancelled(boolean cancel) {
-        throw new NotImplementedException("You should use setResult(CityStructure.ChangeOccupationResponse)");
+    public HandlerList getHandlers() {
+        return handlers;
     }
 }

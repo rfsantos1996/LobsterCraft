@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
-public class XrayListener implements Listener {
+class XrayListener implements Listener {
 
     private static final List<Material> oreMaterials = Arrays.asList(
             Material.COAL_BLOCK,

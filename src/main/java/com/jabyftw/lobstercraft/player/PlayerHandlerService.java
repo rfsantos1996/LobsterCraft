@@ -61,7 +61,7 @@ public class PlayerHandlerService extends Service {
     /*
      * Offline players
      */
-    private final ConcurrentHashMap<Short, HashSet<OfflinePlayer>> registeredOfflinePlayers_cityId = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, HashSet<OfflinePlayer>> registeredOfflinePlayers_cityId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, OfflinePlayer> registeredOfflinePlayers_name = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, OfflinePlayer> registeredOfflinePlayers_id = new ConcurrentHashMap<>();
     // Unregistered players that may be going to rejoin the server before it closes
@@ -329,7 +329,7 @@ public class PlayerHandlerService extends Service {
      * @param cityId null means no filtering at all
      * @return a Set from HashSet with all offline players filtered by given city id
      */
-    public Set<OfflinePlayer> getOfflinePlayersPlayersForCity(short cityId) {
+    public Set<OfflinePlayer> getOfflinePlayersPlayersForCity(int cityId) {
         // Filter logged players
         synchronized (playerMapsLock) {
             return registeredOfflinePlayers_cityId.get(cityId);
@@ -343,7 +343,7 @@ public class PlayerHandlerService extends Service {
      * @param onlineState null means no filtering at all
      * @return a Set from HashSet with all online players filtered by given onlineState and cityId
      */
-    public Set<OnlinePlayer> getOnlinePlayersForCity(short cityId, @Nullable OnlinePlayer.OnlineState onlineState) {
+    public Set<OnlinePlayer> getOnlinePlayersForCity(int cityId, @Nullable OnlinePlayer.OnlineState onlineState) {
         HashSet<OnlinePlayer> playerSet = new HashSet<>();
 
         // Filter logged players
@@ -697,7 +697,7 @@ public class PlayerHandlerService extends Service {
             String playerName = resultSet.getString("playerName").toLowerCase();
 
             // Check for the nullity of some variables
-            Short cityId = resultSet.getShort("city_cityId");
+            Integer cityId = resultSet.getInt("city_cityId");
             if (resultSet.wasNull()) cityId = null;
 
             Byte cityPositionId = resultSet.getByte("cityPositionId");
@@ -850,7 +850,7 @@ public class PlayerHandlerService extends Service {
                 preparedStatement.setString(1, offlinePlayer.getPlayerName());
                 preparedStatement.setString(2, offlinePlayer.getEncryptedPassword());
                 preparedStatement.setDouble(3, offlinePlayer.getMoneyAmount());
-                preparedStatement.setObject(4, offlinePlayer.getCityId(), Types.SMALLINT); // Will write null if is null
+                preparedStatement.setObject(4, offlinePlayer.getCityId(), Types.INTEGER); // Will write null if is null
                 preparedStatement.setObject(5, offlinePlayer.getCityOccupation() != null ? offlinePlayer.getCityOccupation().getOccupationId() : null, Types.TINYINT);
                 preparedStatement.setLong(6, offlinePlayer.getLastTimeOnline());
                 preparedStatement.setLong(7, offlinePlayer.getTimePlayed());
@@ -1306,6 +1306,14 @@ public class PlayerHandlerService extends Service {
         // Set variables
         event.getOfflinePlayer().cityOccupation = event.getCityOccupation();
         event.getOfflinePlayer().databaseState = DatabaseState.UPDATE_DATABASE;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void onPlayerChangesBuildingMode(PlayerChangesBuildingModeEvent event) {
+        event.getOnlinePlayer().buildingMode = event.getBuildingMode();
+        if (event.shouldWarnPlayer())
+            event.getOnlinePlayer().getPlayer().sendMessage(Util.appendStrings("§6Você está construindo no tipo de proteção de §c",
+                    event.getBuildingMode().getDisplayName()));
     }
 
     /*
