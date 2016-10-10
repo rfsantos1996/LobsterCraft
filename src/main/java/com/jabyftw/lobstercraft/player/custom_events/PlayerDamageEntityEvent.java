@@ -52,10 +52,6 @@ public class PlayerDamageEntityEvent extends Event implements Cancellable {
         this(damaged, damager, event, null);
     }
 
-    public static HandlerList getHandlerList() {
-        return handlers;
-    }
-
     /**
      * @return player that caused the damage (so in case of PlayerDamagePlayerEvent, you're getting the damager)
      */
@@ -83,11 +79,6 @@ public class PlayerDamageEntityEvent extends Event implements Cancellable {
     }
 
     @Override
-    public HandlerList getHandlers() {
-        return handlers;
-    }
-
-    @Override
     public boolean isCancelled() {
         return cancelled;
     }
@@ -95,5 +86,14 @@ public class PlayerDamageEntityEvent extends Event implements Cancellable {
     @Override
     public void setCancelled(boolean cancelled) {
         this.cancelled = cancelled;
+    }
+
+    @Override
+    public HandlerList getHandlers() {
+        return handlers;
+    }
+
+    public static HandlerList getHandlerList() {
+        return handlers;
     }
 }

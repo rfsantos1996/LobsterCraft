@@ -29,19 +29,15 @@ public class BuildingMode {
     private final int protectionId;
 
     private long date;
-    private BlockLocation blockLocation;
+    private BlockLocation blockLocation = null;
 
-    public BuildingMode(@NotNull final BlockProtectionType blockProtectionType, @Nullable Integer protectionId, @NotNull final BlockLocation blockLocation) {
+    public BuildingMode(@NotNull final BlockProtectionType blockProtectionType, @Nullable Integer protectionId, @Nullable BlockLocation blockLocation) {
         this.blockProtectionType = blockProtectionType;
         this.protectionId = protectionId;
         setBlockLocation(blockLocation);
     }
 
-    public String getDisplayName() {
-        return blockProtectionType.getDisplayName();
-    }
-
-    protected BlockProtectionType getBlockProtectionType() {
+    public BlockProtectionType getBlockProtectionType() {
         return blockProtectionType;
     }
 
@@ -57,7 +53,7 @@ public class BuildingMode {
         return blockLocation;
     }
 
-    public void setBlockLocation(BlockLocation blockLocation) {
+    public void setBlockLocation(@Nullable BlockLocation blockLocation) {
         this.blockLocation = blockLocation;
         this.date = System.currentTimeMillis();
     }

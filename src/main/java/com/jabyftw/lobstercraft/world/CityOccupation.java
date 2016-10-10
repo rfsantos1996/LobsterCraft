@@ -32,6 +32,16 @@ public enum CityOccupation {
         this.occupationId = occupationId;
     }
 
+    public boolean canChangeCity() {
+        switch (this) {
+            case BUILDER:
+            case MANAGER:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public byte getOccupationId() {
         return occupationId;
     }

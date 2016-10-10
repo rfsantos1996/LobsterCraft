@@ -53,6 +53,11 @@ public enum ConfigurationValues {
     PLAYER_TIME_PROFILE_KEPT_SECONDS("player.period_profile_is_kept_on_memory_seconds", 60 * 7L),
     PLAYER_TIME_BETWEEN_PROFILE_SAVES_TICKS("player.period_between_profile_saves_ticks", 20L * 30), // 30 seconds
 
+    PLAYER_CHAT_USE_DISTANCE_BASED_CHAT("player.chat.use_distance_based_chat", true),
+    PLAYER_CHAT_DISTANCE_TO_BE_HEARD_VALUE("player.chat.distance_to_be_heard_blocks", 128.0D),
+    PLAYER_CHAT_DISTANCE_TO_BE_HEARD_CHECK_Y("player.chat.distance_to_be_heard_check_y", false),
+    PLAYER_CHAT_MAXIMUM_MUTE_ENTRY_AMOUNT("player.chat.maximum_number_of_mute_entries", 15),
+
     PLAYER_TIME_WAITING_BEFORE_TELEPORTING_TICKS("player.teleport.time_waiting_to_start_teleporting_ticks", 4 * 20L),
     PLAYER_TELEPORT_TIME_BETWEEN_ACCEPT_TRIGGERS_TICKS("player.teleport.time_waiting_between_accept_and_teleport_ticks", 12L),
 

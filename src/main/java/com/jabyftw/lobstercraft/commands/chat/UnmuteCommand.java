@@ -3,10 +3,11 @@ package com.jabyftw.lobstercraft.commands.chat;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft_old.player.OfflinePlayerHandler;
-import com.jabyftw.lobstercraft_old.player.PlayerHandler;
-import com.jabyftw.lobstercraft_old.player.chat.ChatProfile;
-import com.jabyftw.lobstercraft_old.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
+import com.jabyftw.lobstercraft.player.ChatProfile;
+import com.jabyftw.lobstercraft.player.OfflinePlayer;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.util.Util;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -29,22 +30,20 @@ import com.jabyftw.lobstercraft_old.player.util.Permissions;
 public class UnmuteCommand extends CommandExecutor {
 
     public UnmuteCommand() {
-        super("unmute", Permissions.CHAT_MUTE, "Permite ao jogador desmutar algum jogador", "/unmute (jogador)");
+        super("unmute", Permissions.CHAT_MUTE.toString(), "Permite ao jogador desilenciar algum jogador", "/unmute (jogador)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onUnmute(PlayerHandler playerHandler, OfflinePlayerHandler target) {
-        if (!target.isRegistered()) {
-            playerHandler.sendMessage("§cJogador não encontrado!");
-            return true;
-        }
-
-        switch (playerHandler.getProfile(ChatProfile.class).unmutePlayer(target.getPlayerId())) {
-            case ALREADY_UNMUTED:
-                playerHandler.sendMessage("§cJogador não está silenciado.");
+    private boolean onUnmute(OnlinePlayer playerHandler, OfflinePlayer target) {
+        switch (playerHandler.getProfile(ChatProfile.class).unmutePlayer(target)) {
+            case PLAYER_NOT_FOUND:
+                playerHandler.getPlayer().sendMessage("§cJogador não encontrado!");
                 return true;
-            case SUCCESSFULLY_UNMUTED:
-                playerHandler.sendMessage("§6Você, agora, pode ouvir §c" + target.getPlayerName());
+            case PLAYER_ALREADY_UNMUTED:
+                playerHandler.getPlayer().sendMessage("§cJogador não está silenciado.");
+                return true;
+            case SUCCESSFULLY_UNMUTED_PLAYER:
+                playerHandler.getPlayer().sendMessage(Util.appendStrings("§6Você agora pode ouvir §c", target.getPlayerName()));
                 return true;
         }
         return false;

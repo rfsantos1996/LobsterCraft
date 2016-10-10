@@ -5,6 +5,7 @@ import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.world.BlockLocation;
 import com.jabyftw.lobstercraft.world.WorldService;
 import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -40,6 +41,13 @@ public class PlayerChangesBuildingModeEvent extends Event implements Cancellable
             warnPlayer = true,
             cancelled = false;
 
+    public PlayerChangesBuildingModeEvent(@NotNull final OnlinePlayer onlinePlayer, @NotNull final BuildingMode buildingMode) {
+        this.onlinePlayer = onlinePlayer;
+        this.buildingMode = buildingMode;
+        this.blockLocation = null;
+        this.blockPosition = null;
+    }
+
     public PlayerChangesBuildingModeEvent(@NotNull final OnlinePlayer onlinePlayer, @NotNull final BuildingMode buildingMode, @NotNull final BlockLocation blockLocation,
                                           @NotNull final WorldService.RelativeBlockPosition blockPosition) {
         this.onlinePlayer = onlinePlayer;
@@ -56,10 +64,16 @@ public class PlayerChangesBuildingModeEvent extends Event implements Cancellable
         return buildingMode;
     }
 
+    /**
+     * @return null if the reason for build mode change was not a block
+     */
     public BlockLocation getBlockLocation() {
         return blockLocation;
     }
 
+    /**
+     * @return null if the reason for build mode change was not a block
+     */
     public WorldService.RelativeBlockPosition getBlockPosition() {
         return blockPosition;
     }
@@ -70,6 +84,10 @@ public class PlayerChangesBuildingModeEvent extends Event implements Cancellable
 
     public boolean shouldWarnPlayer() {
         return warnPlayer;
+    }
+
+    public boolean hasBlock() {
+        return blockLocation != null;
     }
 
     @Override
@@ -84,6 +102,10 @@ public class PlayerChangesBuildingModeEvent extends Event implements Cancellable
 
     @Override
     public HandlerList getHandlers() {
+        return handlers;
+    }
+
+    public static HandlerList getHandlerList() {
         return handlers;
     }
 }

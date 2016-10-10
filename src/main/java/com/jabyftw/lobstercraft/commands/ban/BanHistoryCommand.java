@@ -6,7 +6,7 @@ import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.OfflinePlayer;
 import com.jabyftw.lobstercraft.player.PlayerHandlerService;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 

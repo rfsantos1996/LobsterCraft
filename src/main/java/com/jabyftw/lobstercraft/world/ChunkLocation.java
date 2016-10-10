@@ -28,7 +28,7 @@ import java.util.Set;
  * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
-class ChunkLocation {
+class ChunkLocation implements Comparable {
 
     private final byte worldId;
     private final int chunkX, chunkZ;
@@ -110,6 +110,11 @@ class ChunkLocation {
                 ((ChunkLocation) obj).worldId == worldId &&
                 ((ChunkLocation) obj).chunkX == chunkX &&
                 ((ChunkLocation) obj).chunkZ == chunkZ;
+    }
+
+    @Override
+    public int compareTo(Object o) {
+        return hashCode() - o.hashCode();
     }
 
     @Override

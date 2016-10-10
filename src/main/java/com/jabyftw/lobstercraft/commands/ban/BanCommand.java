@@ -8,7 +8,8 @@ import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.OfflinePlayer;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.PlayerHandlerService;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
+import com.jabyftw.lobstercraft.player.TriggerController;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -46,7 +47,16 @@ public class BanCommand extends CommandExecutor {
         if (!commandSender.isOp() && onlinePlayer != null && LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.BAN_EXCEPTION.toString()))
             return HandleResponse.RETURN_NO_PERMISSION;
 
-        // TODO: condition: if player is offline, asks the sender if he is sure to ban player
+        OnlinePlayer moderator;
+        // If player is offline, asks the sender if he is sure to ban player
+        if (commandSender instanceof Player) {
+            moderator = LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) commandSender, OnlinePlayer.OnlineState.LOGGED_IN);
+            if (onlinePlayer == null && moderator.getTriggerController().sendMessageIfNotTriggered(TriggerController.TemporaryTrigger.BAN_PLAYER,
+                    Util.appendStrings("§cJogador offline, tem certeza de que quer banir §4\"", offlinePlayer.getPlayerName()), "\"§c? §6Se sim, utilize o comando novamente."))
+                return HandleResponse.RETURN_TRUE;
+        } else {
+            moderator = null;
+        }
 
         // Ban asynchronously
         Bukkit.getScheduler().runTaskAsynchronously(LobsterCraft.plugin, () -> {
@@ -55,8 +65,8 @@ public class BanCommand extends CommandExecutor {
                     offlinePlayer,
                     PlayerHandlerService.BanType.PLAYER_PERMANENTLY_BANNED,
                     reason,
-                    commandSender instanceof Player ?
-                            LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) commandSender, null).getOfflinePlayer().getPlayerId() : null,
+                    moderator != null ?
+                            moderator.getOfflinePlayer().getPlayerId() : null,
                     null
             )) {
                 case SUCCESSFULLY_EXECUTED:

@@ -2,7 +2,7 @@ package com.jabyftw.lobstercraft.player;
 
 import com.jabyftw.lobstercraft.ConfigurationValues;
 import com.jabyftw.lobstercraft.LobsterCraft;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import com.jabyftw.lobstercraft.services.Service;
 import com.jabyftw.lobstercraft.services.services_event.*;
 import com.jabyftw.lobstercraft.util.DatabaseState;
@@ -23,6 +23,7 @@ import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.NumberConversions;
 
+import java.lang.reflect.Constructor;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -103,6 +104,11 @@ public class PlayerHandlerService extends Service {
      */
     private final ConcurrentHashMap<Integer, HashSet<BannedPlayerEntry>> playerBanEntries = new ConcurrentHashMap<>();
 
+    /*
+     * Mute entries: for administrator mutes => this player can't say anything
+     */
+    private final ConcurrentHashMap<Integer, HashSet<MutePlayerEntry>> playerMuteEntries = new ConcurrentHashMap<>();
+
     public PlayerHandlerService() throws SQLException {
         // Register service
         super();
@@ -112,12 +118,14 @@ public class PlayerHandlerService extends Service {
         cacheOfflinePlayers(connection);
         cachePlayerNameChanges(connection);
         cachePlayerBanRecords(connection);
+        cacheModeratorMuteRecords(connection);
 
         // Register our listeners
         Bukkit.getServer().getPluginManager().registerEvents(new CustomEventsListener(), LobsterCraft.plugin);
         Bukkit.getServer().getPluginManager().registerEvents(new PreLoginListener(), LobsterCraft.plugin);
         Bukkit.getServer().getPluginManager().registerEvents(new TeleportListener(), LobsterCraft.plugin);
         Bukkit.getServer().getPluginManager().registerEvents(new SafePlayerActionsListener(), LobsterCraft.plugin);
+        Bukkit.getServer().getPluginManager().registerEvents(new ChatListener(), LobsterCraft.plugin);
         Bukkit.getServer().getPluginManager().registerEvents(new XrayListener(), LobsterCraft.plugin);
 
         // Register profile unloader
@@ -675,6 +683,101 @@ public class PlayerHandlerService extends Service {
         }
     }
 
+    public Set<MutePlayerEntry> getPlayerMutedEntries(int playerId) {
+        return Collections.unmodifiableSet(playerMuteEntries.getOrDefault(playerId, new HashSet<>()));
+    }
+
+    /**
+     * This method will insert a database entry and <b>SHOULD</b> run asynchronously
+     *
+     * @param offlinePlayer player to be muted
+     * @param moderator     the administrator that muted the player, can be null (Console)
+     * @param reason        the reason to be muted
+     * @param muteDuration  duration to be muted
+     * @return a response to send to the administrator
+     */
+    public MuteResponse mutePlayer(@NotNull OfflinePlayer offlinePlayer, @Nullable OnlinePlayer moderator, @NotNull final String reason, @NotNull final long muteDuration) {
+        // Check if player is registered
+        if (!offlinePlayer.isRegistered())
+            return MuteResponse.PLAYER_NOT_REGISTERED;
+
+        // Set variables
+        int playerId = offlinePlayer.getPlayerId();
+        long recordDate = System.currentTimeMillis();
+        long unmuteDate = recordDate + muteDuration;
+
+        // Check if reason has right size
+        if (!Util.checkStringLength(reason, 4, 128))
+            return MuteResponse.INVALID_REASON_LENGTH;
+
+        try {
+            // Retrieve connection
+            Connection connection = LobsterCraft.dataSource.getConnection();
+
+            // Prepare statement
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    "INSERT INTO `minecraft`.`mod_muted_players`(`user_mutedId`, `user_moderatorId`, `muteDate`, `unmuteDate`, `reason`) VALUES (?, ?, ?, ?, ?);",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+
+            // Set variables for query
+            preparedStatement.setInt(1, playerId);
+            if (moderator != null)
+                preparedStatement.setInt(2, moderator.getOfflinePlayer().getPlayerId()); // will write null if is null
+            else
+                preparedStatement.setNull(2, Types.INTEGER);
+            preparedStatement.setLong(3, recordDate);
+            preparedStatement.setLong(4, unmuteDate);
+            preparedStatement.setString(5, reason);
+
+            // Execute statement
+            preparedStatement.execute();
+
+            // Retrieve generated keys
+            ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
+
+            // Throw error if there is no generated key
+            if (!generatedKeys.next())
+                throw new SQLException("There is no generated key");
+
+            // Create entry
+            MutePlayerEntry mutedPlayerEntry = new MutePlayerEntry(
+                    generatedKeys.getLong("mute_index"),
+                    moderator != null ? moderator.getOfflinePlayer().getPlayerId() : null,
+                    recordDate,
+                    unmuteDate,
+                    reason
+            );
+
+            // Add entry to storage
+            synchronized (playerMuteEntries) {
+                playerMuteEntries.putIfAbsent(playerId, new HashSet<>());
+                playerMuteEntries.get(playerId).add(mutedPlayerEntry);
+            }
+
+            // Close everything
+            generatedKeys.close();
+            preparedStatement.close();
+            connection.close();
+
+            // Check if player is online and warn him
+            OnlinePlayer onlinePlayer = offlinePlayer.getOnlinePlayer(null);
+            if (onlinePlayer != null) {
+                StringBuilder stringBuilder = new StringBuilder("§cVocê foi silenciado");
+                if (moderator != null)
+                    stringBuilder.append(" por ").append(moderator.getPlayer().getDisplayName());
+                stringBuilder.append("§c até ").append(Util.formatDate(unmuteDate)).append('\n')
+                        .append("pela razão: §4\"").append(reason).append('\"');
+                onlinePlayer.getPlayer().sendMessage(stringBuilder.toString());
+            }
+
+            return MuteResponse.SUCCESSFULLY_EXECUTED;
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return MuteResponse.ERROR_OCCURRED;
+        }
+    }
+
     /*
      * Database handling
      */
@@ -700,8 +803,8 @@ public class PlayerHandlerService extends Service {
             Integer cityId = resultSet.getInt("city_cityId");
             if (resultSet.wasNull()) cityId = null;
 
-            Byte cityPositionId = resultSet.getByte("cityPositionId");
-            if (resultSet.wasNull()) cityPositionId = null;
+            Byte cityOccupationId = resultSet.getByte("cityOccupation");
+            if (resultSet.wasNull()) cityOccupationId = null;
 
             OfflinePlayer offlinePlayer = new OfflinePlayer(
                     resultSet.getInt("playerId"),
@@ -709,7 +812,7 @@ public class PlayerHandlerService extends Service {
                     resultSet.getString("password"),
                     resultSet.getDouble("moneyAmount"),
                     cityId,
-                    CityOccupation.fromId(cityPositionId),
+                    CityOccupation.fromId(cityOccupationId),
                     resultSet.getLong("lastTimeOnline"),
                     resultSet.getLong("timePlayed"),
                     resultSet.getString("lastIp")
@@ -777,7 +880,7 @@ public class PlayerHandlerService extends Service {
     }
 
     /**
-     * This method will cache every valid (not old) ban records that can deny a player join. Should run on start, so we don't need to synchronize it.
+     * This method will cache every ban record. Should run on start, so we don't need to synchronize it.
      *
      * @param connection MySQL connection
      * @throws SQLException in case of something going wrong, should stop the server on start
@@ -825,6 +928,49 @@ public class PlayerHandlerService extends Service {
         // Announce values
         LobsterCraft.logger.info(Util.appendStrings("Took us ", Util.formatDecimal((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)),
                 "ms to retrieve ", playerBanEntries.size(), " ban records."));
+    }
+
+    /**
+     * This method will cache every mute entry. Should run on start, so we don't need to synchronize it.
+     *
+     * @param connection MySQL connection
+     * @throws SQLException in case of something going wrong, should stop the server on start
+     */
+    private void cacheModeratorMuteRecords(@NotNull final Connection connection) throws SQLException {
+        long start = System.nanoTime();
+        // Prepare statement
+        PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM minecraft.mod_muted_players;");
+
+        // Execute query
+        ResultSet resultSet = preparedStatement.executeQuery();
+
+        // Iterate through results
+        while (resultSet.next()) {
+            // Retrieve variables
+            int mutedId = resultSet.getInt("user_mutedId");
+            Integer moderatorId = resultSet.getInt("user_moderatorId");
+            if (resultSet.wasNull())
+                moderatorId = null;
+
+            // Insert base set
+            playerMuteEntries.putIfAbsent(mutedId, new HashSet<>());
+            // Insert entry
+            playerMuteEntries.get(mutedId).add(new MutePlayerEntry(
+                    resultSet.getLong("mute_index"),
+                    moderatorId,
+                    resultSet.getLong("muteDate"),
+                    resultSet.getLong("unmuteDate"),
+                    resultSet.getString("reason")
+            ));
+        }
+
+        // Close everything
+        resultSet.close();
+        preparedStatement.close();
+
+        // Announce values
+        LobsterCraft.logger.info(Util.appendStrings("Took us ", Util.formatDecimal((double) (System.nanoTime() - start) / (double) TimeUnit.MILLISECONDS.toNanos(1)),
+                "ms to retrieve ", playerMuteEntries.size(), " mute records."));
     }
 
     /**
@@ -971,7 +1117,8 @@ public class PlayerHandlerService extends Service {
             try {
                 // Get all profiles types
                 for (Profile.ProfileType profileType : Profile.ProfileType.values())
-                    profiles.add(profileType.getProfileClass().getConstructor(OnlinePlayer.class).newInstance(onlinePlayer).loadProfileFromDatabase(connection));
+                    // Note: getConstructor(OnlinePlayer) won't work
+                    profiles.add(profileType.getProfileClass().getDeclaredConstructor(OnlinePlayer.class).newInstance(onlinePlayer).loadProfileFromDatabase(connection));
                 return profiles;
             } catch (Exception exception) {
                 exception.printStackTrace();
@@ -1048,6 +1195,7 @@ public class PlayerHandlerService extends Service {
                     // Note: 'null' worlds are supported for permissions system that allows global permissions
                     (!offlinePlayer.isOp() || !LobsterCraft.permission.playerHas(null, offlinePlayer, Permissions.JOIN_FULL_SERVER.toString()))) {
                 event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_FULL, "§4Servidor lotado!\n§cAguarde alguns segundos e tente novamente.");
+                return;
             }
         }
 
@@ -1313,7 +1461,7 @@ public class PlayerHandlerService extends Service {
         event.getOnlinePlayer().buildingMode = event.getBuildingMode();
         if (event.shouldWarnPlayer())
             event.getOnlinePlayer().getPlayer().sendMessage(Util.appendStrings("§6Você está construindo no tipo de proteção de §c",
-                    event.getBuildingMode().getDisplayName()));
+                    event.getBuildingMode().getBlockProtectionType().getDisplayName()));
     }
 
     /*
@@ -1586,6 +1734,49 @@ public class PlayerHandlerService extends Service {
         }
     }
 
+    public class MutePlayerEntry {
+
+        private final long mute_index;
+        private final Integer moderatorId;
+        private final long recordDate, unmuteDate;
+        private final String reason;
+
+        private MutePlayerEntry(long mute_index, @Nullable Integer moderatorId, long recordDate, long unmuteDate, @NotNull String reason) {
+            this.mute_index = mute_index;
+            this.moderatorId = moderatorId;
+            this.recordDate = recordDate;
+            this.unmuteDate = unmuteDate;
+            this.reason = reason;
+        }
+
+        public long getRecordDate() {
+            return recordDate;
+        }
+
+        public long getUnmuteDate() {
+            return unmuteDate;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public boolean isMuted() {
+            return System.currentTimeMillis() <= unmuteDate;
+        }
+
+        public boolean hasModerator() {
+            return this.moderatorId != null;
+        }
+
+        /**
+         * @return null if there is no moderator
+         */
+        public OfflinePlayer getModerator() {
+            return hasModerator() ? getOfflinePlayer(moderatorId) : null;
+        }
+    }
+
     public enum ChangeNameResponse {
         SUCCESSFULLY_CHANGED,
         NAME_UNAVAILABLE,
@@ -1600,6 +1791,13 @@ public class PlayerHandlerService extends Service {
         SUCCESSFULLY_EXECUTED,
         PLAYER_NOT_REGISTERED,
         BAN_DURATION_NOT_SET,
+        INVALID_REASON_LENGTH,
+        ERROR_OCCURRED
+    }
+
+    public enum MuteResponse {
+        SUCCESSFULLY_EXECUTED,
+        PLAYER_NOT_REGISTERED,
         INVALID_REASON_LENGTH,
         ERROR_OCCURRED
     }

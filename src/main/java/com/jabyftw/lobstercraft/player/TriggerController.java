@@ -84,8 +84,9 @@ public class TriggerController {
         PROTECTION_BEING_LOADED(TimeUnit.SECONDS.toMillis(3)),
         PROTECTION_RESPONSE(TimeUnit.SECONDS.toMillis(5)),
         PROTECTION_MINIMUM_HEIGHT(TimeUnit.MINUTES.toMillis(4)),
-
         DELETE_CONSTRUCTION_CHECK(TimeUnit.SECONDS.toMillis(15)),
+        BAN_PLAYER(TimeUnit.SECONDS.toMillis(15)),
+
         WORLD_EDIT_PLAYER_PROTECTION_WARNING(TimeUnit.SECONDS.toMillis(30));
 
         private final long conditionTime;

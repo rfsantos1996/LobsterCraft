@@ -2,7 +2,7 @@ package com.jabyftw.lobstercraft.world;
 
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;

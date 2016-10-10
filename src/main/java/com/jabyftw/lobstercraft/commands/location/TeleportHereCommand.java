@@ -5,7 +5,7 @@ import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.TeleportBuilder;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for PacocaCraft Plugin

@@ -1,4 +1,4 @@
-package com.jabyftw.lobstercraft.player.util;
+package com.jabyftw.lobstercraft;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -29,6 +29,11 @@ public enum Permissions {
     BAN_PLAYER_PERMANENTLY("ban", "ban_permanently_player"),
     BAN_PLAYER_TEMPORARILY("ban", "ban_temporarily_player"),
     BAN_PLAYER_KICK("ban", "kick_player"),
+    BAN_PLAYER_MUTE("ban", "mute_player"),
+
+    CHAT_WHISPER("chat", "whisper"),
+    CHAT_MUTE("chat", "mute"),
+    CHAT_MUTE_EXCEPTION("chat", "mute", "exception"),
 
     PLAYER_SAFE_PLAYER("player", "is_safe_player"),
     PLAYER_CLEAR_ENCHANTMENT("player", "clear_enchantment"),
@@ -91,6 +96,10 @@ public enum Permissions {
 
     WORLD_CREATE_PORTALS("world", "create_portals"),
     WORLD_PROTECTION_USE_TOOL("world", "protection", "use_tool"),
+    WORLD_PROTECTION_CHANGE_BUILD_MODE("world", "protection", "change_build_mode"),
+    WORLD_PROTECTION_CHANGE_BUILD_MODE_ADMINISTRATOR("world", "protection", "change_build_mode", "administrator"),
+    WORLD_PROTECTION_CREATE_BUILD_MODE_ADMINISTRATOR("world", "protection", "change_build_mode", "create_admin_constructions"),
+    WORLD_PROTECTION_REMOVE_BUILD_MODE_ADMINISTRATOR("world", "protection", "change_build_mode", "remove_admin_constructions"),
     WORLD_PROTECTION_IGNORE_PLAYER_BLOCKS("world", "protection", "ignore_player_blocks"),
     WORLD_PROTECTION_IGNORE_CITY_HOUSES_BLOCKS("world", "protection", "ignore_city_houses_blocks"),
     WORLD_PROTECTION_IGNORE_ADMIN_BLOCKS("world", "protection", "ignore_administrator_blocks"),

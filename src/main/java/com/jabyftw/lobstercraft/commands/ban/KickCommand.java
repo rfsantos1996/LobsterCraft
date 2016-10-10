@@ -7,7 +7,7 @@ import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.PlayerHandlerService;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -40,7 +40,7 @@ public class KickCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH)
     private HandleResponse onKickPlayer(CommandSender commandSender, OnlinePlayer onlinePlayer, String... reasonArray) {
         // Check if a not-op is trying to ban a player that have the permission
-        if (!commandSender.isOp() && onlinePlayer != null && LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.BAN_EXCEPTION.toString()))
+        if (!commandSender.isOp() && LobsterCraft.permission.has(onlinePlayer.getPlayer(), Permissions.BAN_EXCEPTION.toString()))
             return HandleResponse.RETURN_NO_PERMISSION;
 
         // Kick asynchronously

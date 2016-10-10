@@ -38,10 +38,6 @@ public class EntityDamagePlayerEvent extends EntityDamageEntityEvent {
         this(damaged, damager, event, null);
     }
 
-    public static HandlerList getHandlerList() {
-        return handlers;
-    }
-
     public Player getPlayerDamaged() {
         return getDamaged();
     }
@@ -49,5 +45,9 @@ public class EntityDamagePlayerEvent extends EntityDamageEntityEvent {
     @Override
     public Player getDamaged() {
         return (Player) super.getDamaged();
+    }
+
+    public static HandlerList getHandlerList() {
+        return handlers;
     }
 }

@@ -4,11 +4,12 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft_old.player.PlayerHandler;
-import com.jabyftw.lobstercraft_old.player.chat.ChatProfile;
-import com.jabyftw.lobstercraft_old.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
+import com.jabyftw.lobstercraft.player.ChatProfile;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 /**
  * Copyright (C) 2015  Rafael Sartori for PacocaCraft Plugin
@@ -34,35 +35,35 @@ public class WhisperCommand extends CommandExecutor {
             WHISPER_RECEIVER_FORMAT = "§c%playerName% §6->§c Você§r: %message%",
             WHISPER_SENDER_FORMAT = "§cVocê §6->§c %playerName%§r: %message%";
 
-    protected static volatile PlayerHandler consoleLastWhisper = null;
+    protected volatile Player consoleLastWhisper = null;
 
     public WhisperCommand() {
-        super("whisper", Permissions.CHAT_WHISPER, "Permite ao jogador mandar mensagens privadas", "/whisper (jogador) (mensagem)");
+        super("whisper", Permissions.CHAT_WHISPER.toString(), "Permite ao jogador mandar mensagens privadas", "/whisper (jogador) (mensagem)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public HandleResponse sendPrivateMessage(PlayerHandler sender, PlayerHandler receiver, String... strings) {
+    private HandleResponse sendPrivateMessage(OnlinePlayer sender, OnlinePlayer receiver, String... strings) {
         // Check if target is logged in or player is muted
-        if (!receiver.isLoggedIn() || receiver.getProfile(ChatProfile.class).isPlayerMuted(sender.getPlayerId()))
+        if (!receiver.isLoggedIn() || receiver.getProfile(ChatProfile.class).isPlayerMuted(sender.getOfflinePlayer().getPlayerId()))
             return HandleResponse.RETURN_HELP;
 
         // Send private message to player
         String message = Util.retrieveMessage(strings);
-        receiver.sendMessage(WHISPER_RECEIVER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", sender.getPlayer().getDisplayName()));
-        sender.sendMessage(WHISPER_SENDER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", receiver.getPlayer().getDisplayName()));
+        receiver.getPlayer().sendMessage(WHISPER_RECEIVER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", sender.getPlayer().getDisplayName()));
+        sender.getPlayer().sendMessage(WHISPER_SENDER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", receiver.getPlayer().getDisplayName()));
 
         return HandleResponse.RETURN_TRUE;
     }
 
     @CommandHandler(senderType = SenderType.CONSOLE)
-    public boolean sendPrivateMessage(CommandSender commandSender, PlayerHandler receiver, String... strings) {
+    private boolean sendPrivateMessage(CommandSender commandSender, OnlinePlayer receiver, String... strings) {
         // Send private message to player
         String message = Util.retrieveMessage(strings);
-        receiver.sendMessage(WHISPER_RECEIVER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", commandSender.getName()));
+        receiver.getPlayer().sendMessage(WHISPER_RECEIVER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", commandSender.getName()));
         commandSender.sendMessage(WHISPER_SENDER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", receiver.getPlayer().getDisplayName()));
 
         // Update last whisper for easy replies
-        consoleLastWhisper = receiver;
+        consoleLastWhisper = receiver.getPlayer();
         return true;
     }
 }

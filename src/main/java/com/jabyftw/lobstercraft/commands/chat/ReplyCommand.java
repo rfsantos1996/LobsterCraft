@@ -3,8 +3,10 @@ package com.jabyftw.lobstercraft.commands.chat;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft_old.player.PlayerHandler;
-import com.jabyftw.lobstercraft_old.player.util.Permissions;
+import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.Permissions;
+import com.jabyftw.lobstercraft.player.ChatProfile;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -30,39 +32,40 @@ import org.bukkit.entity.Player;
 public class ReplyCommand extends CommandExecutor {
 
     public ReplyCommand() {
-        super("reply", Permissions.CHAT_WHISPER, "Permite ao jogador responder mensagens privadas rapidamente", "/r (mensagem)");
+        super("reply", Permissions.CHAT_WHISPER.toString(), "Permite ao jogador responder mensagens privadas rapidamente", "/r (mensagem)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onPlayerReply(PlayerHandler playerHandler, String... strings) {
-        CommandSender lastPrivateSender = playerHandler.getLastWhisper();
+    private boolean onPlayerReply(OnlinePlayer onlinePlayer, String... strings) {
+        CommandSender lastPrivateSender = onlinePlayer.getProfile(ChatProfile.class).getLastWhisper();
 
         // Check if there is someone online to reply
         if (lastPrivateSender == null || (lastPrivateSender instanceof Player && !((Player) lastPrivateSender).isOnline())) {
-            playerHandler.setLastWhisper(null);
-            playerHandler.sendMessage("§cNão há outro jogador para mandar a resposta.");
+            onlinePlayer.getProfile(ChatProfile.class).setLastWhisper(null);
+            onlinePlayer.getPlayer().sendMessage("§cNão há jogador para responder.");
             return true;
         }
 
         // Send message
         String message = Util.retrieveMessage(strings);
 
-        lastPrivateSender.sendMessage(WhisperCommand.WHISPER_RECEIVER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", playerHandler.getPlayer().getDisplayName()));
-        playerHandler.sendMessage(WhisperCommand.WHISPER_SENDER_FORMAT.replaceAll("%message%", message)
+        lastPrivateSender.sendMessage(WhisperCommand.WHISPER_RECEIVER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", onlinePlayer.getPlayer().getDisplayName()));
+        onlinePlayer.getPlayer().sendMessage(WhisperCommand.WHISPER_SENDER_FORMAT.replaceAll("%message%", message)
                 .replaceAll("%playerName%", lastPrivateSender instanceof Player ? ((Player) lastPrivateSender).getDisplayName() : lastPrivateSender.getName()));
 
         // Check if last whisper is from console
         if (!(lastPrivateSender instanceof Player))
-            WhisperCommand.consoleLastWhisper = playerHandler;
+            LobsterCraft.servicesManager.commandService.whisperCommand.consoleLastWhisper = onlinePlayer.getPlayer();
         return true;
     }
 
     @CommandHandler(senderType = SenderType.CONSOLE)
-    public boolean onPlayerReply(CommandSender sender, String... strings) {
-        PlayerHandler lastWhisper = WhisperCommand.consoleLastWhisper;
-        if (lastWhisper == null || !lastWhisper.isLoggedIn()) {
+    private boolean onPlayerReply(CommandSender sender, String... strings) {
+        Player lastWhisper = LobsterCraft.servicesManager.commandService.whisperCommand.consoleLastWhisper;
+        if (lastWhisper == null ||
+                (lastWhisper.isOnline() && LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer(lastWhisper, OnlinePlayer.OnlineState.LOGGED_IN) != null)) {
             sender.sendMessage("§6Jogador não está online");
-            WhisperCommand.consoleLastWhisper = null;
+            LobsterCraft.servicesManager.commandService.whisperCommand.consoleLastWhisper = null;
             return true;
         }
 
@@ -70,7 +73,6 @@ public class ReplyCommand extends CommandExecutor {
 
         lastWhisper.sendMessage(WhisperCommand.WHISPER_RECEIVER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", sender.getName()));
         sender.sendMessage(WhisperCommand.WHISPER_SENDER_FORMAT.replaceAll("%message%", message).replaceAll("%playerName%", lastWhisper.getPlayer().getDisplayName()));
-
         return true;
     }
 }

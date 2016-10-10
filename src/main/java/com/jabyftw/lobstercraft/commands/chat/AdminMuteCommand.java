@@ -3,12 +3,16 @@ package com.jabyftw.lobstercraft.commands.chat;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft_old.LobsterCraft;
-import com.jabyftw.lobstercraft_old.player.OfflinePlayerHandler;
-import com.jabyftw.lobstercraft_old.player.util.Permissions;
+import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.Permissions;
+import com.jabyftw.lobstercraft.player.OfflinePlayer;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.util.Util;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
+import javax.persistence.Lob;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -31,35 +35,36 @@ import org.bukkit.entity.Player;
 public class AdminMuteCommand extends CommandExecutor {
 
     public AdminMuteCommand() {
-        super("adminmute", Permissions.CHAT_ADMIN_MUTE, "Permite ao jogador silenciar um jogador de todo o servidor", "/adminmute (jogador) (tempo silenciado) (motivo)");
+        super("adminmute", Permissions.BAN_PLAYER_MUTE.toString(), "Permite ao jogador silenciar um jogador de todo o servidor", "/adminmute (jogador) (tempo silenciado) (motivo)");
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    public boolean onAdminMute(CommandSender commandSender, OfflinePlayerHandler target, Long timeSilenced, String... reasonArray) {
-        String reason = Util.retrieveMessage(reasonArray);
+    private boolean onAdministratorMute(CommandSender commandSender, OfflinePlayer target, Long timeSilenced, String... reasonArray) {
+        Bukkit.getScheduler().runTaskAsynchronously(LobsterCraft.plugin,
+                () -> {
+                    String reason = Util.retrieveMessage(reasonArray);
 
-        if (!Util.checkStringLength(reason, 4, 128)) {
-            commandSender.sendMessage("§cMotivo está muito longo ou muito curto.");
-            return true;
-        }
-
-        if (!target.isRegistered()) {
-            commandSender.sendMessage("§cJogador não encontrado.");
-            return true;
-        }
-
-        long unmuteDate = LobsterCraft.chatService.moderatorMutePlayer(
-                target.getPlayerId(),
-                commandSender instanceof Player ? LobsterCraft.playerHandlerService.getPlayerHandler((Player) commandSender).getPlayerId() : null,
-                reason,
-                timeSilenced
+                    switch (LobsterCraft.servicesManager.playerHandlerService.mutePlayer(target,
+                            commandSender instanceof Player ?
+                                    LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) commandSender, OnlinePlayer.OnlineState.LOGGED_IN) : null,
+                            reason,
+                            timeSilenced
+                    )) {
+                        case SUCCESSFULLY_EXECUTED:
+                            commandSender.sendMessage(Util.appendStrings("§c", target.getPlayerName(), "§6 foi silenciado!"));
+                            break;
+                        case INVALID_REASON_LENGTH:
+                            commandSender.sendMessage("§cRazão muito curta ou muito longa!");
+                            break;
+                        case PLAYER_NOT_REGISTERED:
+                            commandSender.sendMessage("§cJogador não encontrado!");
+                            break;
+                        case ERROR_OCCURRED:
+                            commandSender.sendMessage("§4Ocorreu um erro!");
+                            break;
+                    }
+                }
         );
-
-        String format = Util.formatDate(unmuteDate);
-
-        if (target.isOnline())
-            target.getPlayerHandler().sendMessage("§6Você foi silenciado por §c" + commandSender.getName() + "§6 até §c" + format + "§6 pelo motivo: §c\"" + reason + "\"");
-        commandSender.sendMessage(target.getPlayerName() + "§6 foi silenciado até §c" + format);
         return true;
     }
 }

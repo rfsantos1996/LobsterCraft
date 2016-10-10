@@ -4,7 +4,7 @@ import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import com.jabyftw.lobstercraft.util.Util;
 import org.bukkit.command.CommandSender;
 

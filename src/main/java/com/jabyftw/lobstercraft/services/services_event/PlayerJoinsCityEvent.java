@@ -63,11 +63,6 @@ public class PlayerJoinsCityEvent extends Event implements Cancellable {
     }
 
     @Override
-    public HandlerList getHandlers() {
-        return handlers;
-    }
-
-    @Override
     public boolean isCancelled() {
         return result != CityStructure.JoinCityResponse.SUCCESSFULLY_JOINED_CITY;
     }
@@ -75,5 +70,14 @@ public class PlayerJoinsCityEvent extends Event implements Cancellable {
     @Override
     public void setCancelled(boolean cancel) {
         throw new NotImplementedException("You should use setResult(CityStructure.JoinCityResponse)");
+    }
+
+    @Override
+    public HandlerList getHandlers() {
+        return handlers;
+    }
+
+    public static HandlerList getHandlerList() {
+        return handlers;
     }
 }

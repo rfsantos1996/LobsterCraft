@@ -5,7 +5,7 @@ import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.TriggerController;
 import com.jabyftw.lobstercraft.player.custom_events.EntityDamageEntityEvent;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import com.jabyftw.lobstercraft.services.Service;
 import com.jabyftw.lobstercraft.services.services_event.PlayerChangesBuildingModeEvent;
 import com.jabyftw.lobstercraft.util.DatabaseState;
@@ -260,6 +260,13 @@ public class WorldService extends Service {
      */
     public Integer getConstructionId(@NotNull final String constructionName) {
         return administrator_constructions_name.get(constructionName.toLowerCase());
+    }
+
+    /**
+     * @return a set containing all constructions
+     */
+    public Set<Map.Entry<String, Integer>> getConstructions() {
+        return administrator_constructions_name.entrySet();
     }
 
     /**
@@ -570,8 +577,9 @@ public class WorldService extends Service {
                     // Check if building mode will require the "build mode" command:
                     // We can't determinate which block protection type the player wants AND...
                     if (blockPosition.getPossibleProtectionTypes().contains(currentBuildingMode.getBlockProtectionType()) &&
-                            // ...location is near (we can't consider different types of build mode) AND...
-                            blockLocation.distanceXZSquared(currentBuildingMode.getBlockLocation()) <= BUILD_MODE_THRESHOLD_DISTANCE_SQUARED &&
+                            // ...location isn't null and is near (we can't consider different types of build mode) (null = command recently changed build mode) AND...
+                            (currentBuildingMode.getBlockLocation() != null &&
+                                    blockLocation.distanceXZSquared(currentBuildingMode.getBlockLocation()) <= BUILD_MODE_THRESHOLD_DISTANCE_SQUARED) &&
                             // ...time since last block build is short
                             (System.currentTimeMillis() - currentBuildingMode.getDate()) <= BUILD_MODE_THRESHOLD_TIME)
                         willRequireCommand = true;
@@ -1942,5 +1950,4 @@ public class WorldService extends Service {
 //            this.originalId = currentId;
 //        }
     }
-
 }

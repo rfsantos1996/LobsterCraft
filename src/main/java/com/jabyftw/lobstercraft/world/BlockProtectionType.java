@@ -22,7 +22,7 @@ import org.bukkit.util.NumberConversions;
  * <p/>
  * Email address: rafael.sartori96@gmail.com
  */
-enum BlockProtectionType {
+public enum BlockProtectionType {
 
     CITY_BLOCKS((byte) 0, 60.0D, false, "blocos da cidade") {
         @Override
@@ -40,7 +40,7 @@ enum BlockProtectionType {
             return Math.min(60.0D + NumberConversions.ceil(8.78D * (cityLevel - 1)), getMinimumDistanceBetweenCities()); // max protection range (level 10) will be 140 blocks
         }
     },
-    CITY_HOUSES((byte) 1, 20.0D, true, "casa da cidade"),
+    CITY_HOUSES((byte) 1, 20.0D, true, "blocos da casa"),
     PLAYER_BLOCKS((byte) 2, 18.75D, true, "jogador"),
     ADMINISTRATOR_BLOCKS((byte) 3, 170.0D, false, "administrador");
 
@@ -123,18 +123,4 @@ enum BlockProtectionType {
     public static double protectionDistanceSquared(@NotNull final BlockLocation blockLocation, @NotNull final BlockLocation protectionCenter, boolean checkY) {
         return checkY ? blockLocation.distanceSquared(protectionCenter) : blockLocation.distanceXZSquared(protectionCenter);
     }
-
-//    WORLD_PROTECTION_PLAYER_DISTANCE("world.protection.player.protection_distance", 13.0D),
-//    WORLD_PROTECTION_PLAYER_CHECK_Y("world.protection.player.protection_check_y_axis", true),
-//    WORLD_PROTECTION_ADMIN_DISTANCE("world.protection.admin.protection_distance", 150.0D),
-//    WORLD_PROTECTION_ADMIN_CHECK_Y("world.protection.admin.protection_check_y_axis", false),
-//    WORLD_PROTECTION_CITY_MAX_DISTANCE_FROM_CENTER("world.protection.city.protection_distance", 125.0D),
-//    WORLD_PROTECTION_CITY_CHECK_Y("world.protection.city.protection_check_y_axis", false),
-//    CITY_DISTANCE_BETWEEN_CITIES_CHECK_Y("city.check_y_distance_between_cities", false),
-//    CITY_MINIMUM_DISTANCE_BETWEEN_CITIES("city.minimum_distance_between_cities", 150.0D),
-//    CITY_MAXIMUM_DISTANCE_BETWEEN_CITIES("city.maximum_distance_between_cities", 1_500.0D),
-//    CITY_HOUSE_PROTECTION_DISTANCE("city.house_protection_radius", 13.0D), // on the minimum radius (60), you "can" fit 20 houses (one is the center)
-//*    CITY_LEVELING_INITIAL_RANGE("city.leveling.initial_protection_range", 60.0D),
-//*    CITY_LEVELING_RANGE_PER_LEVEL("city.leveling.range_per_level", 7.10D), // 124 in total
-
 }

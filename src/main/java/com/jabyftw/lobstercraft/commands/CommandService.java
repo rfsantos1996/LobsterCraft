@@ -38,7 +38,8 @@ import org.bukkit.Server;
 public class CommandService extends Service {
 
     // Used on SpawnCommand
-    public static WorldCommand worldCommand;
+    public final WorldCommand worldCommand;
+    public final WhisperCommand whisperCommand;
 
     public CommandService() {
         Server server = Bukkit.getServer();
@@ -51,16 +52,15 @@ public class CommandService extends Service {
             // chat
             server.getPluginCommand("mute").setExecutor(new MuteCommand());
             server.getPluginCommand("unmute").setExecutor(new UnmuteCommand());
-            server.getPluginCommand("whisper").setExecutor(new WhisperCommand());
+            server.getPluginCommand("whisper").setExecutor(whisperCommand = new WhisperCommand());
             server.getPluginCommand("reply").setExecutor(new ReplyCommand());
             server.getPluginCommand("adminmute").setExecutor(new AdminMuteCommand());
-            server.getPluginCommand("adminunmute").setExecutor(new AdminUnmuteCommand());
             // location
             server.getPluginCommand("teleport").setExecutor(new TeleportCommand());
             server.getPluginCommand("teleporthere").setExecutor(new TeleportHereCommand());
             server.getPluginCommand("spawnset").setExecutor(new SpawnSetCommand());
             server.getPluginCommand("spawn").setExecutor(new SpawnCommand());
-            server.getPluginCommand("world").setExecutor(new WorldCommand());
+            server.getPluginCommand("world").setExecutor(worldCommand = new WorldCommand());
             server.getPluginCommand("back").setExecutor(new BackCommand());
             server.getPluginCommand("top").setExecutor(new TopCommand());
             // login

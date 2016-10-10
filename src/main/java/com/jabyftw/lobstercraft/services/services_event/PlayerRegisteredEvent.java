@@ -35,4 +35,8 @@ public class PlayerRegisteredEvent extends PlayerLoggedInEvent {
     public HandlerList getHandlers() {
         return handlers;
     }
+
+    public static HandlerList getHandlerList() {
+        return handlers;
+    }
 }

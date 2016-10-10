@@ -6,19 +6,22 @@ import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
 import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.player.TriggerController;
+import com.jabyftw.lobstercraft.Permissions;
+import com.jabyftw.lobstercraft.services.services_event.PlayerChangesBuildingModeEvent;
 import com.jabyftw.lobstercraft.util.Util;
+import com.jabyftw.lobstercraft.world.BlockProtectionType;
+import com.jabyftw.lobstercraft.world.BuildingMode;
+import com.jabyftw.lobstercraft.world.CityStructure;
+import com.jabyftw.lobstercraft.world.WorldService;
+import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
+import java.util.*;
 
 /**
  * Copyright (C) 2016  Rafael Sartori for LobsterCraft Plugin
@@ -40,168 +43,156 @@ import java.util.concurrent.FutureTask;
  */
 public class BuildModeCommand extends CommandExecutor {
 
+    // General command aliases
     private final List<String>
-            listAliases = Arrays.asList("list", "listar", "nomes", "lista"),
-            changeAliases = Arrays.asList("modify", "build", "construir", "alterar", "modificar", "change", "edit", "editar"),
-            createAliases = Arrays.asList("criar", "create", "new", "novo", "nova"),
-            deleteAliases = Arrays.asList("delete", "deletar", "remover", "excluir", "exclude", "del"),
-            exitAliases = Arrays.asList("leave", "sair", "exit", "quit");
+            administratorAliases = Arrays.asList("admin", "adm", "administrator", "construction", "construct", "build", "construcao");
+
+    // Player command aliases
+    private final List<String>
+            cityAliases = Arrays.asList("cidade", "city"),
+            houseAliases = Arrays.asList("casa", "house"),
+            playerAliases = Arrays.asList("player", "individual", "individ");
+
+    // Administrator command aliases
+    private final List<String>
+            listConstructionsAliases = Arrays.asList("list", "listar", "nomes", "lista"),
+            createConstructionsAliases = Arrays.asList("criar", "create", "new", "novo", "nova"),
+            changeConstructionsAliases = Arrays.asList("modify", "build", "construir", "alterar", "modificar", "change", "edit", "editar"),
+            removeConstructionsAliases = Arrays.asList("delete", "deletar", "remover", "remove", "excluir", "exclude", "del");
 
     public BuildModeCommand() {
         super(
                 "buildmode",
-                Permissions.PROTECTION_ADMINISTRATOR_BUILD_MODE.toString(),
+                Permissions.WORLD_PROTECTION_CHANGE_BUILD_MODE.toString(),
                 "Permite ao jogador construir no modo administrador",
-                "/blockmode (criar/construir/sair/deletar/listar) (nome identificador para construção)"
+                "/blockmode (cidade/casa/individual/administrador)"
         );
     }
 
     @CommandHandler(senderType = SenderType.BOTH)
-    private HandleResponse onBuildMode(CommandSender sender, String[] commands) {
+    private HandleResponse onBaseCommand(CommandSender sender, String[] commands) {
         if (commands.length < 1) {
-            if (sender instanceof Player)
-                sender.sendMessage(Util.appendStrings("§6Seu modo de construção é §c",
-                        LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN)
-                                .getProtectionType().name()
-                ));
+            if (sender instanceof Player) {
+                BuildingMode buildingMode = LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN).getBuildingMode();
+                sender.sendMessage(buildingMode != null ?
+                        Util.appendStrings("§6Seu modo de proteção é de §c", buildingMode.getBlockProtectionType().getDisplayName()) :
+                        "§cModo de construção não definido!"
+                );
+            }
             return HandleResponse.RETURN_HELP;
         }
 
         String firstArgument = commands[0].toLowerCase();
 
-        // Check for each argument
-        if (listAliases.contains(firstArgument))
-            return onList(sender);
-        else if (exitAliases.contains(firstArgument) && sender instanceof Player)
-            return onExit(LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN));
-        else if (createAliases.contains(firstArgument) && commands.length > 1)
-            return onCreate(sender, Util.removeIndexFromString(0, commands));
-        else if (deleteAliases.contains(firstArgument) && commands.length > 1)
-            return onDelete(sender, Util.removeIndexFromString(0, commands));
-        else if (changeAliases.contains(firstArgument) && commands.length > 1 && sender instanceof Player)
-            return onModify(LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN),
-                    Util.removeIndexFromString(0, commands));
-        else
-            return HandleResponse.RETURN_HELP;
-    }
-
-    private HandleResponse onDelete(CommandSender sender, String[] arguments) {
-        String constructionName = arguments[0].toLowerCase();
-        Long constructionId = LobsterCraft.constructionsService.getConstructionId(constructionName);
-
-        if (constructionId == null) {
-            sender.sendMessage("§cConstrução não encontrada.");
-            return HandleResponse.RETURN_TRUE;
+        // Check for administrator commands
+        if (administratorAliases.contains(firstArgument)) {
+            if (LobsterCraft.permission.has(sender, Permissions.WORLD_PROTECTION_CHANGE_BUILD_MODE_ADMINISTRATOR.toString())) {
+                if (commands.length >= 2) {
+                    String secondArgument = commands[1].toLowerCase();
+                    if (listConstructionsAliases.contains(secondArgument)) {
+                        return onListConstructions(sender);
+                    } else if (commands.length >= 3) {
+                        String thirdArgument = commands[2].toLowerCase();
+                        if (createConstructionsAliases.contains(secondArgument))
+                            return onCreateConstructions(sender, thirdArgument);
+                        else if (removeConstructionsAliases.contains(secondArgument))
+                            return onRemoveConstructions(sender, thirdArgument);
+                        else if (changeConstructionsAliases.contains(secondArgument) && sender instanceof Player)
+                            return onModifyConstruction(LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN),
+                                    thirdArgument);
+                    }
+                }
+                // Help for administrator
+                sender.sendMessage("§6Uso: §c/blockmode admin (criar/modificar/remover/listar) (identificador para construção - nome)");
+                return HandleResponse.RETURN_TRUE;
+            } else {
+                return HandleResponse.RETURN_NO_PERMISSION;
+            }
         }
 
+        // Check for player commands
         if (sender instanceof Player) {
             OnlinePlayer onlinePlayer = LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN);
-
-            if (onlinePlayer.getConditionController().sendMessageIfConditionReady(
-                    ConditionController.Condition.DELETE_CONSTRUCTION_CHECK,
-                    "§cTem certeza de que quer deletar a construção §6" + constructionName + "§c? §6Se sim, repita o comando. §4TODOS OS BLOCOS SERÃO DESPROTEGIDOS."
-            ))
-                return HandleResponse.RETURN_TRUE;
-        }
-
-        Bukkit.getScheduler().runTaskAsynchronously(LobsterCraft.plugin, () -> {
-            try {
-                LobsterCraft.constructionsService.deleteConstruction(constructionName, constructionId);
-                sender.sendMessage("§6Todos os blocos foram desprotegidos, a construção §c" + constructionName + "§6 foi deletada.");
-            } catch (SQLException e) {
-                e.printStackTrace();
-                sender.sendMessage("§cOcorreu um erro no banco de dados.");
-            }
-        });
-        return HandleResponse.RETURN_TRUE;
-    }
-
-    private HandleResponse onExit(OnlinePlayer onlinePlayer) {
-        if (onlinePlayer.getBuildMode() != BuildMode.DEFAULT) {
-            onlinePlayer.setBuildMode(null);
-            onlinePlayer.getPlayer().sendMessage("§6Você agora está construindo como jogador.");
+            if (houseAliases.contains(firstArgument))
+                return onBuildMode(onlinePlayer, BlockProtectionType.CITY_HOUSES);
+            else if (cityAliases.contains(firstArgument))
+                return onBuildMode(onlinePlayer, BlockProtectionType.CITY_BLOCKS);
+            else if (playerAliases.contains(firstArgument))
+                return onBuildMode(onlinePlayer, BlockProtectionType.PLAYER_BLOCKS);
+            else
+                return HandleResponse.RETURN_HELP;
         } else {
-            onlinePlayer.getPlayer().sendMessage("§cVocê já está no modo de construção padrão.");
+            return HandleResponse.RETURN_HELP;
         }
-        return HandleResponse.RETURN_TRUE;
     }
 
-    private HandleResponse onModify(OnlinePlayer onlinePlayer, String[] arguments) {
-        // Search construction Id
-        Long constructionId = LobsterCraft.constructionsService.getConstructionId(arguments[0]);
+    private HandleResponse onBuildMode(OnlinePlayer onlinePlayer, BlockProtectionType protectionType) {
+        if (protectionType == BlockProtectionType.CITY_HOUSES || protectionType == BlockProtectionType.CITY_BLOCKS) {
+            CityStructure cityStructure = onlinePlayer.getOfflinePlayer().getCity();
 
-        // Check if is a valid construction
-        if (constructionId == null) {
-            // Warn player
-            onlinePlayer.getPlayer().sendMessage("§4Não foi possível encontrar a construção.§c Use §6/buildmode list");
-        } else {
-            // Set up administrator mode with desired constructionId
-            onlinePlayer.setBuildMode(new AdministratorBuildMode(constructionId));
-            onlinePlayer.getPlayer().sendMessage("§6Você está construindo para §c" + arguments[0].toLowerCase() + "§6. §cTodos seus blocos serão protegidos em nome da construção.");
-        }
-        return HandleResponse.RETURN_TRUE;
-    }
+            // Check if player has a city
+            if (cityStructure != null) {
+                if (protectionType == BlockProtectionType.CITY_HOUSES) {
+                    CityStructure.CityHouse cityHouse = cityStructure.getHouseFromPlayer(onlinePlayer.getOfflinePlayer().getPlayerId());
 
-    private HandleResponse onCreate(CommandSender sender, String[] arguments) {
-        if (LobsterCraft.permission.has(sender, Permissions.PROTECTION_CREATE_ADMINISTRATOR_BUILDINGS.toString())) {
-            String constructionName = arguments[0].toLowerCase();
+                    // Check if player has a house
+                    if (cityHouse != null)
+                        setBuildMode(onlinePlayer, BlockProtectionType.CITY_HOUSES, cityHouse.getHouseId());
+                    else
+                        onlinePlayer.getPlayer().sendMessage("§cVocê não possui uma casa nesta cidade!");
 
-            // Check if it is a valid name
-            if (!Util.checkStringCharactersAndLength(constructionName, 3, 45)) {
-                sender.sendMessage("§cNome inválido! Deve conter entre 3 e 45 letras, sem espaços.");
+                    return HandleResponse.RETURN_TRUE;
+                } else
+                    // protectionType is CITY_BLOCKS
+                    if (onlinePlayer.getOfflinePlayer().getCityOccupation().canChangeCity()) {
+                        setBuildMode(onlinePlayer, BlockProtectionType.CITY_BLOCKS, cityStructure.getCityId());
+                        return HandleResponse.RETURN_TRUE;
+                    } else {
+                        onlinePlayer.getPlayer().sendMessage("§cSua ocupação na cidade não permite edita-la!");
+                        return HandleResponse.RETURN_TRUE;
+                    }
+            } else {
+                onlinePlayer.getPlayer().sendMessage("§cVocê não está em uma cidade!");
                 return HandleResponse.RETURN_TRUE;
             }
-
-            // Search construction Id
-            Long searchId = LobsterCraft.constructionsService.getConstructionId(constructionName);
-
-            if (searchId != null) {
-                // Warn player that construction exists
-                sender.sendMessage("§cJá existe uma construção com este nome. §6Use §c/buildmode alterar " + constructionName + "§6 para construir lá.");
-                return HandleResponse.RETURN_TRUE;
-            }
-
-            // Register construction, initialize player (if sender is a Player)
-            Bukkit.getScheduler().runTaskAsynchronously(LobsterCraft.plugin, () -> {
-                FutureTask<Long> registerTask = LobsterCraft.constructionsService.registerConstruction(constructionName);
-                // Note: constructionId will be inserted on a ScheduledTask, so we need to use it on a scheduled task too
-                registerTask.run();
-                try {
-                    Long constructionId = registerTask.get();
-
-                    // Check if its a valid constructionId
-                    if (constructionId == null) throw new NullPointerException("constructionId is null");
-
-                    // Run synchronously as it is required by constructionId database
-                    Bukkit.getScheduler().runTask(LobsterCraft.plugin, () -> {
-                        // If sender is a player and have permission to construct
-                        if (sender instanceof Player && LobsterCraft.permission.has(sender, Permissions.PROTECTION_ADMINISTRATOR_BUILD_MODE)) {
-                            OnlinePlayer onlinePlayer = LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN);
-
-                            // Set as constructing if has permission
-                            onlinePlayer.setBuildMode(new AdministratorBuildMode(constructionId));
-                            onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6Você agora está construindo para §c",
-                                    constructionName, "§6. §cTodos os seus blocos serão protegidos em nome da construção."));
-                        } else {
-                            sender.sendMessage("§6Construção criada! Avise construtores que agora são permitidos a construir.");
-                        }
-                    });
-                } catch (InterruptedException | ExecutionException | NullPointerException exception) {
-                    exception.printStackTrace();
-                    sender.sendMessage("§4Ocorreu um erro! §cNão foi possível criar a construção.");
-                }
-            });
+        } else if (protectionType == BlockProtectionType.PLAYER_BLOCKS) {
+            setBuildMode(onlinePlayer, BlockProtectionType.PLAYER_BLOCKS, onlinePlayer.getOfflinePlayer().getPlayerId());
             return HandleResponse.RETURN_TRUE;
         } else {
-            return HandleResponse.RETURN_NO_PERMISSION;
+            return HandleResponse.RETURN_HELP;
         }
     }
 
-    private HandleResponse onList(CommandSender sender) {
-        Set<String> constructionSet = LobsterCraft.constructionsService.getConstructionSet();
+    private HandleResponse onModifyConstruction(OnlinePlayer onlinePlayer, String identifier) {
+        Integer constructionId = LobsterCraft.servicesManager.worldService.getConstructionId(identifier);
+
+        // Set block construction mode
+        if (constructionId != null)
+            setBuildMode(onlinePlayer, BlockProtectionType.ADMINISTRATOR_BLOCKS, constructionId);
+        else
+            onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§4Construção §C\"", identifier, "\"§4 não encontrada! §cVeja a lista com /bm adm list"));
+
+        return HandleResponse.RETURN_TRUE;
+    }
+
+    private void setBuildMode(@NotNull OnlinePlayer onlinePlayer, @NotNull BlockProtectionType blockProtectionType, @Nullable Integer protectionId) {
+        // Build future building mode
+        BuildingMode futureBuildingMode = new BuildingMode(blockProtectionType, protectionId, null);
+
+        // Call event
+        PlayerChangesBuildingModeEvent changesBuildingModeEvent = new PlayerChangesBuildingModeEvent(onlinePlayer, futureBuildingMode);
+        Bukkit.getPluginManager().callEvent(changesBuildingModeEvent);
+    }
+
+    private HandleResponse onListConstructions(CommandSender sender) {
+        // Check if player has permission
+        if (!LobsterCraft.permission.has(sender, Permissions.WORLD_PROTECTION_CHANGE_BUILD_MODE_ADMINISTRATOR.toString()))
+            return HandleResponse.RETURN_NO_PERMISSION;
+
+        Set<Map.Entry<String, Integer>> constructions = LobsterCraft.servicesManager.worldService.getConstructions();
 
         // Check if there are constructions
-        if (constructionSet.isEmpty()) {
+        if (constructions.isEmpty()) {
             sender.sendMessage("§cAinda não há nenhuma construção disponível!");
             return HandleResponse.RETURN_TRUE;
         }
@@ -209,16 +200,82 @@ public class BuildModeCommand extends CommandExecutor {
         StringBuilder stringBuilder = new StringBuilder("§6Construções criadas: ");
 
         // Iterate through all items
-        Iterator<String> iterator = constructionSet.iterator();
-
-        while (iterator.hasNext()) {
-            // Append colored name and a comma
-            stringBuilder.append("§c").append(iterator.next());
-            if (iterator.hasNext()) stringBuilder.append("§6, ");
+        boolean first = true;
+        for (Map.Entry<String, Integer> entry : constructions) {
+            // Append comma if isn't the first one
+            if (!first) stringBuilder.append("§6, ");
+            first = false;
+            // Append colored name and id
+            stringBuilder.append("§c").append(entry.getValue()).append(" (").append(entry.getValue()).append(")");
         }
 
         // Send message to player
         sender.sendMessage(stringBuilder.toString());
+        return HandleResponse.RETURN_TRUE;
+    }
+
+    private HandleResponse onCreateConstructions(CommandSender sender, final String constructionName) {
+        // Check if player has permission
+        if (!LobsterCraft.permission.has(sender, Permissions.WORLD_PROTECTION_CREATE_BUILD_MODE_ADMINISTRATOR.toString()))
+            return HandleResponse.RETURN_NO_PERMISSION;
+
+        Bukkit.getScheduler().runTaskAsynchronously(
+                LobsterCraft.plugin,
+                () -> {
+                    try {
+                        WorldService.ConstructionCreationResponse response = LobsterCraft.servicesManager.worldService.createConstruction(constructionName);
+
+                        if (response == WorldService.ConstructionCreationResponse.NAME_INVALID)
+                            sender.sendMessage("§cNome inválido! Deve conter entre 3 e 45 letras, sem espaços.");
+                        else if (response == WorldService.ConstructionCreationResponse.NAME_MATCHED_ANOTHER)
+                            sender.sendMessage(Util.appendStrings("§cJá existe uma construção com este nome. §6Use §c/buildmode construir ", constructionName, "§6 para construí-la."));
+                        else if (response == WorldService.ConstructionCreationResponse.SUCCESSFULLY_CREATED)
+                            sender.sendMessage("§6Construção criada! Os construtores podem agora modificá-la.");
+                    } catch (SQLException exception) {
+                        exception.printStackTrace();
+                        sender.sendMessage("§cAlgo falhou no banco de dados!");
+                    }
+                }
+        );
+        return HandleResponse.RETURN_TRUE;
+    }
+
+    private HandleResponse onRemoveConstructions(CommandSender sender, final String constructionName) {
+        // Check if player has permission
+        if (!LobsterCraft.permission.has(sender, Permissions.WORLD_PROTECTION_REMOVE_BUILD_MODE_ADMINISTRATOR.toString()))
+            return HandleResponse.RETURN_NO_PERMISSION;
+
+        final Integer constructionId = LobsterCraft.servicesManager.worldService.getConstructionId(constructionName);
+
+        // Find construction
+        if (constructionId == null) {
+            sender.sendMessage("§cConstrução não encontrada.");
+            return HandleResponse.RETURN_TRUE;
+        }
+
+        // Check for player condition: use the command at least 2 times
+        if (sender instanceof Player) {
+            OnlinePlayer onlinePlayer = LobsterCraft.servicesManager.playerHandlerService.getOnlinePlayer((Player) sender, OnlinePlayer.OnlineState.LOGGED_IN);
+
+            // Check for player second use
+            if (onlinePlayer.getTriggerController().sendMessageIfNotTriggered(
+                    TriggerController.TemporaryTrigger.DELETE_CONSTRUCTION_CHECK,
+                    Util.appendStrings("§cTem certeza de que quer remover a construção §6", constructionName, "§c? §6Se sim, repita o comando. §4TODOS OS BLOCOS SERÃO DESPROTEGIDOS.")
+            ))
+                return HandleResponse.RETURN_TRUE;
+        }
+
+        // Remove asynchronously
+        Bukkit.getScheduler().runTaskAsynchronously(LobsterCraft.plugin, () -> {
+            try {
+                sender.sendMessage(LobsterCraft.servicesManager.worldService.removeConstruction(constructionId) ?
+                        Util.appendStrings("§6Todos os blocos foram desprotegidos e a construção §c", constructionName, "§6 foi removida.")
+                        : "§cOcorreu um erro ao remover construção.");
+            } catch (SQLException exception) {
+                exception.printStackTrace();
+                sender.sendMessage("§cOcorreu um erro no banco de dados.");
+            }
+        });
         return HandleResponse.RETURN_TRUE;
     }
 }

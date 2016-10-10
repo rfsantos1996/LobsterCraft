@@ -126,14 +126,12 @@ public class InventoryProfile extends Profile {
         if (this.databaseState != DatabaseState.UPDATE_DATABASE && !isInserting)
             return false; // Isn't being inserted nor updated (?) return false, something went wrong
 
-        // Create prepared statement
-
         // Insert values
         try (PreparedStatement preparedStatement = connection.prepareStatement(
                 isInserting ? "INSERT INTO `minecraft`.`player_inventories` (`user_playerId`, `contents`, `armor_contents`, `remaining_contents`) VALUES (?, ?, ?, ?);"
                         : "UPDATE `minecraft`.`player_inventories` SET `contents` = ?, `armor_contents` = ?, `remaining_contents` = ? WHERE `user_playerId` = ?;"
         )) {
-            preparedStatement.setInt(isInserting ? 1 : 4, onlinePlayer.getOfflinePlayer().getPlayerId());
+            preparedStatement.setInt(isInserting ? 1 : 4, playerId);
             int index = isInserting ? 2 : 1;
 
             preparedStatement.setBytes(index++, Util.itemStacksToByteArray(contents));

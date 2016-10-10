@@ -1,7 +1,6 @@
 package com.jabyftw.easiercommands;
 
-import com.jabyftw.lobstercraft.player.util.Permissions;
-import com.jabyftw.lobstercraft.util.*;
+import com.jabyftw.lobstercraft.Permissions;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.bukkit.ChatColor;
@@ -211,6 +210,7 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
                 }
 
                 // Invoke method given arguments
+                mostNearMethod.setAccessible(true);
                 Object invoke = mostNearMethod.invoke(this, objects.toArray());
 
                 // Check response given to player

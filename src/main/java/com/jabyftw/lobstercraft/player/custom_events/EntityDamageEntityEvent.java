@@ -52,10 +52,6 @@ public class EntityDamageEntityEvent extends Event implements Cancellable {
         this(damaged, damager, event, null);
     }
 
-    public static HandlerList getHandlerList() {
-        return handlers;
-    }
-
     public Entity getDamaged() {
         return damaged;
     }
@@ -74,6 +70,10 @@ public class EntityDamageEntityEvent extends Event implements Cancellable {
 
     @Override
     public HandlerList getHandlers() {
+        return handlers;
+    }
+
+    public static HandlerList getHandlerList() {
         return handlers;
     }
 

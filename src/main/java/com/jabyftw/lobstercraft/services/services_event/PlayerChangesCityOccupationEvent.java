@@ -84,4 +84,8 @@ public class PlayerChangesCityOccupationEvent extends Event implements Cancellab
     public HandlerList getHandlers() {
         return handlers;
     }
+
+    public static HandlerList getHandlerList() {
+        return handlers;
+    }
 }

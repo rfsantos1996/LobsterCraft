@@ -2,13 +2,14 @@ package com.jabyftw.lobstercraft.commands.chat;
 
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
+import com.jabyftw.easiercommands.HandleResponse;
 import com.jabyftw.easiercommands.SenderType;
-import com.jabyftw.lobstercraft_old.LobsterCraft;
-import com.jabyftw.lobstercraft_old.player.OfflinePlayerHandler;
-import com.jabyftw.lobstercraft_old.player.PlayerHandler;
-import com.jabyftw.lobstercraft_old.player.chat.ChatProfile;
-import com.jabyftw.lobstercraft_old.player.chat.MuteEntry;
-import com.jabyftw.lobstercraft_old.player.util.Permissions;
+import com.jabyftw.lobstercraft.LobsterCraft;
+import com.jabyftw.lobstercraft.Permissions;
+import com.jabyftw.lobstercraft.player.ChatProfile;
+import com.jabyftw.lobstercraft.player.OfflinePlayer;
+import com.jabyftw.lobstercraft.player.OnlinePlayer;
+import com.jabyftw.lobstercraft.util.Util;
 
 import java.util.Set;
 
@@ -33,16 +34,16 @@ import java.util.Set;
 public class MuteCommand extends CommandExecutor {
 
     public MuteCommand() {
-        super("mute", Permissions.CHAT_MUTE, "Permite ao jogador silenciar outros jogadores", "/mute (jogador)");
+        super("mute", Permissions.CHAT_MUTE.toString(), "Permite ao jogador silenciar outros jogadores", "/mute (jogador)");
     }
 
     @CommandHandler(senderType = SenderType.PLAYER)
-    public boolean onMuteList(PlayerHandler playerHandler) {
+    private boolean onMuteList(OnlinePlayer onlinePlayer) {
         // This set is a copy, therefore it doesn't need to be synchronized
-        Set<MuteEntry> muteEntries = playerHandler.getProfile(ChatProfile.class).getMuteEntries();
+        Set<Integer> muteEntries = onlinePlayer.getProfile(ChatProfile.class).getMuteEntries();
 
         if (muteEntries.isEmpty()) {
-            playerHandler.sendMessage("§6Não há ninguém silenciado. Use §c/mute (jogador)§6 para silenciar");
+            onlinePlayer.getPlayer().sendMessage("§6Não há ninguém silenciado. Use §c/mute (jogador)§6 para silenciar");
             return true;
         }
 
@@ -51,41 +52,35 @@ public class MuteCommand extends CommandExecutor {
         boolean first = true;
 
         // Iterate through entries
-        for (MuteEntry muteEntry : muteEntries) {
+        for (Integer mutedId : muteEntries) {
             if (!first) messageBuilder.append("§6, ");
             first = false;
-            messageBuilder.append("§c").append(LobsterCraft.playerHandlerService.getOfflinePlayer(muteEntry.getMutedPlayerId()).getPlayerName());
+            messageBuilder.append("§c").append(LobsterCraft.servicesManager.playerHandlerService.getOfflinePlayer(mutedId).getPlayerName());
         }
 
         // Send message to player
-        playerHandler.sendMessage(messageBuilder.toString());
+        onlinePlayer.getPlayer().sendMessage(messageBuilder.toString());
         return true;
     }
 
-    @CommandHandler(senderType = SenderType.PLAYER)  // TODO OfflinePlayerHandler
-    public boolean onMute(PlayerHandler playerHandler, OfflinePlayerHandler target) {
-        if (!target.isRegistered()) {
-            playerHandler.sendMessage("§cJogador não encontrado.");
-            return true;
+    @CommandHandler(senderType = SenderType.PLAYER)
+    private HandleResponse onMute(OnlinePlayer onlinePlayer, OfflinePlayer target) {
+        switch (onlinePlayer.getProfile(ChatProfile.class).mutePlayer(target)) {
+            case PLAYER_NOT_FOUND:
+                onlinePlayer.getPlayer().sendMessage("§cJogador não encontrado.");
+                return HandleResponse.RETURN_TRUE;
+            case CAN_NOT_MUTE_THIS_PLAYER:
+                return HandleResponse.RETURN_NO_PERMISSION;
+            case MAXIMUM_AMOUNT_OF_MUTE_ENTRIES:
+                onlinePlayer.getPlayer().sendMessage("§cVocê já silenciou muitos jogadores, limite máximo atingido.");
+                return HandleResponse.RETURN_TRUE;
+            case PLAYER_ALREADY_MUTED:
+                onlinePlayer.getPlayer().sendMessage("§cJogador já silenciado.");
+                return HandleResponse.RETURN_TRUE;
+            case SUCCESSFULLY_MUTED_PLAYER:
+                onlinePlayer.getPlayer().sendMessage(Util.appendStrings("§6Você silenciou §c", target.getPlayerName()));
+                return HandleResponse.RETURN_TRUE;
         }
-
-        //noinspection deprecation
-        if (LobsterCraft.permission.has(playerHandler.getPlayer().getWorld(), target.getPlayerName(), Permissions.CHAT_MUTE_EXCEPTION)) {
-            playerHandler.sendMessage("§cVocê não pode silenciar esta pessoa.");
-            return true;
-        }
-
-        switch (playerHandler.getProfile(ChatProfile.class).mutePlayer(target.getPlayerId())) {
-            case FULL_MUTE_LIST:
-                playerHandler.sendMessage("§cVocê já silenciou muitos jogadores. Limite máximo atingido.");
-                return true;
-            case SUCCESSFULLY_MUTED:
-                playerHandler.sendMessage("§6Você silenciou §c" + target.getPlayerName());
-                return true;
-            case ALREADY_MUTED:
-                playerHandler.sendMessage("§cJogador já silenciado.");
-                return true;
-        }
-        return false;
+        return HandleResponse.RETURN_HELP;
     }
 }

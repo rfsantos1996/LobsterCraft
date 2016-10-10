@@ -103,3 +103,5 @@ commands:
     aliases: [banirtemp, tempbanir]
   exit:
     aliases: [sair, fechar, close, stop, save-all]
+  city:
+    aliases: [cidade, cities, cidades, ct, casas, casa, home, homes]

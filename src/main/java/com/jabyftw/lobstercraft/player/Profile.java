@@ -186,7 +186,8 @@ abstract class Profile {
     protected enum ProfileType {
 
         LOCATION_PROFILE(LocationProfile.class),
-        INVENTORY_PROFILE(InventoryProfile.class),;
+        INVENTORY_PROFILE(InventoryProfile.class),
+        CHAT_PROFILE(ChatProfile.class);
 
         private final Class<? extends Profile> profileClass;
 

@@ -3,10 +3,11 @@ package com.jabyftw.lobstercraft.commands.location;
 import com.jabyftw.easiercommands.CommandExecutor;
 import com.jabyftw.easiercommands.CommandHandler;
 import com.jabyftw.easiercommands.SenderType;
+import com.jabyftw.lobstercraft.LobsterCraft;
 import com.jabyftw.lobstercraft.commands.CommandService;
 import com.jabyftw.lobstercraft.player.OnlinePlayer;
 import com.jabyftw.lobstercraft.player.TeleportBuilder;
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 
@@ -46,7 +47,7 @@ public class SpawnCommand extends CommandExecutor {
 
     @CommandHandler(senderType = SenderType.PLAYER, additionalPermissions = Permissions.LOCATION_CHANGE_WORLD)
     private boolean onSpawnAtWorld(OnlinePlayer onlinePlayer, World world) {
-        return CommandService.worldCommand.onWorldTeleport(onlinePlayer, world);
+        return LobsterCraft.servicesManager.commandService.worldCommand.onWorldTeleport(onlinePlayer, world);
     }
 
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = Permissions.LOCATION_TELEPORT_TO_SPAWN_OTHERS)
@@ -61,6 +62,6 @@ public class SpawnCommand extends CommandExecutor {
     @CommandHandler(senderType = SenderType.BOTH, additionalPermissions = {Permissions.LOCATION_TELEPORT_TO_SPAWN_OTHERS, Permissions.LOCATION_CHANGE_WORLD,
             Permissions.LOCATION_CHANGE_WORLD_OTHERS})
     private boolean onSpawnOtherAtWorld(CommandSender commandSender, OnlinePlayer onlinePlayer, World world) {
-        return CommandService.worldCommand.onWorldTeleportOther(commandSender, onlinePlayer, world);
+        return LobsterCraft.servicesManager.commandService.worldCommand.onWorldTeleportOther(commandSender, onlinePlayer, world);
     }
 }

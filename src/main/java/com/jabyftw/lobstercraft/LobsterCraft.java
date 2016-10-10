@@ -8,8 +8,6 @@ import com.jabyftw.lobstercraft.util.Util;
 import com.sk89q.worldedit.WorldEdit;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import net.milkbowl.vault.chat.Chat;
-import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -54,8 +52,8 @@ public class LobsterCraft extends JavaPlugin {
 
     // "Global" dependencies
     public static HikariDataSource dataSource;
-    public static Chat chat;
-    public static Permission permission;
+    public static net.milkbowl.vault.chat.Chat chat;
+    public static net.milkbowl.vault.permission.Permission permission;
     public static ProtocolManager protocolManager;
     public static VanishManager vanishManager;
     public static WorldEdit worldEdit;
@@ -121,8 +119,16 @@ public class LobsterCraft extends JavaPlugin {
 
             // Setup Vault
             {
-                RegisteredServiceProvider<Permission> permissionServiceProvider = getServer().getServicesManager().getRegistration(Permission.class);
-                RegisteredServiceProvider<Chat> chatServiceProvider = getServer().getServicesManager().getRegistration(Chat.class);
+                RegisteredServiceProvider<net.milkbowl.vault.permission.Permission> permissionServiceProvider =
+                        getServer().getServicesManager().getRegistration(net.milkbowl.vault.permission.Permission.class);
+                RegisteredServiceProvider<net.milkbowl.vault.chat.Chat> chatServiceProvider =
+                        getServer().getServicesManager().getRegistration(net.milkbowl.vault.chat.Chat.class);
+
+                // Check if we have the necessary providers
+                if (permissionServiceProvider == null)
+                    throw new NullPointerException("no permission plugin was found!");
+                if (chatServiceProvider == null)
+                    throw new NullPointerException("no chat plugin was found!");
 
                 // Check if was successful
                 if ((chat = chatServiceProvider.getProvider()) == null || (permission = permissionServiceProvider.getProvider()) == null)
@@ -161,6 +167,11 @@ public class LobsterCraft extends JavaPlugin {
                 throw new IllegalStateException("WorldEdit not started!");
         } catch (IllegalStateException exception) {
             logger.severe(Util.appendStrings("Can't continue without dependency: ", exception.getMessage()));
+            exception.printStackTrace();
+            Bukkit.shutdown();
+            return;
+        } catch (Exception exception) {
+            logger.severe(Util.appendStrings("Error with dependency management: ", exception.getMessage()));
             exception.printStackTrace();
             Bukkit.shutdown();
             return;

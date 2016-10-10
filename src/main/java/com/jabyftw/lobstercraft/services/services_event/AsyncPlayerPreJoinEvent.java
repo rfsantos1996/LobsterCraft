@@ -31,14 +31,13 @@ public class AsyncPlayerPreJoinEvent extends Event implements Cancellable {
 
     private static final HandlerList handlers = new HandlerList();
 
-    private AsyncPlayerPreLoginEvent.Result result;
+    private AsyncPlayerPreLoginEvent.Result result = AsyncPlayerPreLoginEvent.Result.ALLOWED;
     private String kickMessage = null;
 
     /**
      * This event is called when a OfflinePlayer is joining the server (asynchronous)
      */
     public AsyncPlayerPreJoinEvent() {
-
     }
 
     @Override
@@ -69,6 +68,10 @@ public class AsyncPlayerPreJoinEvent extends Event implements Cancellable {
 
     @Override
     public HandlerList getHandlers() {
+        return handlers;
+    }
+
+    public static HandlerList getHandlerList() {
         return handlers;
     }
 }

@@ -1,6 +1,6 @@
 package com.jabyftw.easiercommands;
 
-import com.jabyftw.lobstercraft.player.util.Permissions;
+import com.jabyftw.lobstercraft.Permissions;
 import com.sun.istack.internal.NotNull;
 
 import java.lang.annotation.ElementType;

@@ -29,11 +29,14 @@ public class PlayerLoggedInEvent extends Event {
      * This event is called when a OnlinePlayer logs in (it'll include register)
      */
     public PlayerLoggedInEvent() {
-
     }
 
     @Override
     public HandlerList getHandlers() {
+        return handlers;
+    }
+
+    public static HandlerList getHandlerList() {
         return handlers;
     }
 }

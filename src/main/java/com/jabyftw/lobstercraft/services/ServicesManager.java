@@ -1,5 +1,6 @@
 package com.jabyftw.lobstercraft.services;
 
+import com.jabyftw.lobstercraft.commands.CommandService;
 import com.jabyftw.lobstercraft.player.PlayerHandlerService;
 import com.jabyftw.lobstercraft.world.CityService;
 import com.jabyftw.lobstercraft.world.WorldService;
@@ -32,6 +33,7 @@ public class ServicesManager implements Listener {
     public final PlayerHandlerService playerHandlerService;
     public final CityService cityService;
     public final WorldService worldService;
+    public final CommandService commandService;
 
     /**
      * Initialize services
@@ -41,6 +43,7 @@ public class ServicesManager implements Listener {
         cityService = new CityService();
         // WorldService requires CityService to be loaded
         worldService = new WorldService();
+        commandService = new CommandService();
     }
 
     /**

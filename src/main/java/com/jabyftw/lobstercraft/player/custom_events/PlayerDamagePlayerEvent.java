@@ -37,13 +37,13 @@ public class PlayerDamagePlayerEvent extends PlayerDamageEntityEvent {
         this(damaged, damager, event, null);
     }
 
-    public static HandlerList getHandlerList() {
-        return handlers;
-    }
-
     @Override
     public Player getDamaged() {
         return (Player) super.getDamaged();
+    }
+
+    public static HandlerList getHandlerList() {
+        return handlers;
     }
 
 }
